@@ -25,6 +25,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         }
     };
 
+
     return (
         <ScrollView
             {...scrollViewProps}
