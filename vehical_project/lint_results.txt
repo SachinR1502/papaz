@@ -1,0 +1,158 @@
+
+> vehical_project@1.0.0 lint
+> expo lint
+
+
+/Users/apple/Project/vehical_project/app/(admin)/(tabs)/reports.tsx
+  8:9  warning  'width' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(admin)/(tabs)/settings.tsx
+  9:11  warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(admin)/_layout.tsx
+  8:13  warning  'user' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  9:11  warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(auth)/login.tsx
+  27:9  warning  'width' is assigned a value but never used                                                                                      @typescript-eslint/no-unused-vars
+  68:8  warning  React Hook useEffect has missing dependencies: 'blob1Anim' and 'blob2Anim'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(customer)/(tabs)/history.tsx
+  23:9  warning  'width' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  48:8  warning  React Hook useEffect has a missing dependency: 'blob1Anim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(customer)/(tabs)/index.tsx
+  46:33  warning  'isLoading' is assigned a value but never used                                                                                  @typescript-eslint/no-unused-vars
+  76:6   warning  React Hook useEffect has missing dependencies: 'blob1Anim' and 'blob2Anim'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(customer)/(tabs)/profile.tsx
+  27:13  warning  'settings' is assigned a value but never used                                                                                   @typescript-eslint/no-unused-vars
+  54:8   warning  React Hook useEffect has missing dependencies: 'blob1Anim' and 'blob2Anim'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(customer)/(tabs)/request-product.tsx
+  121:11  warning  'router' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  155:8   warning  React Hook useEffect has a missing dependency: 'blob1Anim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(customer)/(tabs)/vehicles.tsx
+  23:9  warning  'width' is assigned a value but never used                                                                                      @typescript-eslint/no-unused-vars
+  54:6  warning  React Hook useEffect has missing dependencies: 'blob1Anim' and 'blob2Anim'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(customer)/booking/[id].tsx
+   64:8   warning  React Hook useEffect has a missing dependency: 'blobAnim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   91:18  warning  'e' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  111:18  warning  'e' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  203:35  warning  'stepIdxs' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(customer)/booking/create.tsx
+   62:8   warning  React Hook useEffect has a missing dependency: 'blob1Anim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  206:18  warning  'e' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(customer)/booking/invoice.tsx
+   46:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  204:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(customer)/booking/searching.tsx
+  19:9  warning  'width' is assigned a value but never used                                                                                                          @typescript-eslint/no-unused-vars
+  82:8  warning  React Hook useEffect has missing dependencies: 'pulseAnim', 'ripple1', 'ripple2', and 'router'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(customer)/profile/info.tsx
+  22:19  warning  'login' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(customer)/vehicle/[id]/index.tsx
+  22:9  warning  'width' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(customer)/vehicle/add.tsx
+   50:8   warning  React Hook useEffect has a missing dependency: 'blob1Anim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  182:18  warning  'e' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/(tabs)/_layout.tsx
+  11:11  warning  'colors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/(tabs)/dashboard.tsx
+  27:11  warning  'colors' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  36:8   warning  React Hook useEffect has a missing dependency: 'refreshData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(supplier)/(tabs)/inventory.tsx
+  21:11  warning  'colors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/(tabs)/orders.tsx
+  20:11  warning  'colors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/(tabs)/profile.tsx
+  21:11  warning  'colors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/_layout.tsx
+  22:8  warning  React Hook useEffect has a missing dependency: 'router'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(supplier)/inventory/add.tsx
+   31:11   warning  'colors' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+   68:100  warning  'e' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+   71:8    warning  React Hook useEffect has a missing dependency: 'isEditMode'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  114:18   warning  'e' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/onboarding/registration.tsx
+  27:11  warning  'colors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  46:18  warning  'e' is defined but never used                @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/profile/edit.tsx
+  26:11  warning  'colors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  60:18  warning  'e' is defined but never used                @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/profile/payments.tsx
+  10:11  warning  'theme' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(supplier)/profile/support.tsx
+  13:11  warning  'colorScheme' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(technician)/(tabs)/index.tsx
+  11:9   warning  'width' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  14:13  warning  'logout' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  14:21  warning  'user' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  15:36  warning  'isOnline' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  15:46  warning  'toggleOnline' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(technician)/(tabs)/jobs.tsx
+  20:12  warning  React Hook useCallback has a missing dependency: 'refreshJobs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  30:15  warning  'distance' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(technician)/(tabs)/profile.tsx
+  40:11  warning  'stats' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(technician)/(tabs)/store.tsx
+  204:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(technician)/_layout.tsx
+  23:8  warning  React Hook useEffect has a missing dependency: 'router'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(technician)/dashboard.tsx
+  25:9   warning  'width' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  28:13  warning  'logout' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  45:12  warning  React Hook useCallback has a missing dependency: 'refreshJobs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/apple/Project/vehical_project/app/(technician)/job/[id]/index.tsx
+   37:9   warning  'width' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+   66:8   warning  React Hook useEffect has a missing dependency: 'blob1Anim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   84:18  warning  'e' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  100:18  warning  'e' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  112:18  warning  'e' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  139:18  warning  'e' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(technician)/job/[id]/quote.tsx
+   63:8   warning  React Hook useEffect has a missing dependency: 'blobAnim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  157:18  warning  'e' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(technician)/onboarding/registration.tsx
+  21:13  warning  'submitRegistration' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/app/(technician)/parts/request.tsx
+  21:11  warning  'colors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  63:18  warning  'e' is defined but never used                @typescript-eslint/no-unused-vars
+
+/Users/apple/Project/vehical_project/components/screens/CallOverlay.tsx
+   7:9   warning  'width' is assigned a value but never used   @typescript-eslint/no-unused-vars
+   7:16  warning  'height' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  12:29  warning  A `require()` style import is forbidden      @typescript-eslint/no-require-imports
+  14:14  warning  'e' is defined but never used                @typescript-eslint/no-unused-vars
+
+✖ 75 problems (0 errors, 75 warnings)
+
