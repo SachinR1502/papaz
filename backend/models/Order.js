@@ -84,10 +84,18 @@ const OrderSchema = new mongoose.Schema({
         lat: { type: Number },
         lng: { type: Number }
     },
+    photos: [String],
+    voiceNote: String,
     deliveryDetails: {
+        type: { type: String, enum: ['local', 'courier'], default: 'local' },
         vehicleNumber: String,
         driverName: String,
+        personName: String,
         driverPhone: String,
+        courierName: String,
+        trackingId: String,
+        trackingUrl: String,
+        notes: String,
         estimatedDelivery: Date
     }
 }, {

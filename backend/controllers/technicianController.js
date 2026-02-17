@@ -687,7 +687,7 @@ const getProducts = asyncHandler(async (req, res) => {
 });
 
 const requestProduct = asyncHandler(async (req, res) => {
-    const { productId, quantity, shopId, jobId, customName, customDescription, image, voiceUri } = req.body;
+    const { productId, quantity, shopId, jobId, customName, customDescription, customBrand, image, voiceUri, photos, voiceNote } = req.body;
     const techUser = req.user;
     const technician = await Technician.findOne({ user: techUser._id });
 
@@ -758,14 +758,18 @@ const requestProduct = asyncHandler(async (req, res) => {
         quantity: quantity || 1,
         image: product.image,
         voiceUri: product.voiceUri,
-        description: product.description
+        description: product.description,
+        brand: product.brand || '',
+        partNumber: product.partNumber || ''
     } : {
         name: customName,
         description: finalDescription,
         quantity: quantity || 1,
         price: 0,
         image: finalImage,
-        voiceUri: finalVoice
+        voiceUri: finalVoice,
+        brand: customBrand || '',
+        partNumber: ''
     };
 
     const targetSupplier = shopId || (product ? product.supplier : null);
@@ -791,7 +795,9 @@ const requestProduct = asyncHandler(async (req, res) => {
             name: technician.garageName || technician.fullName,
             phone: req.user.phoneNumber
         },
-        vehicleDetails: vehicleDetails
+        vehicleDetails: vehicleDetails,
+        photos: photos || [],
+        voiceNote: voiceNote || null
     });
 
     await order.save();
@@ -1006,6 +1012,8 @@ const placeWholesaleOrder = asyncHandler(async (req, res) => {
     const { items, supplierId, totalAmount, jobId } = req.body;
     const technician = await Technician.findOne({ user: req.user._id });
     if (!technician) return ApiResponse.error(res, 'Technician profile not found', 404);
+
+    console.log('Technician:', technician);
 
     let vehicleDetails = null;
     if (jobId) {
@@ -1253,16 +1261,138 @@ const getInventory = asyncHandler(async (req, res) => {
 });
 
 const requestParts = asyncHandler(async (req, res) => {
-    const { parts } = req.body;
-    const job = await ServiceRequest.findById(req.params.id);
-    if (!job) return ApiResponse.error(res, 'Job not found', 404);
+    const { parts, items, photos, voiceNote, supplierId, jobId: bodyJobId } = req.body;
+
+    console.log(req.body);
+
+    const partItems = parts || items; // Support both naming conventions
+    const jobId = req.params.id || bodyJobId;
+    let job = null;
+
+    if (jobId) {
+        job = await ServiceRequest.findById(jobId).populate('vehicle');
+        if (!job) return ApiResponse.error(res, 'Job not found', 404);
+    }
 
     const technician = await Technician.findOne({ user: req.user._id });
-    if (!technician || job.technician.toString() !== technician._id.toString()) {
+    if (!technician) return ApiResponse.error(res, 'Technician profile not found', 404);
+
+    if (job && (job.technician && job.technician.toString() !== technician._id.toString())) {
         return ApiResponse.error(res, 'Not authorized', 403);
     }
-    // Logic for requesting parts from local store/admin
-    return ApiResponse.success(res, null, 'Parts requested successfully');
+
+    const orderId = 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+
+    let vehicleDetails = null;
+
+    if (job && job.vehicle) {
+        vehicleDetails = {
+            make: job.vehicle.make,
+            model: job.vehicle.model,
+            year: job.vehicle.year,
+            vin: job.vehicle.vin || job.vehicle.chassisNumber,
+            registrationNumber: job.vehicle.registrationNumber,
+            fuelType: job.vehicle.fuelType
+        };
+    } else if (req.body.vehicleDetails) {
+        const v = req.body.vehicleDetails;
+        vehicleDetails = {
+            make: v.make,
+            model: v.model,
+            year: v.year,
+            vin: v.vin || v.chassisNumber,
+            registrationNumber: v.registrationNumber,
+            fuelType: v.fuelType
+        };
+    }
+
+    const orderItems = (partItems || []).map(part => {
+        // Clean description of any legacy media tags to keep data clean
+        let cleanDesc = part.description || '';
+        cleanDesc = cleanDesc.replace(/\[PhotoURI:.*?\]/g, '').replace(/\[VoiceURI:.*?\]/g, '').trim();
+
+        return {
+            name: part.name,
+            brand: part.brand || '',
+            price: part.price || 0,
+            quantity: part.quantity || 1,
+            description: cleanDesc,
+            image: part.image || null,
+            voiceUri: part.voiceUri || null,
+            partNumber: part.partNumber || ''
+        };
+    });
+
+    if (orderItems.length === 0) {
+        return ApiResponse.error(res, 'No parts provided', 400);
+    }
+
+    // Logic to ensure media is accessible globally if it was attached to items
+    // ALWAYS merge item media into global media to ensure visibility
+    let finalPhotos = Array.isArray(photos) ? [...photos] : [];
+    let finalVoiceNote = voiceNote || null;
+
+    if (Array.isArray(partItems)) {
+        partItems.forEach(p => {
+            if (p.image) finalPhotos.push(p.image);
+            if (p.images && Array.isArray(p.images)) finalPhotos.push(...p.images);
+
+            // Also check for legacy URI format in description if not cleaned yet
+            const desc = p.description || '';
+            const photoMatch = desc.match(/\[PhotoURI:(.*?)\]/);
+            if (photoMatch) {
+                finalPhotos.push(photoMatch[1]);
+            }
+        });
+        // Remove duplicates/empty
+        finalPhotos = [...new Set(finalPhotos.filter(p => p))];
+    }
+
+    // If global voice note is empty, try to promote from items
+    // (Voice notes are singular usually, so we pick the first one found if global is null)
+    if (!finalVoiceNote && Array.isArray(partItems)) {
+        const partWithVoice = partItems.find(p => p.voiceUri || p.voiceNote);
+        if (partWithVoice) {
+            finalVoiceNote = partWithVoice.voiceUri || partWithVoice.voiceNote;
+        } else {
+            // Check descriptions
+            const partWithVoiceDesc = partItems.find(p => (p.description || '').includes('[VoiceURI:'));
+            if (partWithVoiceDesc) {
+                const match = partWithVoiceDesc.description.match(/\[VoiceURI:(.*?)\]/);
+                if (match) finalVoiceNote = match[1];
+            }
+        }
+    }
+
+    const order = new Order({
+        orderId,
+        technician: technician._id,
+        serviceRequest: job ? job._id : null,
+        supplier: supplierId || null, // Allow targeting specific supplier
+        items: orderItems,
+        totalAmount: 0, // Inquiry
+        status: 'inquiry',
+        paymentStatus: 'pending',
+        location: {
+            lat: technician.location?.coordinates?.[1] || 0,
+            lng: technician.location?.coordinates?.[0] || 0
+        },
+        deliveryType: 'garage',
+        deliveryAddress: {
+            address: technician.address,
+            name: technician.garageName || technician.fullName,
+            phone: req.user.phoneNumber
+        },
+        vehicleDetails: vehicleDetails,
+        photos: finalPhotos,
+        voiceNote: finalVoiceNote
+    });
+
+    await order.save();
+
+    // Create a broadcast notification or similar if needed, 
+    // but for now we've successfully created the order with separate media.
+    return ApiResponse.success(res, order, 'Parts requested successfully');
 });
 
 const addRepairDetails = asyncHandler(async (req, res) => {

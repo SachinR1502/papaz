@@ -19,6 +19,13 @@ const ProductSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    brand: {
+        type: String, // e.g. Bosch, Local, OEM
+        default: 'Generic'
+    },
+    partNumber: {
+        type: String // e.g. 123-456-789
+    },
     image: {
         type: String, // URL
         required: true

@@ -3,7 +3,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Colors } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { parseDescription } from '@/utils/mediaHelpers';
+import { getMediaUrl, parseDescription } from '@/utils/mediaHelpers';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -36,25 +36,36 @@ export const SupplierOrderCard = ({
 
     const isPending = item.status === 'pending';
 
-    const parsed = parseDescription(item.partName || item.name || item.description);
-    let displayName = parsed.displayName || item.partName || item.name || 'Unknown Part';
-    let displayNotes = parsed.displayNotes;
-    const { photoUri, voiceUri } = parsed;
+    const firstItem = item.items && item.items.length > 0 ? item.items[0] : {};
+    const rawName = item.partName || item.name || firstItem.name || 'Unknown Part';
+    const rawDesc = item.description || firstItem.description || rawName;
 
-    let displayMeta = '';
-    if (displayName.includes(' - ')) {
+    const parsed = parseDescription(rawDesc);
+    let displayName = parsed.displayName || rawName;
+    let displayNotes = parsed.displayNotes;
+    // Resolve Photo/Voice (Prioritize parsed from description, fallback to fields)
+    const photoUri = parsed.photoUri || getMediaUrl(firstItem.image || item.image);
+    const voiceUri = parsed.voiceUri || getMediaUrl(firstItem.voiceUri || item.voiceUri);
+
+    // Resolve Brand
+    let brand = item.brand || firstItem.brand;
+    if (!brand && displayName.includes(' - ')) {
         const parts = displayName.split(' - ');
-        const brand = parts.pop();
+        brand = parts.pop();
         displayName = parts.join(' - ');
-        displayMeta = brand ? ` • ${brand}` : '';
     }
 
+    // Resolve Part Number
+    let partNumber = item.partNumber || firstItem.partNumber;
     const pnMatch = displayName.match(/\(PN: (.*?)\)/);
     if (pnMatch) {
-        const pn = pnMatch[1];
+        partNumber = pnMatch[1];
         displayName = displayName.replace(pnMatch[0], '').trim();
-        displayMeta = ` • PN: ${pn}` + displayMeta;
     }
+
+    let displayMeta = '';
+    if (brand) displayMeta += ` • ${brand}`;
+    if (partNumber) displayMeta += ` • PN: ${partNumber}`;
 
     return (
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -121,8 +132,16 @@ export const SupplierOrderCard = ({
                 <View style={{ backgroundColor: colors.background, padding: 12, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: colors.border }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Ionicons name="car-sport" size={16} color={colors.primary} />
-                            <Text style={{ fontSize: 13, fontFamily: 'NotoSans-Bold', color: colors.text, marginLeft: 8 }}>{item.deliveryDetails.vehicleNumber}</Text>
+                            {item.deliveryDetails.type === 'courier' ? (
+                                <MaterialCommunityIcons name="truck-fast" size={16} color={colors.primary} />
+                            ) : (
+                                <Ionicons name="car-sport" size={16} color={colors.primary} />
+                            )}
+                            <Text style={{ fontSize: 13, fontFamily: 'NotoSans-Bold', color: colors.text, marginLeft: 8 }}>
+                                {item.deliveryDetails.type === 'courier'
+                                    ? (item.deliveryDetails.courierName || t('courier_partner'))
+                                    : (item.deliveryDetails.vehicleNumber || t('vehicle_number'))}
+                            </Text>
                         </View>
                         {['out_for_delivery', 'shipped', 'packed', 'accepted'].includes(item.status) && (
                             <TouchableOpacity onPress={() => onOpenDeliveryModal(item)}>
@@ -131,8 +150,21 @@ export const SupplierOrderCard = ({
                         )}
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="person" size={16} color={colors.primary} />
-                        <Text style={{ fontSize: 13, color: colors.icon, marginLeft: 8 }}>{item.deliveryDetails.driverName} • {item.deliveryDetails.driverPhone}</Text>
+                        {item.deliveryDetails.type === 'courier' ? (
+                            <>
+                                <MaterialCommunityIcons name="barcode-scan" size={16} color={colors.primary} />
+                                <Text style={{ fontSize: 13, color: colors.icon, marginLeft: 8 }}>
+                                    {t('tracking')}: {item.deliveryDetails.trackingId}
+                                </Text>
+                            </>
+                        ) : (
+                            <>
+                                <Ionicons name="person" size={16} color={colors.primary} />
+                                <Text style={{ fontSize: 13, color: colors.icon, marginLeft: 8 }}>
+                                    {item.deliveryDetails.driverName} • {item.deliveryDetails.driverPhone}
+                                </Text>
+                            </>
+                        )}
                     </View>
                 </View>
             ) : (
@@ -147,18 +179,20 @@ export const SupplierOrderCard = ({
                 )
             )}
 
-            {isPending || item.status === 'inquiry' ? (
+            {isPending || item.status === 'inquiry' || item.status === 'quoted' ? (
                 <View style={styles.actionRow}>
-                    {item.status === 'inquiry' ? (
+                    {item.status === 'inquiry' || item.status === 'quoted' ? (
                         <TouchableOpacity
-                            style={[styles.statusBtn, { backgroundColor: colors.primary }]}
+                            style={[styles.statusBtn, { backgroundColor: item.status === 'quoted' ? colors.warning : colors.primary }]}
                             onPress={() => onQuote(item)}
                             disabled={actionLoading === item.id}
                         >
                             {actionLoading === item.id ? <ActivityIndicator color="#FFF" /> : (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{t('submit_quote') || 'Submit Quote'}</Text>
-                                    <Ionicons name="pricetag" size={18} color="#FFF" />
+                                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                                        {item.status === 'quoted' ? (t('quote_sent_update') || 'Quote Sent / Update') : (t('submit_quote') || 'Submit Quote')}
+                                    </Text>
+                                    <Ionicons name={item.status === 'quoted' ? "checkmark-circle" : "pricetag"} size={18} color="#FFF" />
                                 </View>
                             )}
                         </TouchableOpacity>

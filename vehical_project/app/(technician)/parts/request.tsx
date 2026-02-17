@@ -1,3 +1,4 @@
+import { PartRequestItem, TechnicianPartRequestModal } from '@/components/technician/TechnicianPartRequestModal';
 import { AudioPlayer } from '@/components/ui/AudioPlayer';
 import { Colors } from '@/constants/theme';
 import { useAdmin } from '@/context/AdminContext';
@@ -19,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function RequestProductScreen() {
     const router = useRouter();
     const { jobId } = useLocalSearchParams<{ jobId: string }>(); // Capture jobId
-    const { requestProduct, myJobs, uploadFile } = useTechnician();
+    const { requestProduct, myJobs, uploadFile, requestParts } = useTechnician();
     const { settings } = useAdmin();
     const { t } = useLanguage();
     const colorScheme = useColorScheme();
@@ -36,69 +37,7 @@ export default function RequestProductScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [requesting, setRequesting] = useState(false);
     const [customModalVisible, setCustomModalVisible] = useState(false);
-    const [customName, setCustomName] = useState('');
-    const [customQty, setCustomQty] = useState('1');
-    const [customNote, setCustomNote] = useState('');
-    const [photoUri, setPhotoUri] = useState<string | null>(null);
-    const [voiceUri, setVoiceUri] = useState<string | null>(null);
-    const [isRecording, setIsRecording] = useState(false);
-    const [recording, setRecording] = useState<ExpoAudio.Recording | null>(null);
-
-    const pickImage = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-        });
-        if (!result.canceled) setPhotoUri(result.assets[0].uri);
-    };
-
-    const handleCamera = async () => {
-        const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-        });
-        if (!result.canceled) setPhotoUri(result.assets[0].uri);
-    };
-
-    const toggleRecording = async () => {
-        if (recording) {
-            setIsRecording(false);
-            try {
-                await recording.stopAndUnloadAsync();
-                const uri = recording.getURI();
-                setVoiceUri(uri);
-                setRecording(null);
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (error) {
-                console.error('Failed to stop recording', error);
-                Alert.alert(t('error'), t('error_submit') || 'Failed to save recording.');
-            }
-        } else {
-            try {
-                const permission = await ExpoAudio.requestPermissionsAsync();
-                if (permission.status === 'granted') {
-                    await ExpoAudio.setAudioModeAsync({
-                        allowsRecordingIOS: true,
-                        playsInSilentModeIOS: true,
-                    });
-                    const { recording: newRecording } = await ExpoAudio.Recording.createAsync(
-                        ExpoAudio.RecordingOptionsPresets.HIGH_QUALITY
-                    );
-                    setRecording(newRecording);
-                    setIsRecording(true);
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                } else {
-                    Alert.alert(t('permission_denied') || 'Permission Required', t('permission_mic_msg') || 'Microphone permission is needed.');
-                }
-            } catch (err) {
-                console.error('Failed to start recording', err);
-                Alert.alert(t('error'), t('error_submit') || 'Failed to start recording.');
-            }
-        }
-    };
+    const [submittingCustom, setSubmittingCustom] = useState(false);
 
     useEffect(() => {
         if (!search && job?.vehicleModel) {
@@ -139,42 +78,58 @@ export default function RequestProductScreen() {
         }
     };
 
-    const handleCustomRequest = async () => {
-        if (!customName.trim()) {
-            Alert.alert(t('error'), t('description_required') || 'Please enter a part name');
-            return;
-        }
-        setRequesting(true);
+    const handleCustomSubmit = async (items: PartRequestItem[], notes: string, supplierId: string | null, photos: string[], voiceNote: string | null, vehicleId: string | null) => {
+        setSubmittingCustom(true);
         try {
-            let photoUrl = null;
-            if (photoUri && photoUri.startsWith('file')) {
-                const res = await uploadFile(photoUri, 'image');
-                photoUrl = res.url || res.path;
-            }
-            let voiceUrl = null;
-            if (voiceUri && voiceUri.startsWith('file')) {
-                const res = await uploadFile(voiceUri, 'audio');
-                voiceUrl = res.url || res.path;
+            const uploadedPhotos = await Promise.all(
+                photos.map(async (uri) => {
+                    if (uri.startsWith('http')) return uri;
+                    const res = await uploadFile(uri, 'image');
+                    return res.url || res.path;
+                })
+            );
+
+            let uploadedVoice = null;
+            if (voiceNote) {
+                if (voiceNote.startsWith('http')) {
+                    uploadedVoice = voiceNote;
+                } else {
+                    const res = await uploadFile(voiceNote, 'audio');
+                    uploadedVoice = res.url || res.path;
+                }
             }
 
-            let finalName = customName;
-            let finalDesc = customNote || '';
-            if (photoUrl) finalDesc += `\n[PhotoURI:${photoUrl}]`;
-            if (voiceUrl) finalDesc += `\n[VoiceURI:${voiceUrl}]`;
+            const processedParts = items.map((item, idx) => {
+                let description = item.description || notes;
+                // DO NOT bundle global media into item descriptions anymore
+                // We will pass them as top-level metadata
 
-            await requestProduct('custom-' + Date.now(), parseInt(customQty) || 1, 'Manual Order', jobId, finalName, finalDesc);
+                return {
+                    ...item,
+                    name: item.name,
+                    brand: item.brand,
+                    quantity: item.quantity,
+                    description: description,
+                    price: item.price || 0,
+                    image: item.image,
+                };
+            });
+
+            await requestParts(jobId!, processedParts, {
+                photos: uploadedPhotos,
+                voiceNote: uploadedVoice,
+                supplierId: supplierId
+            });
+
             setCustomModalVisible(false);
-            setCustomName('');
-            setCustomNote('');
-            setPhotoUri(null);
-            setVoiceUri(null);
             Alert.alert(t('success'), t('part_requested_success') || t('part_requested'), [
                 { text: 'OK', onPress: () => router.back() }
             ]);
         } catch (e) {
+            console.error("Custom submit error:", e);
             Alert.alert(t('error'), t('request_fail_msg'));
         } finally {
-            setRequesting(false);
+            setSubmittingCustom(false);
         }
     };
 
@@ -260,10 +215,7 @@ export default function RequestProductScreen() {
                                     <Text style={{ color: colors.icon, marginBottom: 15 }}>{t('no_products_match')} &apos;{search}&apos;.</Text>
                                     <TouchableOpacity
                                         style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 }}
-                                        onPress={() => {
-                                            setCustomName(search); // Pre-fill with search term
-                                            setCustomModalVisible(true);
-                                        }}
+                                        onPress={() => setCustomModalVisible(true)}
                                     >
                                         <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{t('request_custom_part')}</Text>
                                     </TouchableOpacity>
@@ -309,106 +261,21 @@ export default function RequestProductScreen() {
                 </View>
 
                 {/* Custom Request Modal */}
-                {customModalVisible && (
-                    <View style={styles.overlay}>
-                        <View style={[styles.modal, { backgroundColor: colors.card }]}>
-                            <View style={[styles.modalIcon, { backgroundColor: colors.primary + '15' }]}>
-                                <MaterialCommunityIcons name="pencil-plus" size={32} color={colors.primary} />
-                            </View>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('custom_part_request')}</Text>
-
-                            <TextInput
-                                style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: isDark ? '#FFF0' : '#F9F9F9' }]}
-                                placeholder={t('part_name_placeholder')}
-                                placeholderTextColor={colors.icon}
-                                value={customName}
-                                onChangeText={setCustomName}
-                            />
-
-                            <TextInput
-                                style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: isDark ? '#FFF0' : '#F9F9F9', minHeight: 80, paddingTop: 12 }]}
-                                placeholder={t('part_details_placeholder')}
-                                placeholderTextColor={colors.icon}
-                                value={customNote}
-                                onChangeText={setCustomNote}
-                                multiline
-                            />
-
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', marginBottom: 15 }}>
-                                <Text style={{ color: colors.text, fontWeight: '600' }}>{t('quantity_label')}:</Text>
-                                <TextInput
-                                    style={[styles.input, { flex: 1, marginBottom: 0, color: colors.text, borderColor: colors.border, backgroundColor: isDark ? '#FFF0' : '#F9F9F9' }]}
-                                    value={customQty}
-                                    onChangeText={setCustomQty}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-
-                            {/* Media Attachments for Custom Request */}
-                            <View style={{ width: '100%', marginBottom: 20 }}>
-                                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
-                                    {photoUri && (
-                                        <View>
-                                            <Image source={{ uri: photoUri }} style={{ width: 60, height: 60, borderRadius: 10 }} />
-                                            <TouchableOpacity onPress={() => setPhotoUri(null)} style={{ position: 'absolute', top: -5, right: -5 }}>
-                                                <Ionicons name="close-circle" size={18} color="#FF3B30" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
-                                    {voiceUri && (
-                                        <View style={{ flex: 1 }}>
-                                            <AudioPlayer uri={voiceUri} />
-                                            <TouchableOpacity onPress={() => setVoiceUri(null)} style={{ position: 'absolute', top: -5, right: -5 }}>
-                                                <Ionicons name="close-circle" size={18} color="#FF3B30" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
-                                </View>
-                                <View style={{ flexDirection: 'row', gap: 15 }}>
-                                    <TouchableOpacity
-                                        style={{ flex: 1, height: 44, borderRadius: 10, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                                        onPress={() => Alert.alert(t('add_photo_title'), t('choose_source'), [
-                                            { text: t('camera'), onPress: handleCamera },
-                                            { text: t('library'), onPress: pickImage },
-                                            { text: t('cancel'), style: 'cancel' }
-                                        ])}
-                                    >
-                                        <Ionicons name="camera" size={18} color={colors.primary} />
-                                        <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600' }}>{t('photo')}</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={{ flex: 1, height: 44, borderRadius: 10, borderWidth: 1, borderColor: isRecording ? '#FF3B30' : colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                                        onPress={toggleRecording}
-                                    >
-                                        <Ionicons name={isRecording ? "stop" : "mic"} size={18} color={isRecording ? '#FF3B30' : colors.primary} />
-                                        <Text style={{ fontSize: 13, color: isRecording ? '#FF3B30' : colors.primary, fontWeight: '600' }}>{isRecording ? t('stop_recording') : t('voice_recording')}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            <View style={styles.modalActions}>
-                                <TouchableOpacity
-                                    style={[styles.cancelBtn, { backgroundColor: isDark ? '#FFFFFF10' : '#F2F2F7' }]}
-                                    onPress={() => setCustomModalVisible(false)}
-                                    disabled={requesting}
-                                >
-                                    <Text style={[styles.cancelText, { color: colors.text }]}>{t('cancel')}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
-                                    onPress={handleCustomRequest}
-                                    disabled={requesting}
-                                >
-                                    {requesting ? (
-                                        <ActivityIndicator color="#FFF" />
-                                    ) : (
-                                        <Text style={styles.confirmText}>{t('send_request')}</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                )}
+                <TechnicianPartRequestModal
+                    visible={customModalVisible}
+                    onClose={() => setCustomModalVisible(false)}
+                    onSubmit={handleCustomSubmit}
+                    suppliers={[]}
+                    partsSource="garage"
+                    vehicles={job ? [{
+                        id: job.vehicleId || (job.vehicle as any)?._id,
+                        make: (job.vehicle as any)?.make || 'Unknown',
+                        model: job.vehicleModel || (job.vehicle as any)?.model || 'Vehicle',
+                        registrationNumber: job.vehicleNumber || (job.vehicle as any)?.registrationNumber
+                    }] : []}
+                    submitting={submittingCustom}
+                    initialNotes={search}
+                />
 
             </View>
         </TouchableWithoutFeedback >

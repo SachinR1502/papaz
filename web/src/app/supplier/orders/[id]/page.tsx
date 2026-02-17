@@ -246,6 +246,60 @@ export default function SupplierOrderDetailPage() {
                             </div>
                         </div>
 
+                        {/* Delivery Details */}
+                        {order.deliveryDetails && (
+                            <div className="glass-panel" style={{ padding: '24px' }}>
+                                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Truck size={18} color="var(--color-primary)" />
+                                    {order.deliveryDetails.type === 'courier' ? 'Courier Details' : 'Vehicle Details'}
+                                </h3>
+
+                                {order.deliveryDetails.type === 'courier' ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Courier Partner</span>
+                                                <div style={{ fontWeight: 600 }}>{order.deliveryDetails.courierName || 'N/A'}</div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Tracking ID</span>
+                                                <div style={{ fontWeight: 600, fontFamily: 'monospace', background: 'var(--bg-card)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                    {order.deliveryDetails.trackingId || 'N/A'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {order.deliveryDetails.trackingUrl && (
+                                            <a
+                                                href={order.deliveryDetails.trackingUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)', textDecoration: 'none', padding: '12px', background: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', justifyContent: 'center', fontWeight: 600 }}
+                                            >
+                                                Track Shipment <Package size={16} />
+                                            </a>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Vehicle Number</span>
+                                            <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{order.deliveryDetails.vehicleNumber}</div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Driver Name</span>
+                                                <div style={{ fontWeight: 600 }}>{order.deliveryDetails.driverName}</div>
+                                            </div>
+                                            <div>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Phone</span>
+                                                <div style={{ fontWeight: 600 }}>{order.deliveryDetails.driverPhone}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Shipping Address */}
                         <div className="glass-panel" style={{ padding: '24px' }}>
                             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -310,7 +364,7 @@ function StatusBadge({ status }: { status: string }) {
     } else if (s === 'cancelled') {
         color = '#FF3B30';
         bg = 'rgba(255, 59, 48, 0.1)';
-    } else if (s === 'processing' || s === 'shipped') {
+    } else if (s === 'processing' || s === 'shipped' || s === 'out_for_delivery') {
         color = '#007AFF';
         bg = 'rgba(0, 122, 255, 0.1)';
     }
@@ -320,7 +374,7 @@ function StatusBadge({ status }: { status: string }) {
             padding: '6px 12px', borderRadius: '100px',
             background: bg, color: color, fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase'
         }}>
-            {status}
+            {status?.replace(/_/g, ' ')}
         </span>
     );
 }

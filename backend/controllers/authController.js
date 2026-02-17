@@ -5,9 +5,32 @@ const Supplier = require('../models/Supplier');
 const jwt = require('jsonwebtoken');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../utils/asyncHandler');
+const axios = require('axios');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+};
+
+const sendSmsOtp = async (phoneNumber, otp) => {
+    try {
+        const message = `Dear User, your member login OTP ${otp}. please do not share the OTP with anyone. papaz`;
+        const url = `http://msg.icloudsms.com/rest/services/sendSMS/sendGroupSms`;
+
+        const response = await axios.get(url, {
+            params: {
+                AUTH_KEY: "c77076e366f8a5164f9cd672b59e707f",
+                message: message,
+                senderId: "PAPAZ",
+                routeId: "1",
+                mobileNos: phoneNumber,
+                smsContentType: "english"
+            }
+        });
+
+        console.log("SMS Sent:", response.data);
+    } catch (error) {
+        console.log("SMS Error:", error.message);
+    }
 };
 
 // @desc    Send OTP (Login/Register start)
@@ -24,7 +47,7 @@ const sendOtp = asyncHandler(async (req, res) => {
         return ApiResponse.error(res, 'Phone number is required', 400);
     }
 
-    // In a real app, integrate SMS provider here.
+    // Generate OTP
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     console.log(`[OTP] Generated for ${phoneNumber}: ${otp}`);
     const otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
@@ -72,6 +95,9 @@ const sendOtp = asyncHandler(async (req, res) => {
             });
         }
     }
+
+    // Send SMS
+    // await sendSmsOtp(phoneNumber, otp);
 
     return ApiResponse.success(res, { otp }, 'OTP sent successfully');
 });

@@ -184,14 +184,8 @@ export default function RequestProductScreen() {
 
             const [uploadedPhotos, uploadedVoice] = await Promise.all([uploadedPhotosPromise, uploadedVoicePromise]);
 
-            // Append extra photos to notes if there are more than 1
+            // Master notes no longer get the extra photo links
             let finalNotes = notes;
-            if (uploadedPhotos.length > 1) {
-                const extraPhotos = uploadedPhotos.slice(1);
-                extraPhotos.forEach(p => {
-                    finalNotes += `\n[PhotoURI: ${p}]`;
-                });
-            }
 
             const mappedItems = items.map((item, idx) => ({
                 name: item.name,
@@ -201,8 +195,7 @@ export default function RequestProductScreen() {
                 productId: item.productId,
                 partNumber: item.partNumber,
                 brand: item.brand,
-                image: idx === 0 ? (uploadedPhotos[0] || item.image) : item.image,
-                voiceUri: idx === 0 ? uploadedVoice : undefined,
+                image: item.image, // Only use item-specific image if it exists
             }));
 
             console.log('[handlePartRequest] Requesting part with data:', {
@@ -214,12 +207,14 @@ export default function RequestProductScreen() {
             const response = await customerService.requestPart({
                 items: mappedItems,
                 name: items.length === 1 ? items[0].name : `Bulk Request (${items.length} items)`,
-                description: finalNotes, // Master notes get the extra photo links
+                description: finalNotes,
                 quantity: items.length,
                 supplierId: supplierId || undefined,
                 jobId: params.jobId,
                 vehicleId: vehicleId || params.vehicleId,
-                vehicleDetails: (vehicleId || params.vehicleId) ? vehicles.find(v => (v.id || v._id) === (vehicleId || params.vehicleId)) : undefined
+                vehicleDetails: (vehicleId || params.vehicleId) ? vehicles.find(v => (v.id || v._id) === (vehicleId || params.vehicleId)) : undefined,
+                photos: uploadedPhotos,
+                voiceNote: uploadedVoice
             });
 
             console.log('[handlePartRequest] Raw Response:', JSON.stringify(response, null, 2));

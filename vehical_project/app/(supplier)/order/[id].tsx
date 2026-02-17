@@ -1,16 +1,18 @@
 import { AudioPlayer } from '@/components/ui/AudioPlayer';
 import { ImageModal } from '@/components/ui/ImageModal';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { QuotationModal } from '@/components/supplier/QuotationModal';
+import { DeliveryModal } from '@/components/supplier/DeliveryModal';
 import { Colors } from '@/constants/theme';
 import { useAdmin } from '@/context/AdminContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSupplier } from '@/context/SupplierContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { parseDescription } from '@/utils/mediaHelpers';
+import { getMediaUrl, parseDescription } from '@/utils/mediaHelpers';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -28,11 +30,38 @@ export default function OrderDetailScreen() {
     const isDark = theme === 'dark';
 
     const [actionLoading, setActionLoading] = useState(false);
+
+    // Quotation State
     const [isQuoteModalVisible, setIsQuoteModalVisible] = useState(false);
-    const [quoteAmount, setQuoteAmount] = useState('');
+    const [initialQuoteItems, setInitialQuoteItems] = useState<any[]>([]);
+
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+    // Delivery Modal State
+    const [isDeliveryModalVisible, setIsDeliveryModalVisible] = useState(false);
+
     const order = orders.find((o: any) => o.id === id) || wholesaleOrders.find((wo: any) => wo.id === id);
+
+    useEffect(() => {
+        if (order) {
+            const mainParsed = parseDescription(order.partName || order.name || order.description || '');
+            const aggregatedPhotos = Array.from(new Set([
+                ...(order.photos || []),
+                ...(order.images || []),
+                ...(order.image ? [order.image] : []),
+                ...(mainParsed.photoUris || [])
+            ].map(p => getMediaUrl(p)).filter(Boolean))) as string[];
+
+            console.log('[OrderDetailScreen] MetaData:', {
+                id: order.id,
+                photos: order.photos,
+                voiceNote: order.voiceNote,
+                description: order.description,
+                status: order.status,
+                resolvedPhotos: aggregatedPhotos
+            });
+        }
+    }, [order]);
 
     if (!order) {
         return (
@@ -63,12 +92,25 @@ export default function OrderDetailScreen() {
         );
     }
 
-    const isWholesale = !!order.technicianName;
+    const isWholesale = !!order.technicianName || !!(order.technician && typeof order.technician === 'object');
     const currentStatus = order.status || 'inquiry';
     const isActionable = currentStatus === 'inquiry' || (isWholesale && (currentStatus === 'pending' || currentStatus === 'quoted'));
 
     // Extract global media from order description/name
     const mainParsed = parseDescription(order.partName || order.name || order.description || '');
+
+    // Comprehensive global photos aggregation
+    const globalPhotos = Array.from(new Set([
+        ...(order.photos || []),
+        ...(order.images || []),
+        ...(order.image ? [order.image] : []),
+        ...(mainParsed.photoUris || [])
+    ].map(p => getMediaUrl(p)).filter(Boolean))) as string[];
+
+    const globalVoice = getMediaUrl(order.voiceNote) || getMediaUrl(order.voiceUri) || mainParsed.voiceUri;
+
+    // Check if there's actual text content in the description separate from URIs
+    const hasGeneralNote = mainParsed.displayNotes && mainParsed.displayNotes.trim().length > 0;
 
     const handleAction = async (action: string, status?: string, data?: any) => {
         setActionLoading(true);
@@ -85,27 +127,67 @@ export default function OrderDetailScreen() {
     };
 
     const handleQuote = () => {
-        const initialAmount = order.amount || order.totalAmount || 0;
-        setQuoteAmount(initialAmount > 0 ? initialAmount.toString() : '');
+        let items = [];
+        if (order.items && order.items.length > 0) {
+            items = order.items.map((i: any) => ({
+                id: i.id || i._id || Math.random().toString(36).substr(2, 9),
+                name: i.name || i.partName || 'Unknown Item',
+                quantity: (i.quantity || i.qty || 1).toString(),
+                price: (i.price || i.amount || 0).toString(),
+                originalItem: i
+            }));
+        } else {
+            items = [{
+                id: Math.random().toString(36).substr(2, 9),
+                name: order.partName || order.name || 'Spare Part',
+                quantity: (order.quantity || order.qty || 1).toString(),
+                price: (order.price || order.amount || 0).toString(),
+                originalItem: order
+            }];
+        }
+        setInitialQuoteItems(items);
         setIsQuoteModalVisible(true);
     };
 
-    const handleSubmitQuote = async () => {
-        if (!quoteAmount || isNaN(Number(quoteAmount))) {
-            Alert.alert(t('error'), t('invalid_price'));
-            return;
-        }
-
+    const handleSubmitQuote = async (items: any[], totalAmount: number) => {
         setActionLoading(true);
-        setIsQuoteModalVisible(false);
         try {
-            await sendQuotation(order.id, [], Number(quoteAmount));
-            Alert.alert(t('success'), t('quote_sent_success'));
+            // Prepare items with proper types and structure
+            const itemsToSubmit = items.map(item => {
+                const quantity = parseFloat(item.quantity) || 1;
+                const price = parseFloat(item.price) || 0;
+
+                return {
+                    ...(item.originalItem || {}),
+                    name: item.name,
+                    quantity: quantity,
+                    price: price,
+                    total: quantity * price,
+                    // Ensure we don't send client-generated temp IDs as ObjectIds
+                    ...(item.id && item.id.length > 10 ? { id: item.id } : {})
+                };
+            });
+
+            console.log('[OrderDetail] Submitting Quote:', { orderId: order.id, itemsCount: itemsToSubmit.length, totalAmount });
+
+            await sendQuotation(order.id, itemsToSubmit, totalAmount);
+
+            setIsQuoteModalVisible(false);
+            Alert.alert(t('success'), t('quote_sent_success') || 'Quotation submitted successfully');
+
+            // Optionally force refresh if not handled by context
+            // refreshData();
         } catch (e) {
+            console.error('[OrderDetail] Quote Error:', e);
             Alert.alert(t('error'), t('failed_to_send_quote'));
         } finally {
             setActionLoading(false);
         }
+    };
+
+    const submitDeliveryDetails = async (deliveryData: any) => {
+        setIsDeliveryModalVisible(false);
+        handleAction('update_status', 'out_for_delivery', { deliveryDetails: deliveryData });
     };
 
     return (
@@ -142,19 +224,57 @@ export default function OrderDetailScreen() {
                 </View>
 
                 {/* Global Attachments (if any) */}
-                {(mainParsed.photoUri || mainParsed.voiceUri) && (
+                {(globalPhotos.length > 0 || globalVoice || hasGeneralNote) && (
                     <View style={{ marginBottom: 24 }}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('global_attachments') || 'Main Attachments'}</Text>
-                        <View style={{ gap: 12 }}>
-                            {mainParsed.photoUri && (
-                                <TouchableOpacity
-                                    style={[styles.imageCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                                    onPress={() => setSelectedImage(mainParsed.photoUri)}
-                                >
-                                    <Image source={{ uri: mainParsed.photoUri }} style={styles.attachedImage} resizeMode="cover" />
-                                </TouchableOpacity>
+                        <View style={[styles.detailSection, { backgroundColor: colors.card, borderColor: colors.border, gap: 16 }]}>
+                            {hasGeneralNote && (
+                                <View>
+                                    <Text style={[styles.detailLabel, { color: colors.icon, marginBottom: 4 }]}>{t('general_note') || 'General Note'}</Text>
+                                    <Text style={[styles.detailValue, { color: colors.text, fontSize: 16 }]}>{mainParsed.displayNotes}</Text>
+                                </View>
                             )}
-                            {mainParsed.voiceUri && <AudioPlayer uri={mainParsed.voiceUri} />}
+
+                            {globalPhotos.length > 0 && (
+                                <View style={{ height: 210 }}>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={{ gap: 12, paddingRight: 20 }}
+                                    >
+                                        {globalPhotos.map((uri, idx) => {
+                                            const cardWidth = globalPhotos.length > 1 ? 280 : width - 80;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={idx}
+                                                    style={[styles.imageCard, {
+                                                        backgroundColor: colors.background,
+                                                        borderColor: colors.border,
+                                                        width: cardWidth,
+                                                        height: 200
+                                                    }]}
+                                                    onPress={() => setSelectedImage(uri)}
+                                                >
+                                                    <Image
+                                                        source={{ uri }}
+                                                        style={styles.attachedImage}
+                                                        resizeMode="cover"
+                                                        onLoad={() => console.log(`[OrderDetail] Image loaded: ${uri}`)}
+                                                        onError={(e) => console.error(`[OrderDetail] Image error: ${uri}`, e.nativeEvent)}
+                                                    />
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            {globalVoice && (
+                                <View>
+                                    <Text style={[styles.detailLabel, { color: colors.icon, marginBottom: 8 }]}>{t('voice_note') || 'Voice Note'}</Text>
+                                    <AudioPlayer uri={globalVoice} />
+                                </View>
+                            )}
                         </View>
                     </View>
                 )}
@@ -171,7 +291,9 @@ export default function OrderDetailScreen() {
                         <View style={{ flex: 1, marginLeft: 12 }}>
                             <Text style={[styles.detailLabel, { color: colors.icon }]}>{isWholesale ? t('technician') : t('customer')}</Text>
                             <Text style={[styles.detailValue, { color: colors.text, fontSize: 16 }]}>
-                                {isWholesale ? order.technicianName : (order.customer?.fullName || 'Valuable Customer')}
+                                {isWholesale
+                                    ? (order.technicianName || order.technician?.garageName || order.technician?.fullName || 'Technician')
+                                    : (order.customer?.fullName || order.customer?.name || 'Valuable Customer')}
                             </Text>
                         </View>
                     </View>
@@ -199,7 +321,7 @@ export default function OrderDetailScreen() {
                             <View style={{ flex: 1, marginLeft: 12 }}>
                                 <Text style={[styles.detailLabel, { color: colors.icon }]}>{t('vehicle_details') || 'Vehicle'}</Text>
                                 <Text style={[styles.detailValue, { color: colors.text }]}>
-                                    {order.vehicleDetails.make} {order.vehicleDetails.model} ({order.vehicleDetails.year})
+                                    {order.vehicleDetails.make} {order.vehicleDetails.model}{order.vehicleDetails.variant} ({order.vehicleDetails.year})
                                 </Text>
                                 {order.vehicleDetails.fuelType && <Text style={{ fontSize: 13, color: colors.icon }}>{order.vehicleDetails.fuelType}</Text>}
                             </View>
@@ -213,10 +335,15 @@ export default function OrderDetailScreen() {
                     {(order.items || [{ name: order.partName || order.name, quantity: order.quantity, amount: order.amount }]).map((item: any, index: number, arr: any[]) => {
                         const itemParsed = parseDescription(item.description || item.name || '');
 
-                        // Support explicit photo/voice fields
-                        const photoUri = (item.photos && item.photos.length > 0) ? item.photos[0] : (item.photoUri || itemParsed.photoUri);
-                        const voiceUri = item.voiceNote || item.voiceUri || itemParsed.voiceUri;
-                        const allPhotos = item.photos || (photoUri ? [photoUri] : []);
+                        // Aggregate and deduplicate photos for this item
+                        const itemPhotos = Array.from(new Set([
+                            ...(item.photos || []),
+                            ...(item.images || []),
+                            ...(item.image ? [item.image] : []),
+                            ...(itemParsed.photoUris || [])
+                        ].map(p => getMediaUrl(p)).filter(Boolean))) as string[];
+
+                        const itemVoice = getMediaUrl(item.voiceNote) || getMediaUrl(item.voiceUri) || itemParsed.voiceUri;
 
                         return (
                             <View key={index} style={[styles.itemRow, index === arr.length - 1 && { borderBottomWidth: 0 }, { borderBottomColor: colors.border }]}>
@@ -228,26 +355,30 @@ export default function OrderDetailScreen() {
                                             <Text style={[styles.itemPrice, { color: colors.primary }]}>{currencySymbol}{item.price || item.amount || 0}</Text>
                                         </View>
                                     </View>
-                                    <Text style={{ fontSize: 13, color: colors.icon }}>{item.brand || order.brand || item.company || ''}</Text>
+                                    <Text style={{ fontSize: 13, color: colors.icon }}>
+                                        {item.brand || order.brand || ''}
+                                        {(item.brand && item.partNumber) ? ' • ' : ''}
+                                        {item.partNumber ? `PN: ${item.partNumber}` : ''}
+                                    </Text>
                                     {itemParsed.displayNotes ? (
                                         <Text style={{ fontSize: 13, color: colors.icon, marginTop: 4 }}>{itemParsed.displayNotes}</Text>
                                     ) : null}
 
                                     {/* Item Attachments */}
-                                    {(allPhotos.length > 0 || voiceUri) && (
-                                        <View style={{ gap: 10, marginTop: 8 }}>
-                                            {allPhotos.length > 0 && (
-                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', gap: 10 }}>
-                                                    {allPhotos.map((p: string, pIdx: number) => (
+                                    {(itemPhotos.length > 0 || itemVoice) && (
+                                        <View style={{ gap: 10, marginTop: 12 }}>
+                                            {itemPhotos.length > 0 && (
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                                                    {itemPhotos.map((p: string, pIdx: number) => (
                                                         <TouchableOpacity key={pIdx} onPress={() => setSelectedImage(p)}>
-                                                            <Image source={{ uri: p }} style={{ width: 60, height: 60, borderRadius: 8, marginRight: 10 }} />
+                                                            <Image source={{ uri: p }} style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.border }} />
                                                         </TouchableOpacity>
                                                     ))}
                                                 </ScrollView>
                                             )}
-                                            {voiceUri && (
-                                                <View style={{ flex: 1, maxWidth: 220 }}>
-                                                    <AudioPlayer uri={voiceUri} />
+                                            {itemVoice && (
+                                                <View style={{ flex: 1, maxWidth: 250 }}>
+                                                    <AudioPlayer uri={itemVoice} />
                                                 </View>
                                             )}
                                         </View>
@@ -263,22 +394,97 @@ export default function OrderDetailScreen() {
                     <View style={{ marginTop: 24 }}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('delivery_tracking') || 'Delivery Details'}</Text>
                         <View style={[styles.detailSection, { backgroundColor: colors.sales + '10', borderColor: colors.sales + '30' }]}>
-                            <View style={styles.detailRow}>
-                                <MaterialCommunityIcons name="truck-delivery" size={24} color={colors.sales} />
-                                <View style={{ flex: 1, marginLeft: 16 }}>
-                                    <Text style={[styles.detailLabel, { color: colors.sales }]}>{t('vehicle_number')}</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text, fontSize: 16 }]}>{order.deliveryDetails.vehicleNumber}</Text>
-                                </View>
-                            </View>
-                            <View style={[styles.detailRow, { marginTop: 16 }]}>
-                                <Ionicons name="person-circle" size={24} color={colors.sales} />
-                                <View style={{ flex: 1, marginLeft: 16 }}>
-                                    <Text style={[styles.detailLabel, { color: colors.sales }]}>{t('driver')}</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>
-                                        {order.deliveryDetails.driverName} • {order.deliveryDetails.driverPhone}
+
+                            {/* Delivery Type Badge */}
+                            <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+                                <View style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: colors.sales, borderRadius: 8 }}>
+                                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                        {order.deliveryDetails.type === 'courier' ? (t('courier_delivery') || 'Courier Delivery') : (t('local_delivery') || 'Local Delivery')}
                                     </Text>
                                 </View>
                             </View>
+
+                            {/* Local Delivery Display */}
+                            {(order.deliveryDetails.type === 'local' || !order.deliveryDetails.type) && (
+                                <>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="truck-delivery" size={24} color={colors.sales} />
+                                        <View style={{ flex: 1, marginLeft: 16 }}>
+                                            <Text style={[styles.detailLabel, { color: colors.sales }]}>{t('vehicle_number')}</Text>
+                                            <Text style={[styles.detailValue, { color: colors.text, fontSize: 16 }]}>
+                                                {order.deliveryDetails.vehicleNumber || 'N/A'}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={[styles.detailRow, { marginTop: 16 }]}>
+                                        <Ionicons name="person" size={24} color={colors.sales} />
+                                        <View style={{ flex: 1, marginLeft: 16 }}>
+                                            <Text style={[styles.detailLabel, { color: colors.sales }]}>{t('driver_detail') || 'Driver'}</Text>
+                                            <Text style={[styles.detailValue, { color: colors.text }]}>
+                                                {order.deliveryDetails.driverName}
+                                            </Text>
+                                            {order.deliveryDetails.driverPhone && (
+                                                <Text style={{ fontSize: 13, color: colors.icon }}>{order.deliveryDetails.driverPhone}</Text>
+                                            )}
+                                        </View>
+                                    </View>
+
+                                    {order.deliveryDetails.personName && (
+                                        <View style={[styles.detailRow, { marginTop: 16 }]}>
+                                            <Ionicons name="people-circle" size={24} color={colors.sales} />
+                                            <View style={{ flex: 1, marginLeft: 16 }}>
+                                                <Text style={[styles.detailLabel, { color: colors.sales }]}>{t('contact_person') || 'Contact Person'}</Text>
+                                                <Text style={[styles.detailValue, { color: colors.text }]}>
+                                                    {order.deliveryDetails.personName}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    )}
+                                </>
+                            )}
+
+                            {/* Courier Delivery Display */}
+                            {order.deliveryDetails.type === 'courier' && (
+                                <>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="truck-fast" size={24} color={colors.sales} />
+                                        <View style={{ flex: 1, marginLeft: 16 }}>
+                                            <Text style={[styles.detailLabel, { color: colors.sales }]}>{t('courier_partner') || 'Courier Partner'}</Text>
+                                            <Text style={[styles.detailValue, { color: colors.text, fontSize: 16 }]}>
+                                                {order.deliveryDetails.courierName}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={[styles.detailRow, { marginTop: 16 }]}>
+                                        <MaterialCommunityIcons name="barcode-scan" size={24} color={colors.sales} />
+                                        <View style={{ flex: 1, marginLeft: 16 }}>
+                                            <Text style={[styles.detailLabel, { color: colors.sales }]}>{t('tracking_details') || 'Tracking Details'}</Text>
+                                            <Text style={[styles.detailValue, { color: colors.text }]}>
+                                                {order.deliveryDetails.trackingId}
+                                            </Text>
+                                            {order.deliveryDetails.trackingUrl && (
+                                                <Text style={{ fontSize: 13, color: colors.primary, marginTop: 4 }}>
+                                                    {order.deliveryDetails.trackingUrl}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </View>
+                                </>
+                            )}
+
+                            {/* Common Notes */}
+                            {order.deliveryDetails.notes && (
+                                <View style={[styles.detailRow, { marginTop: 16 }]}>
+                                    <Ionicons name="document-text-outline" size={24} color={colors.sales} />
+                                    <View style={{ flex: 1, marginLeft: 16 }}>
+                                        <Text style={[styles.detailLabel, { color: colors.sales }]}>{t('delivery_notes') || 'Notes'}</Text>
+                                        <Text style={[styles.detailValue, { color: colors.text }]}>
+                                            {order.deliveryDetails.notes}
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
                         </View>
                     </View>
                 )}
@@ -317,7 +523,13 @@ export default function OrderDetailScreen() {
                 ) : (currentStatus === 'accepted' || currentStatus === 'packed' || currentStatus === 'confirmed') && (
                     <TouchableOpacity
                         style={[styles.primaryActionBtn, { backgroundColor: colors.sales }]}
-                        onPress={() => handleAction('update_status', (currentStatus === 'accepted' || currentStatus === 'confirmed') ? 'packed' : 'out_for_delivery')}
+                        onPress={() => {
+                            if (currentStatus === 'packed') {
+                                setIsDeliveryModalVisible(true);
+                            } else {
+                                handleAction('update_status', (currentStatus === 'accepted' || currentStatus === 'confirmed') ? 'packed' : 'out_for_delivery');
+                            }
+                        }}
                         disabled={actionLoading}
                     >
                         {actionLoading ? <ActivityIndicator color="#FFF" /> : (
@@ -333,49 +545,24 @@ export default function OrderDetailScreen() {
             </View>
 
             {/* Quotation Modal */}
-            <Modal
+            <QuotationModal
                 visible={isQuoteModalVisible}
-                animationType="slide"
-                transparent
-                onRequestClose={() => setIsQuoteModalVisible(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
-                >
-                    <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('submit_quote')}</Text>
-                            <TouchableOpacity onPress={() => setIsQuoteModalVisible(false)}>
-                                <Ionicons name="close" size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        </View>
+                onClose={() => setIsQuoteModalVisible(false)}
+                onSubmit={handleSubmitQuote}
+                initialItems={initialQuoteItems}
+                order={order}
+                currencySymbol={currencySymbol}
+                loading={actionLoading}
+            />
 
-                        <View style={styles.modalBody}>
-                            <Text style={[styles.inputLabel, { color: colors.text }]}>{t('enter_price_desc')}</Text>
-                            <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <Text style={[styles.currencyPrefix, { color: colors.primary }]}>{currencySymbol}</Text>
-                                <TextInput
-                                    style={[styles.input, { flex: 1, borderWidth: 0, color: colors.text }]}
-                                    value={quoteAmount}
-                                    onChangeText={setQuoteAmount}
-                                    placeholder="0.00"
-                                    placeholderTextColor={colors.icon}
-                                    keyboardType="numeric"
-                                    autoFocus
-                                />
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.saveBtn, { backgroundColor: colors.primary, marginTop: 20 }]}
-                                onPress={handleSubmitQuote}
-                            >
-                                <Text style={styles.saveBtnText}>{t('send_quote') || 'Send Quote'}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
+            {/* Delivery Details Modal */}
+            <DeliveryModal
+                visible={isDeliveryModalVisible}
+                onClose={() => setIsDeliveryModalVisible(false)}
+                onSubmit={submitDeliveryDetails}
+                initialData={order.deliveryDetails}
+                loading={actionLoading}
+            />
 
             {/* Image Viewer */}
             <ImageModal
@@ -429,5 +616,8 @@ const styles = StyleSheet.create({
     currencyPrefix: { fontSize: 18, fontWeight: 'bold', marginRight: 5 },
     input: { height: 50, borderRadius: 12, paddingHorizontal: 15, fontSize: 16, fontFamily: 'NotoSans-Regular', borderWidth: 1 },
     saveBtn: { height: 55, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginTop: 30 },
-    saveBtnText: { color: '#FFF', fontSize: 16, fontFamily: 'NotoSans-Bold' }
+    saveBtnText: { color: '#FFF', fontSize: 16, fontFamily: 'NotoSans-Bold' },
+
+    addButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+    quoteItemCard: { padding: 15, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
 });

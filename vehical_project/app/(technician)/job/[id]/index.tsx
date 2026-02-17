@@ -658,103 +658,134 @@ export default function JobDetailsScreen() {
                 {job.partRequests && job.partRequests.length > 0 && (
                     <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
                         <Text style={[styles.sectionTitle, { color: colors.subText }]}>{t('part_requests') || 'Part Requests'}</Text>
-                        {job.partRequests.map((order: any, idx: number) => (
-                            <View key={idx} style={[styles.orderCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <View style={styles.orderHeader}>
-                                    <View style={[styles.orderIdBadge, { backgroundColor: colors.primary + '15' }]}>
-                                        <Text style={{ fontSize: 10, color: colors.primary, fontFamily: 'NotoSans-Bold' }}>#{order.orderId}</Text>
-                                    </View>
-                                    <StatusBadge status={order.status} size="small" />
-                                </View>
+                        {job.partRequests.map((order: any, idx: number) => {
+                            const globalPhotos = Array.from(new Set([
+                                ...(order.photos || []),
+                                ...(order.images || []),
+                                ...(order.image ? [order.image] : []),
+                                ...(order.items?.[0]?.image ? [order.items[0].image] : []),
+                                ...(order.items?.[0]?.images || []),
+                                ...(order.items?.[0]?.photos || [])
+                            ].map(p => getMediaUrl(p)).filter(Boolean))) as string[];
 
-                                {order.items.map((part: any, pIdx: number) => {
-                                    const imageUrl = getMediaUrl(part.image);
-                                    const voiceUrl = part.voiceUri ? getMediaUrl(part.voiceUri) : null;
-
-                                    console.log(`[PART_REQUEST_${idx}_${pIdx}] Image:`, part.image, '→', imageUrl);
-                                    if (part.voiceUri) {
-                                        console.log(`[PART_REQUEST_${idx}_${pIdx}] Voice:`, part.voiceUri, '→', voiceUrl);
-                                    }
-
-                                    return (
-                                        <View key={pIdx} style={styles.orderItem}>
-                                            {part.image && (
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        console.log('[PART_IMAGE_CLICK] Opening:', imageUrl);
-                                                        setSelectedImage(imageUrl);
-                                                    }}
-                                                >
-                                                    <Image
-                                                        source={{ uri: imageUrl || '' }}
-                                                        style={styles.orderItemThumb}
-                                                    />
-                                                </TouchableOpacity>
-                                            )}
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={[styles.orderItemName, { color: colors.text }]}>
-                                                    {part.quantity}x {part.name}
-                                                </Text>
-                                                {part.description && (
-                                                    <Text style={[styles.orderItemDesc, { color: colors.icon }]} numberOfLines={2}>
-                                                        {part.description}
-                                                    </Text>
-                                                )}
-                                                {part.voiceUri && (
-                                                    <View style={{ marginTop: 8, maxWidth: 200 }}>
-                                                        <AudioPlayer uri={part.voiceUri} />
-                                                    </View>
-                                                )}
-                                            </View>
+                            return (
+                                <View key={idx} style={[styles.orderCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                    <View style={styles.orderHeader}>
+                                        <View style={[styles.orderIdBadge, { backgroundColor: colors.primary + '15' }]}>
+                                            <Text style={{ fontSize: 10, color: colors.primary, fontFamily: 'NotoSans-Bold' }}>#{order.orderId}</Text>
                                         </View>
-                                    );
-                                })}
-
-                                <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: 12 }]} />
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 12, color: colors.icon }}>
-                                        {t('supplier')}: {order.supplier?.storeName || t('any_available')}
-                                    </Text>
-                                    <Text style={{ fontSize: 14, fontFamily: 'NotoSans-Bold', color: colors.text }}>
-                                        {formatCurrency(order.totalAmount, settings.currency)}
-                                    </Text>
-                                </View>
-
-                                {/* Quote Action Buttons */}
-                                {order.totalAmount > 0 && order.status === 'pending' && (
-                                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 15 }}>
-                                        <TouchableOpacity
-                                            style={{
-                                                flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#FF3B30',
-                                                alignItems: 'center', justifyContent: 'center'
-                                            }}
-                                            onPress={() => {
-                                                Alert.alert(t('confirm_reject'), t('confirm_reject_quote_msg'), [
-                                                    { text: t('cancel'), style: 'cancel' },
-                                                    { text: t('reject'), style: 'destructive', onPress: () => respondToPartRequest(order.id || order._id, 'reject') }
-                                                ]);
-                                            }}
-                                        >
-                                            <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>{t('reject')}</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={{
-                                                flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#34C759',
-                                                alignItems: 'center', justifyContent: 'center'
-                                            }}
-                                            onPress={() => {
-                                                Alert.alert(t('confirm_accept'), t('confirm_accept_quote_msg'), [
-                                                    { text: t('cancel'), style: 'cancel' },
-                                                    { text: t('accept'), onPress: () => respondToPartRequest(order.id || order._id, 'accept') }
-                                                ]);
-                                            }}
-                                        >
-                                            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{t('accept')}</Text>
-                                        </TouchableOpacity>
+                                        <StatusBadge status={order.status} size="small" />
                                     </View>
-                                )}
-                            </View>
-                        ))}
+
+                                    {globalPhotos.length > 0 && (
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15, paddingBottom: 5 }}>
+                                            {globalPhotos.map((uri, gIdx) => (
+                                                <TouchableOpacity key={gIdx} onPress={() => setSelectedImage(uri)} style={{ marginRight: 10 }}>
+                                                    <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 12, backgroundColor: colors.border }} />
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    )}
+
+                                    {order.items.map((part: any, pIdx: number) => {
+                                        const partParsed = parseDescription(part.description || '');
+                                        const partPhotos = Array.from(new Set([
+                                            ...(part.photos || []),
+                                            ...(part.images || []),
+                                            ...(part.image ? [part.image] : []),
+                                            ...(partParsed.photoUris || [])
+                                        ].map(p => getMediaUrl(p)).filter(Boolean))) as string[];
+
+                                        const partVoice = getMediaUrl(part.voiceUri) || getMediaUrl(part.voiceNote) || partParsed.voiceUri;
+
+                                        return (
+                                            <View key={pIdx} style={styles.orderItem}>
+                                                <TouchableOpacity
+                                                    onPress={() => partPhotos.length > 0 && setSelectedImage(partPhotos[0])}
+                                                    style={[styles.orderItemThumb, { backgroundColor: colors.primary + '10', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }]}
+                                                >
+                                                    {partPhotos.length > 0 ? (
+                                                        <Image source={{ uri: partPhotos[0] }} style={{ width: '100%', height: '100%' }} />
+                                                    ) : (
+                                                        <Ionicons name="cube-outline" size={24} color={colors.primary} />
+                                                    )}
+                                                </TouchableOpacity>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={[styles.orderItemName, { color: colors.text }]}>
+                                                        {part.quantity}x {part.name}
+                                                    </Text>
+                                                    {partParsed.displayNotes ? (
+                                                        <Text style={[styles.orderItemDesc, { color: colors.icon }]} numberOfLines={2}>
+                                                            {partParsed.displayNotes}
+                                                        </Text>
+                                                    ) : null}
+
+                                                    {partPhotos.length > 1 && (
+                                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                                                            {partPhotos.slice(1).map((p, pIdx) => (
+                                                                <TouchableOpacity key={pIdx} onPress={() => setSelectedImage(p)} style={{ marginRight: 8 }}>
+                                                                    <Image source={{ uri: p }} style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: colors.border }} />
+                                                                </TouchableOpacity>
+                                                            ))}
+                                                        </ScrollView>
+                                                    )}
+
+                                                    {partVoice && (
+                                                        <View style={{ marginTop: 12, maxWidth: 200 }}>
+                                                            <AudioPlayer uri={partVoice} />
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
+
+                                    <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: 12 }]} />
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 12, color: colors.icon }}>
+                                            {t('supplier')}: {order.supplier?.storeName || t('any_available')}
+                                        </Text>
+                                        <Text style={{ fontSize: 14, fontFamily: 'NotoSans-Bold', color: colors.text }}>
+                                            {formatCurrency(order.totalAmount, settings.currency)}
+                                        </Text>
+                                    </View>
+
+                                    {/* Quote Action Buttons */}
+                                    {order.totalAmount > 0 && order.status === 'pending' && (
+                                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 15 }}>
+                                            <TouchableOpacity
+                                                style={{
+                                                    flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#FF3B30',
+                                                    alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                                onPress={() => {
+                                                    Alert.alert(t('confirm_reject'), t('confirm_reject_quote_msg'), [
+                                                        { text: t('cancel'), style: 'cancel' },
+                                                        { text: t('reject'), style: 'destructive', onPress: () => respondToPartRequest(order.id || order._id, 'reject') }
+                                                    ]);
+                                                }}
+                                            >
+                                                <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>{t('reject')}</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={{
+                                                    flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#34C759',
+                                                    alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                                onPress={() => {
+                                                    Alert.alert(t('confirm_accept'), t('confirm_accept_quote_msg'), [
+                                                        { text: t('cancel'), style: 'cancel' },
+                                                        { text: t('accept'), onPress: () => respondToPartRequest(order.id || order._id, 'accept') }
+                                                    ]);
+                                                }}
+                                            >
+                                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{t('accept')}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
+                            );
+                        })}
                     </Animated.View>
                 )}
 

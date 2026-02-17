@@ -117,7 +117,7 @@ const addProduct = asyncHandler(async (req, res) => {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return ApiResponse.error(res, 'Supplier profile not found', 404);
 
-    const { name, category, price, image, description, stock, compatibleModels } = req.body;
+    const { name, category, price, image, description, stock, compatibleModels, brand, partNumber } = req.body;
 
     const product = await Product.create({
         name,
@@ -127,6 +127,8 @@ const addProduct = asyncHandler(async (req, res) => {
         description,
         stock,
         compatibleModels,
+        brand: brand || 'Generic',
+        partNumber: partNumber || '',
         supplier: supplier._id
     });
 
@@ -144,7 +146,7 @@ const updateProduct = asyncHandler(async (req, res) => {
 
     if (!product) return ApiResponse.error(res, 'Product not found', 404);
 
-    const { name, category, price, image, description, stock, compatibleModels } = req.body;
+    const { name, category, price, image, description, stock, compatibleModels, brand, partNumber } = req.body;
 
     product.name = name || product.name;
     product.category = category || product.category;
@@ -153,6 +155,8 @@ const updateProduct = asyncHandler(async (req, res) => {
     product.description = description || product.description;
     product.stock = stock !== undefined ? stock : product.stock;
     product.compatibleModels = compatibleModels || product.compatibleModels;
+    product.brand = brand || product.brand;
+    product.partNumber = partNumber || product.partNumber;
 
     await product.save();
     return ApiResponse.success(res, product, 'Product updated successfully');
@@ -243,9 +247,10 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
     if (deliveryDetails) {
         order.deliveryDetails = {
-            ...order.deliveryDetails,
+            ...(order.deliveryDetails || {}),
             ...deliveryDetails
         };
+        order.markModified('deliveryDetails');
     }
 
     await order.save();
@@ -314,10 +319,26 @@ const sendQuotation = asyncHandler(async (req, res) => {
 
     // Update items with prices
     if (items && Array.isArray(items)) {
-        items.forEach(updatedItem => {
-            const item = order.items.id(updatedItem._id || updatedItem.id);
-            if (item) {
-                item.price = updatedItem.price;
+        items.forEach(quotationItem => {
+            // Try to match by ID
+            const existingItem = order.items.id(quotationItem._id || quotationItem.id);
+
+            if (existingItem) {
+                existingItem.price = quotationItem.price;
+                existingItem.quantity = quotationItem.quantity;
+                existingItem.name = quotationItem.name; // Allow name correction
+                if (quotationItem.description) existingItem.description = quotationItem.description;
+            } else {
+                // Determine if it's a new item (no ID match)
+                // Note: quotationItem.id might be a client-side random string, so we ignore it if it's not a valid ObjectId
+                order.items.push({
+                    name: quotationItem.name || 'Quoted Item',
+                    quantity: quotationItem.quantity || 1,
+                    price: quotationItem.price || 0,
+                    product: quotationItem.product || null,
+                    description: quotationItem.description || '',
+                    total: (quotationItem.price || 0) * (quotationItem.quantity || 1)
+                });
             }
         });
     }
@@ -326,8 +347,11 @@ const sendQuotation = asyncHandler(async (req, res) => {
     order.status = 'quoted';
     await order.save();
 
-    // Notify Customer
-    const populatedOrder = await Order.findById(order._id).populate({ path: 'customer', populate: { path: 'user' } });
+    // Notify Customer OR Technician
+    const populatedOrder = await Order.findById(order._id)
+        .populate({ path: 'customer', populate: { path: 'user' } })
+        .populate({ path: 'technician', populate: { path: 'user' } });
+
     if (populatedOrder.customer && populatedOrder.customer.user) {
         createNotification(req, {
             recipient: populatedOrder.customer.user._id,
@@ -338,6 +362,21 @@ const sendQuotation = asyncHandler(async (req, res) => {
         }).catch(e => console.error('Notification Error:', e));
 
         emitOrderUpdate(req, populatedOrder.customer.user._id, {
+            orderId: order._id,
+            status: 'quoted',
+            message: 'You have received a new quotation'
+        });
+    } else if (populatedOrder.technician && populatedOrder.technician.user) {
+        // Technically acts as the customer in this B2B transaction
+        createNotification(req, {
+            recipient: populatedOrder.technician.user._id,
+            title: 'New Quotation Received',
+            body: `Supplier ${supplier.storeName} has sent a quotation for your request #${order.orderId}.`,
+            type: 'order',
+            relatedId: order._id
+        }).catch(e => console.error('Notification Error:', e));
+
+        emitOrderUpdate(req, populatedOrder.technician.user._id, {
             orderId: order._id,
             status: 'quoted',
             message: 'You have received a new quotation'

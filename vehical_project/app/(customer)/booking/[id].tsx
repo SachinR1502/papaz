@@ -464,37 +464,50 @@ function BookingDetailsContent() {
                         <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 0 }]}>{t('Reported Issue')}</Text>
                     </View>
 
-                    <Text style={{ fontSize: 15, color: colors.text, lineHeight: 22, fontFamily: 'NotoSans-Medium' }}>
-                        {job.description || t('No description provided')}
-                    </Text>
+                    {(() => {
+                        const parsed = parseDescription(job.description);
+                        const allPhotos = Array.from(new Set([
+                            ...(job.photos || []),
+                            ...(parsed.photoUris || [])
+                        ]));
+                        const primaryVoice = job.voiceNote || parsed.voiceUri;
 
-                    {((job.photos && job.photos.length > 0) || job.voiceNote) && (
-                        <View style={{ marginTop: 15, gap: 12 }}>
-                            {(() => {
-                                console.log('[JOB_DETAILS] Media data:', {
-                                    photos: job.photos,
-                                    voiceNote: job.voiceNote,
-                                    hasPhotos: job.photos && job.photos.length > 0,
-                                    hasVoice: !!job.voiceNote
-                                });
-                                return null;
-                            })()}
-                            {job.photos && job.photos.length > 0 && (
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                    {job.photos.map((photo: string, index: number) => (
-                                        <TouchableOpacity key={index} onPress={() => setSelectedImage(getMediaUrl(photo))} style={{ marginRight: 10 }}>
-                                            <Image source={{ uri: getMediaUrl(photo) || '' }} style={{ width: 110, height: 110, borderRadius: 12, backgroundColor: colors.border }} />
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            )}
-                            {job.voiceNote && (
-                                <View style={{ backgroundColor: isDark ? '#ffffff05' : '#F9F9F9', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: colors.border }}>
-                                    <AudioPlayer uri={job.voiceNote} />
-                                </View>
-                            )}
-                        </View>
-                    )}
+                        return (
+                            <>
+                                <Text style={{ fontSize: 15, color: colors.text, lineHeight: 22, fontFamily: 'NotoSans-Medium' }}>
+                                    {parsed.cleaned || t('No description provided')}
+                                </Text>
+
+                                {(allPhotos.length > 0 || primaryVoice) && (
+                                    <View style={{ marginTop: 15, gap: 12 }}>
+                                        {(() => {
+                                            console.log('[JOB_DETAILS] Media data:', {
+                                                photos: allPhotos,
+                                                voiceNote: primaryVoice,
+                                                hasPhotos: allPhotos.length > 0,
+                                                hasVoice: !!primaryVoice
+                                            });
+                                            return null;
+                                        })()}
+                                        {allPhotos.length > 0 && (
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                                {allPhotos.map((photo: string, index: number) => (
+                                                    <TouchableOpacity key={index} onPress={() => setSelectedImage(getMediaUrl(photo))} style={{ marginRight: 10 }}>
+                                                        <Image source={{ uri: getMediaUrl(photo) || '' }} style={{ width: 110, height: 110, borderRadius: 12, backgroundColor: colors.border }} />
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </ScrollView>
+                                        )}
+                                        {primaryVoice && (
+                                            <View style={{ backgroundColor: isDark ? '#ffffff05' : '#F9F9F9', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: colors.border }}>
+                                                <AudioPlayer uri={primaryVoice} />
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+                            </>
+                        );
+                    })()}
                 </View>
 
                 {/* 2B. Approved Work Details / Final Invoice */}

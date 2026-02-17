@@ -1,3 +1,5 @@
+import { QuotationModal } from '@/components/supplier/QuotationModal';
+import { DeliveryModal } from '@/components/supplier/DeliveryModal';
 import { SupplierOrderCard } from '@/components/supplier/SupplierOrderCard';
 import { WholesaleOrderCard } from '@/components/supplier/WholesaleOrderCard';
 import { ImageModal } from '@/components/ui/ImageModal';
@@ -10,7 +12,7 @@ import { socketService } from '@/services/socket';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { height } = Dimensions.get('window');
@@ -31,8 +33,15 @@ export default function SupplierOrdersScreen() {
 
     // Quotation Modal State
     const [isQuoteModalVisible, setIsQuoteModalVisible] = useState(false);
-    const [quoteAmount, setQuoteAmount] = useState('');
     const [quoteOrder, setQuoteOrder] = useState<any>(null);
+    const [initialQuoteItems, setInitialQuoteItems] = useState<any[]>([]);
+
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    // Delivery Modal State
+    const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    const [initialDeliveryData, setInitialDeliveryData] = useState<any>(null);
 
     useEffect(() => {
         const socket = socketService.connect();
@@ -45,22 +54,16 @@ export default function SupplierOrdersScreen() {
         return () => { socketService.off('order_update', handleUpdate); };
     }, []);
 
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
-    const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-    const [deliveryInfo, setDeliveryInfo] = useState({
-        vehicleNumber: '',
-        driverName: '',
-        driverPhone: ''
-    });
+    useEffect(() => {
+        if (selectedTab === 'wholesale') {
+            refreshData();
+        }
+    }, [selectedTab]);
+
 
     const openDeliveryModal = (order: any) => {
         setSelectedOrderId(order.id);
-        setDeliveryInfo({
-            vehicleNumber: order.deliveryDetails?.vehicleNumber || '',
-            driverName: order.deliveryDetails?.driverName || '',
-            driverPhone: order.deliveryDetails?.driverPhone || ''
-        });
+        setInitialDeliveryData(order.deliveryDetails);
         setShowDeliveryModal(true);
     };
 
@@ -70,41 +73,54 @@ export default function SupplierOrdersScreen() {
         setActionLoading(null);
     };
 
-    const handleConfirmDelivery = async () => {
+    const handleConfirmDelivery = async (data: any) => {
         if (!selectedOrderId) return;
-        if (!deliveryInfo.vehicleNumber || !deliveryInfo.driverName || !deliveryInfo.driverPhone) {
-            Alert.alert(t('Missing Information'), t('Please fill all delivery details.'));
-            return;
-        }
-
         const currentOrder = orders.find(o => o.id === selectedOrderId) || wholesaleOrders.find(o => o.id === selectedOrderId);
         const statusToUse = (currentOrder?.status === 'packed' || currentOrder?.status === 'accepted') ? 'out_for_delivery' : currentOrder?.status || 'out_for_delivery';
 
-        await handleAction(selectedOrderId, 'update_status', statusToUse, { deliveryDetails: deliveryInfo });
+        await handleAction(selectedOrderId, 'update_status', statusToUse, { deliveryDetails: data });
         setShowDeliveryModal(false);
-        setDeliveryInfo({ vehicleNumber: '', driverName: '', driverPhone: '' });
         setSelectedOrderId(null);
     };
 
     const handleQuote = (item: any) => {
         setQuoteOrder(item);
-        const initialAmount = item.amount || item.totalAmount || 0;
-        setQuoteAmount(initialAmount > 0 ? initialAmount.toString() : '');
+        let items = [];
+        if (item.items && item.items.length > 0) {
+            items = item.items.map((i: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                name: i.name || '',
+                quantity: (i.quantity || i.qty || 1).toString(),
+                price: (i.price || i.amount || 0).toString(),
+                originalItem: i
+            }));
+        } else {
+            items = [{
+                id: Math.random().toString(36).substr(2, 9),
+                name: item.partName || item.name || '',
+                quantity: (item.quantity || item.qty || 1).toString(),
+                price: (item.price || item.amount || 0).toString(),
+                originalItem: item
+            }];
+        }
+        setInitialQuoteItems(items);
         setIsQuoteModalVisible(true);
     };
 
-    const handleSubmitQuote = async () => {
+    const handleSubmitQuote = async (items: any[], totalAmount: number) => {
         if (!quoteOrder) return;
-        if (!quoteAmount || isNaN(Number(quoteAmount))) {
-            Alert.alert(t('error') || 'Error', t('invalid_price') || 'Please enter a valid price');
-            return;
-        }
-
         const orderId = quoteOrder.id;
         setActionLoading(orderId);
-        setIsQuoteModalVisible(false);
+
         try {
-            await sendQuotation(orderId, [], Number(quoteAmount));
+            const itemsToSubmit = items.map(item => ({
+                ...(item.originalItem || {}),
+                name: item.name,
+                quantity: parseFloat(item.quantity),
+                price: parseFloat(item.price)
+            }));
+            await sendQuotation(orderId, itemsToSubmit, totalAmount);
+            setIsQuoteModalVisible(false);
             Alert.alert(t('success') || 'Success', t('quote_sent_success') || 'Quotation submitted successfully');
         } catch (e) {
             console.error('Send quote error:', e);
@@ -112,7 +128,6 @@ export default function SupplierOrdersScreen() {
         } finally {
             setActionLoading(null);
             setQuoteOrder(null);
-            setQuoteAmount('');
         }
     };
 
@@ -186,121 +201,24 @@ export default function SupplierOrdersScreen() {
             />
 
             {/* Quotation Modal */}
-            <Modal
+            <QuotationModal
                 visible={isQuoteModalVisible}
-                animationType="slide"
-                transparent
-                onRequestClose={() => setIsQuoteModalVisible(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
-                >
-                    <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('submit_quote') || 'Submit Quotation'}</Text>
-                            <TouchableOpacity onPress={() => setIsQuoteModalVisible(false)}>
-                                <Ionicons name="close" size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        </View>
-
-
-                        <View style={styles.modalBody}>
-                            {quoteOrder && quoteOrder.vehicleDetails && (
-                                <View style={{ marginBottom: 20, padding: 12, backgroundColor: colors.card, borderRadius: 12 }}>
-                                    <Text style={{ fontSize: 13, color: colors.icon, marginBottom: 4 }}>Requested Vehicle</Text>
-                                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text }}>
-                                        {quoteOrder.vehicleDetails.make} {quoteOrder.vehicleDetails.model}
-                                    </Text>
-                                    <Text style={{ fontSize: 13, color: colors.text, marginTop: 2 }}>
-                                        {quoteOrder.vehicleDetails.year} • {quoteOrder.vehicleDetails.fuelType || 'N/A'}
-                                    </Text>
-                                </View>
-                            )}
-
-                            <Text style={[styles.inputLabel, { color: colors.text }]}>{t('enter_price_desc') || "Enter the total price for this request."}</Text>
-                            <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <Text style={[styles.currencyPrefix, { color: colors.primary }]}>{currencySymbol}</Text>
-                                <TextInput
-                                    style={[styles.input, { flex: 1, borderWidth: 0 }]}
-                                    value={quoteAmount}
-                                    onChangeText={setQuoteAmount}
-                                    placeholder="0.00"
-                                    placeholderTextColor={colors.icon}
-                                    keyboardType="numeric"
-                                    autoFocus
-                                />
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.saveBtn, { backgroundColor: colors.primary, marginTop: 20 }]}
-                                onPress={handleSubmitQuote}
-                                disabled={actionLoading === quoteOrder?.id}
-                            >
-                                {actionLoading === quoteOrder?.id ? <ActivityIndicator color="#FFF" /> : (
-                                    <Text style={styles.saveBtnText}>{t('submit_quote') || 'Send Quote'}</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
+                onClose={() => setIsQuoteModalVisible(false)}
+                onSubmit={handleSubmitQuote}
+                initialItems={initialQuoteItems}
+                order={quoteOrder}
+                currencySymbol={currencySymbol}
+                loading={actionLoading === quoteOrder?.id}
+            />
 
             {/* Delivery Details Modal */}
-            <Modal
+            <DeliveryModal
                 visible={showDeliveryModal}
-                animationType="slide"
-                transparent
-                onRequestClose={() => setShowDeliveryModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('Delivery Details')}</Text>
-                            <TouchableOpacity onPress={() => setShowDeliveryModal(false)}>
-                                <Ionicons name="close" size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.modalBody}>
-                            <Text style={[styles.inputLabel, { color: colors.text }]}>{t('Vehicle Number')}</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                value={deliveryInfo.vehicleNumber}
-                                onChangeText={(val) => setDeliveryInfo(prev => ({ ...prev, vehicleNumber: val }))}
-                                placeholder="KA 03 MG 1234"
-                                placeholderTextColor={colors.icon}
-                            />
-
-                            <Text style={[styles.inputLabel, { color: colors.text, marginTop: 15 }]}>{t('Driver Name')}</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                value={deliveryInfo.driverName}
-                                onChangeText={(val) => setDeliveryInfo(prev => ({ ...prev, driverName: val }))}
-                                placeholder="John Doe"
-                                placeholderTextColor={colors.icon}
-                            />
-
-                            <Text style={[styles.inputLabel, { color: colors.text, marginTop: 15 }]}>{t('Driver Mobile')}</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                value={deliveryInfo.driverPhone}
-                                onChangeText={(val) => setDeliveryInfo(prev => ({ ...prev, driverPhone: val }))}
-                                placeholder="+91 9988776655"
-                                placeholderTextColor={colors.icon}
-                                keyboardType="phone-pad"
-                            />
-
-                            <TouchableOpacity
-                                style={[styles.saveBtn, { backgroundColor: colors.primary }]}
-                                onPress={handleConfirmDelivery}
-                            >
-                                <Text style={styles.saveBtnText}>{t('Confirm Out for Delivery')}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+                onClose={() => setShowDeliveryModal(false)}
+                onSubmit={handleConfirmDelivery}
+                initialData={initialDeliveryData}
+                loading={!!actionLoading}
+            />
 
             {/* Image Viewer Modal */}
             <ImageModal
@@ -361,5 +279,8 @@ const styles = StyleSheet.create({
     partNameText: { fontSize: 15, fontFamily: 'NotoSans-Bold' },
     partQty: { fontSize: 14, fontFamily: 'NotoSans-Bold' },
     closeBtn: { height: 50, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
-    closeBtnText: { color: '#FFF', fontSize: 16, fontFamily: 'NotoSans-Bold' }
+    closeBtnText: { color: '#FFF', fontSize: 16, fontFamily: 'NotoSans-Bold' },
+
+    addButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+    quoteItemCard: { padding: 15, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
 });

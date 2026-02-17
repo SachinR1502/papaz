@@ -1,3 +1,4 @@
+import { PartRequestItem, TechnicianPartRequestModal } from '@/components/technician/TechnicianPartRequestModal';
 import { TechnicianProductCard } from '@/components/technician/TechnicianProductCard';
 import { PaymentSimulator } from '@/components/ui/PaymentSimulator';
 import { Colors } from '@/constants/theme';
@@ -10,6 +11,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,7 +54,17 @@ const SUPPLIER_CATEGORIES = [
 ];
 
 export default function TechnicianWholesaleStore() {
-    const { businessCart, addToBusinessCart, updateBusinessCartQuantity, clearBusinessCart, walletBalance, profile } = useTechnician();
+    const {
+        businessCart,
+        addToBusinessCart,
+        updateBusinessCartQuantity,
+        clearBusinessCart,
+        walletBalance,
+        profile,
+        myJobs,
+        requestParts,
+        uploadFile
+    } = useTechnician();
     const { settings } = useAdmin();
     const { t } = useLanguage();
     const router = useRouter();
@@ -79,23 +91,14 @@ export default function TechnicianWholesaleStore() {
     const [techLocation, setTechLocation] = useState('Tech Hub, Main Ave');
 
     const [isCustomOrderVisible, setIsCustomOrderVisible] = useState(false);
-    const [supplierName, setSupplierName] = useState('');
-    const [customOrderVehicle, setCustomOrderVehicle] = useState({ make: '', model: '', year: '', vin: '', fuelType: '' });
-    const [customParts, setCustomParts] = useState<any[]>([{ id: '1', name: '', company: '', partNumber: '', qty: '1', description: '', photos: [], voiceNote: null }]);
-    const [isRecording, setIsRecording] = useState(false);
-    const [recordingDuration, setRecordingDuration] = useState(0);
-    const [recording, setRecording] = useState<Audio.Recording | null>(null);
-    const [recordingItemId, setRecordingItemId] = useState<string | null>(null);
-    const recordingTimer = useRef<any>(null);
+    const [isSubmittingCustom, setIsSubmittingCustom] = useState(false);
+    const [submittedSupplierName, setSubmittedSupplierName] = useState('');
 
     const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        return () => {
-            if (recordingTimer.current) clearInterval(recordingTimer.current);
-            if (recording) recording.stopAndUnloadAsync();
-        };
+        // Initialization if needed
     }, []);
 
     useEffect(() => {
@@ -192,132 +195,107 @@ export default function TechnicianWholesaleStore() {
         }
     };
 
-    const addCustomPartRow = () => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setCustomParts([...customParts, { id: Date.now().toString(), name: '', company: '', partNumber: '', qty: '1', description: '', photos: [], voiceNote: null }]);
-    };
-
-    const handleItemTakePhoto = async (itemId: string) => {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') return;
-        const result = await ImagePicker.launchCameraAsync({ quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-        if (!result.canceled) {
-            try {
-                const uploadRes = await technicianService.uploadFile(result.assets[0].uri, 'image');
-                const url = uploadRes.url || uploadRes.path;
-                if (url) {
-                    setCustomParts(prev => prev.map(p => p.id === itemId ? { ...p, photos: [...p.photos, url] } : p));
-                }
-            } catch (error) {
-                console.error("Failed to upload photo:", error);
-                Alert.alert(t('error'), t('upload_failed') || "Failed to upload image");
+    const uniqueSuppliers = useMemo(() => {
+        const found = new Map();
+        products.forEach(p => {
+            const sid = p.shopId || (p.supplier && (p.supplier._id || p.supplier.id || p.supplier));
+            const name = p.shop || (p.supplier && p.supplier.storeName) || 'Supplier';
+            if (sid && !found.has(sid)) {
+                found.set(sid, { id: sid, storeName: name });
             }
-        }
-    };
+        });
+        return Array.from(found.values());
+    }, [products]);
 
-    const handleItemPickImage = async (itemId: string) => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') return;
-        const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-        if (!result.canceled) {
-            try {
-                const uploadRes = await technicianService.uploadFile(result.assets[0].uri, 'image');
-                const url = uploadRes.url || uploadRes.path;
-                if (url) {
-                    setCustomParts(prev => prev.map(p => p.id === itemId ? { ...p, photos: [...p.photos, url] } : p));
-                }
-            } catch (error) {
-                console.error("Failed to upload image:", error);
-                Alert.alert(t('error'), t('upload_failed') || "Failed to upload image");
-            }
-        }
-    };
+    const vehicles = useMemo(() => {
+        return myJobs.map(j => ({
+            id: j.vehicleId || j.id,
+            ...j.vehicle,
+            make: j.vehicle?.make || j.vehicleModel || 'Vehicle',
+            model: j.vehicle?.model || j.vehicleNumber || '',
+            registrationNumber: j.vehicle?.registrationNumber || j.vehicleNumber,
+        }));
+    }, [myJobs]);
 
-    const handleStartRecording = async (itemId: string) => {
+
+
+    const handlePartRequest = async (items: PartRequestItem[], notes: string, supplierId: string | null, photos: string[], voiceNote: string | null, vehicleId: string | null, manualVehicleDetails?: any) => {
+        setIsSubmittingCustom(true);
         try {
-            const { status } = await Audio.requestPermissionsAsync();
-            if (status !== 'granted') return;
-            await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-            const { recording: newRecording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-            setRecording(newRecording);
-            setIsRecording(true);
-            setRecordingItemId(itemId);
-            setRecordingDuration(0);
-            recordingTimer.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
-        } catch (err) { console.error('Failed to start recording', err); }
-    };
+            // Upload media if present
+            const uploadedPhotosPromise = photos.length > 0
+                ? Promise.all(photos.map(p => {
+                    // Check if it's already a remote URL (e.g. from prefill)
+                    if (p.startsWith('http')) return Promise.resolve(p);
+                    return uploadFile(p, 'image').then(res => res.url || res.path);
+                }))
+                : Promise.resolve([]);
 
-    const removeCustomPartRow = (id: string) => {
-        if (customParts.length > 1) {
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            setCustomParts(customParts.filter(p => p.id !== id));
-        }
-    };
+            const uploadedVoicePromise = voiceNote
+                ? (voiceNote.startsWith('http') ? Promise.resolve(voiceNote) : uploadFile(voiceNote, 'audio').then(res => res.url || res.path))
+                : Promise.resolve(null);
 
-    const updateCustomPart = (id: string, field: string, value: any) => {
-        setCustomParts(customParts.map(p => p.id === id ? { ...p, [field]: value } : p));
-    };
+            const [uploadedPhotos, uploadedVoice] = await Promise.all([uploadedPhotosPromise, uploadedVoicePromise]);
 
-    const handleStopRecording = async () => {
-        if (!recording || !recordingItemId) return;
-        setIsRecording(false);
-        if (recordingTimer.current) clearInterval(recordingTimer.current);
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
-        if (uri) {
-            try {
-                const uploadRes = await technicianService.uploadFile(uri, 'audio');
-                const url = uploadRes.url || uploadRes.path;
-                if (url) {
-                    setCustomParts(prev => prev.map(p => p.id === recordingItemId ? { ...p, voiceNote: url } : p));
-                }
-            } catch (error) {
-                console.error("Failed to upload voice note:", error);
-                Alert.alert(t('error'), t('upload_failed') || "Failed to upload voice note");
-            }
-        }
-        setRecording(null);
-        setRecordingItemId(null);
-    };
 
-    const handleCustomOrderSubmit = async () => {
-        const isItemsValid = customParts.every(p => p.name.trim().length > 0 && p.company.trim().length > 0);
-        const isSupplierValid = supplierName.trim().length > 0;
 
-        if (!isSupplierValid) {
-            Alert.alert(t('supplier_required'), t('supplier_required_msg'));
-            return;
-        }
+            // Master notes no longer get the extra photo links
+            let finalNotes = notes;
 
-        if (!isItemsValid) {
-            Alert.alert(t('missing_info'), t('missing_info_msg'));
-            return;
-        }
+            // Find linked job to get ID and vehicle details
+            const linkedJob = myJobs.find(j => j.vehicleId === vehicleId || j.id === vehicleId);
+            const jobId = linkedJob?.id || undefined;
+            const vehicleInfo = linkedJob?.vehicle || (vehicleId ? vehicles.find(v => (v.id || v._id) === vehicleId) : undefined) || manualVehicleDetails;
 
-        try {
-            setLoading(true);
-            // Media are now uploaded immediately, so customParts already contains URLs.
-            // Just double check and map for consistency if needed.
-            const processedItems = customParts.map(item => ({
-                ...item,
-                photos: item.photos || [],
-                voiceNote: item.voiceNote || null
+            const mappedItems = items.map((item, idx) => ({
+                name: item.name,
+                description: item.description, // Keep item description specific
+                quantity: item.quantity || 1,
+                price: item.price,
+                productId: item.productId,
+                partNumber: item.partNumber,
+                brand: item.brand,
+                image: item.image, // Only use item-specific image if it exists
             }));
 
-            const response: any = await technicianService.requestCustomOrder(supplierName, processedItems, customOrderVehicle);
-            if (response.success) {
+            // console.log('[handlePartRequest] Requesting part with data:', {
+            //     itemCount: items.length,
+            //     jobId: jobId,
+            //     vehicleId: vehicleId
+            // });
+
+            const response = await technicianService.requestPart({
+                items: mappedItems,
+                name: items.length === 1 ? items[0].name : `Bulk Request (${items.length} items)`,
+                description: finalNotes,
+                quantity: items.length,
+                supplierId: supplierId || undefined,
+                jobId: jobId,
+                vehicleId: vehicleId || undefined,
+                vehicleDetails: vehicleInfo,
+                photos: uploadedPhotos,
+                voiceNote: uploadedVoice
+            });
+
+            console.log('[handlePartRequest] Raw Response:', JSON.stringify(response, null, 2));
+
+            const order = response?.order || response;
+
+            if (order && (order._id || order.id)) {
+                console.log('[handlePartRequest] Success! Order ID:', order._id || order.id);
+                setPendingOrderId(order._id || order.id);
                 setIsCustomOrderVisible(false);
                 setOrderConfirmed(true);
-                setCustomParts([{ id: '1', name: '', company: '', partNumber: '', qty: '1', description: '', photos: [], voiceNote: null }]);
-                setCustomOrderVehicle({ make: '', model: '', year: '', vin: '', fuelType: '' });
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } else {
-                Alert.alert(t('error'), t('dispatch_error'));
+                console.warn('[handlePartRequest] Invalid response structure - order not found in:', response);
+                Alert.alert(t('error'), t('request_failed'));
             }
         } catch (error) {
-            console.error("Submit error:", error);
-            Alert.alert(t('error'), t('unexpected_error'));
+            console.error('Request part error:', error);
+            Alert.alert(t('error'), t('request_failed'));
         } finally {
-            setLoading(false);
+            setIsSubmittingCustom(false);
         }
     };
 
@@ -330,8 +308,8 @@ export default function TechnicianWholesaleStore() {
         try {
             const supplierId = businessCart[0]?.supplier?._id || businessCart[0]?.supplier;
             const res = await technicianService.placeWholesaleOrder(businessCart, supplierId, cartTotal);
-            if (res.success && res.order) {
-                setPendingOrderId(res.order.id || res.order._id);
+            if (res && (res.id || res._id)) {
+                setPendingOrderId(res.id || res._id);
                 setIsCartVisible(false);
                 setShowPaymentSimulator(true);
             }
@@ -411,6 +389,35 @@ export default function TechnicianWholesaleStore() {
             </BlurView>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollPadding}>
+
+                {/* Custom Request Banner - NEW */}
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => setIsCustomOrderVisible(true)}
+                    style={{ marginBottom: 25, borderRadius: 20, overflow: 'hidden', shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 6 }}
+                >
+                    <LinearGradient
+                        colors={['#FF6B00', '#FF8F33']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                    >
+                        <View style={{ flex: 1, marginRight: 10 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 }}>
+                                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                                    <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>NEW</Text>
+                                </View>
+                                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600', textTransform: 'uppercase' }}>{t('express_service')}</Text>
+                            </View>
+                            <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold', marginBottom: 4 }}>{t('cant_find_part')}</Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 18 }}>{t('upload_photo_voice_quote')}</Text>
+                        </View>
+                        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }}>
+                            <Ionicons name="camera" size={24} color="#FF6B00" />
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+
                 {sortByNearest && (
                     <View style={styles.nearestBadge}>
                         <Ionicons name="location" size={14} color={colors.primary} />
@@ -660,250 +667,15 @@ export default function TechnicianWholesaleStore() {
                 </View>
             </Modal>
 
-            <Modal visible={isCustomOrderVisible} animationType="slide" transparent>
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.cartContainer, { backgroundColor: colors.background }]}>
-                        <View style={styles.cartHeader}>
-                            <View>
-                                <Text style={[styles.cartTitle, { color: colors.text }]}>{t('custom_request')}</Text>
-                                <Text style={[styles.headerSubtitle, { color: colors.icon }]}>{t('multi_part_order')}</Text>
-                            </View>
-                            <TouchableOpacity onPress={() => setIsCustomOrderVisible(false)}>
-                                <Ionicons name="close" size={28} color={colors.text} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.cartList} showsVerticalScrollIndicator={false}>
-                            <View style={[styles.formGroup, { marginBottom: 25 }]}>
-                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('target_supplier')}</Text>
-                                <View style={[styles.supplierInputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                    <Ionicons name="business-outline" size={20} color={colors.primary} style={{ marginRight: 12 }} />
-                                    <TextInput
-                                        placeholder={t('enter_supplier_placeholder')}
-                                        style={[styles.premiumInput, { flex: 1, borderWidth: 0, backgroundColor: 'transparent', color: colors.text }]}
-                                        value={supplierName}
-                                        onChangeText={setSupplierName}
-                                        placeholderTextColor={colors.icon}
-                                    />
-                                </View>
-                            </View>
-
-                            <View style={[styles.formGroup, { marginBottom: 15 }]}>
-                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('vehicle_details_optional') || 'Vehicle Details (Optional)'}</Text>
-                                <View style={styles.inputRow}>
-                                    <View style={{ flex: 1, marginRight: 8 }}>
-                                        <TextInput
-                                            placeholder={t('make_e_g_toyota') || 'Make (e.g. Toyota)'}
-                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                            value={customOrderVehicle.make}
-                                            onChangeText={(v) => setCustomOrderVehicle(prev => ({ ...prev, make: v }))}
-                                            placeholderTextColor={colors.icon}
-                                        />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <TextInput
-                                            placeholder={t('model_e_g_camry') || 'Model (e.g. Camry)'}
-                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                            value={customOrderVehicle.model}
-                                            onChangeText={(v) => setCustomOrderVehicle(prev => ({ ...prev, model: v }))}
-                                            placeholderTextColor={colors.icon}
-                                        />
-                                    </View>
-                                </View>
-                                <View style={[styles.inputRow, { marginTop: 8 }]}>
-                                    <View style={{ width: 80, marginRight: 8 }}>
-                                        <TextInput
-                                            placeholder={t('year') || 'Year'}
-                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                            value={customOrderVehicle.year}
-                                            onChangeText={(v) => setCustomOrderVehicle(prev => ({ ...prev, year: v }))}
-                                            keyboardType="numeric"
-                                            placeholderTextColor={colors.icon}
-                                        />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <TextInput
-                                            placeholder={t('vin_optional') || 'VIN (Optional)'}
-                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                            value={customOrderVehicle.vin}
-                                            onChangeText={(v) => setCustomOrderVehicle(prev => ({ ...prev, vin: v }))}
-                                            placeholderTextColor={colors.icon}
-                                        />
-                                    </View>
-                                </View>
-                            </View>
-
-                            <Text style={[styles.customInstruction, { color: colors.icon }]}>{t('list_parts_instruction')} {supplierName || t('the_supplier')}.</Text>
-
-                            {customParts.map((item, index) => (
-                                <View key={item.id} style={[styles.customPartCard, { backgroundColor: isDark ? colors.card : '#F8F9FE', borderColor: colors.border }]}>
-                                    <View style={styles.partCardHeader}>
-                                        <View style={[styles.partIndexChip, { backgroundColor: colors.text }]}>
-                                            <Text style={[styles.partIndexText, { color: colors.background }]}>{t('item')} #{index + 1}</Text>
-                                        </View>
-                                        {customParts.length > 1 && (
-                                            <TouchableOpacity
-                                                onPress={() => removeCustomPartRow(item.id)}
-                                                style={[styles.removePartBtn, { backgroundColor: isDark ? '#3A0000' : '#FFE5E5' }]}
-                                            >
-                                                <Ionicons name="trash-outline" size={18} color="#FF3B30" />
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-
-                                    <View style={styles.formGroup}>
-                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('product_name')}</Text>
-                                        <TextInput
-                                            placeholder={t('product_name_placeholder')}
-                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                            value={item.name}
-                                            onChangeText={(val) => updateCustomPart(item.id, 'name', val)}
-                                            placeholderTextColor={colors.icon}
-                                        />
-                                    </View>
-
-                                    <View style={styles.inputRow}>
-                                        <View style={[styles.formGroup, { flex: 1 }]}>
-                                            <Text style={[styles.inputLabel, { color: colors.text }]}>{t('brand_company')}</Text>
-                                            <TextInput
-                                                placeholder={t('brand_company_placeholder')}
-                                                style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                                value={item.company}
-                                                onChangeText={(val) => updateCustomPart(item.id, 'company', val)}
-                                                placeholderTextColor={colors.icon}
-                                            />
-                                        </View>
-                                        <View style={[styles.formGroup, { flex: 1 }]}>
-                                            <Text style={[styles.inputLabel, { color: colors.text }]}>{t('part_number')}</Text>
-                                            <TextInput
-                                                placeholder={t('sku_placeholder')}
-                                                style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                                value={item.partNumber}
-                                                onChangeText={(val) => updateCustomPart(item.id, 'partNumber', val)}
-                                                placeholderTextColor={colors.icon}
-                                            />
-                                        </View>
-                                    </View>
-                                    <View style={styles.formGroup}>
-                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('product_description')}</Text>
-                                        <TextInput
-                                            placeholder={t('product_description_placeholder')}
-                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                                            value={item.description}
-                                            onChangeText={(val) => updateCustomPart(item.id, 'description', val)}
-                                            placeholderTextColor={colors.icon}
-                                        />
-                                    </View>
-
-                                    {/* Per-Item Media Section */}
-                                    <View style={{ marginTop: 12 }}>
-                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('attachments')}</Text>
-                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginBottom: 12 }}>
-                                            <TouchableOpacity
-                                                style={[styles.mediaPill, { borderColor: colors.primary, backgroundColor: colors.primary + '10' }]}
-                                                onPress={() => handleItemTakePhoto(item.id)}
-                                            >
-                                                <Ionicons name="camera" size={18} color={colors.primary} />
-                                                <Text style={[styles.mediaPillText, { color: colors.primary }]}>{t('camera')}</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={[styles.mediaPill, { borderColor: colors.primary, backgroundColor: colors.primary + '10' }]}
-                                                onPress={() => handleItemPickImage(item.id)}
-                                            >
-                                                <Ionicons name="image" size={18} color={colors.primary} />
-                                                <Text style={[styles.mediaPillText, { color: colors.primary }]}>{t('gallery')}</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={[
-                                                    styles.mediaPill,
-                                                    {
-                                                        borderColor: (isRecording && recordingItemId === item.id) ? colors.notification : colors.primary,
-                                                        backgroundColor: (isRecording && recordingItemId === item.id) ? colors.notification + '10' : colors.primary + '10'
-                                                    }
-                                                ]}
-                                                onPress={() => (isRecording && recordingItemId === item.id) ? handleStopRecording() : handleStartRecording(item.id)}
-                                                disabled={isRecording && recordingItemId !== item.id}
-                                            >
-                                                <Ionicons
-                                                    name={(isRecording && recordingItemId === item.id) ? "stop-circle" : "mic"}
-                                                    size={18}
-                                                    color={(isRecording && recordingItemId === item.id) ? colors.notification : colors.primary}
-                                                />
-                                                <Text style={[
-                                                    styles.mediaPillText,
-                                                    { color: (isRecording && recordingItemId === item.id) ? colors.notification : colors.primary }
-                                                ]}>
-                                                    {(isRecording && recordingItemId === item.id) ? `0:${recordingDuration.toString().padStart(2, '0')}` : t('voice')}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </ScrollView>
-
-                                        {/* Captured Media Previews */}
-                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                                            {item.photos?.map((photo: string, idx: number) => (
-                                                <View key={idx} style={styles.previewContainer}>
-                                                    <Image source={{ uri: getMediaUrl(photo) || undefined }} style={styles.smallPreview} />
-                                                    <TouchableOpacity
-                                                        style={styles.removePreviewBtn}
-                                                        onPress={() => updateCustomPart(item.id, 'photos', item.photos.filter((_: any, i: number) => i !== idx))}
-                                                    >
-                                                        <Ionicons name="close-circle" size={18} color={colors.notification} />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ))}
-                                            {item.voiceNote && (
-                                                <View style={[styles.voicePreview, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                                    <Ionicons name="mic" size={16} color={colors.primary} />
-                                                    <Text style={[styles.voiceText, { color: colors.text }]} numberOfLines={1}>{t('recorded')}</Text>
-                                                    <TouchableOpacity onPress={() => updateCustomPart(item.id, 'voiceNote', null)}>
-                                                        <Ionicons name="trash-outline" size={16} color={colors.notification} />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            )}
-                                        </View>
-                                    </View>
-
-                                    <View style={[styles.qtyActionArea, { borderTopColor: colors.border }]}>
-                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('order_qty')}</Text>
-                                        <View style={[styles.premiumStepper, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                            <TouchableOpacity
-                                                style={[styles.stepControl, { backgroundColor: isDark ? colors.background : '#F0F0F0' }]}
-                                                onPress={() => updateCustomPart(item.id, 'qty', Math.max(1, (parseInt(item.qty) || 1) - 1).toString())}
-                                            >
-                                                <Ionicons name="remove" size={18} color={colors.text} />
-                                            </TouchableOpacity>
-                                            <TextInput
-                                                keyboardType="numeric"
-                                                style={[styles.stepValue, { color: colors.text }]}
-                                                value={item.qty}
-                                                onChangeText={(val) => updateCustomPart(item.id, 'qty', val)}
-                                            />
-                                            <TouchableOpacity
-                                                style={[styles.stepControl, { backgroundColor: isDark ? colors.background : '#F0F0F0' }]}
-                                                onPress={() => updateCustomPart(item.id, 'qty', ((parseInt(item.qty) || 1) + 1).toString())}
-                                            >
-                                                <Ionicons name="add" size={18} color={colors.text} />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                </View>
-                            ))}
-
-                            <TouchableOpacity style={[styles.addRowBtn, { backgroundColor: isDark ? colors.card : '#F0F7FF', borderColor: colors.primary }]} onPress={addCustomPartRow}>
-                                <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-                                <Text style={[styles.addRowText, { color: colors.primary }]}>{t('add_another_part')}</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-
-                        <View style={[styles.cartFooter, { borderTopColor: colors.border }]}>
-                            <TouchableOpacity style={[styles.checkoutBtn, { backgroundColor: colors.primary }]} onPress={handleCustomOrderSubmit}>
-                                <Text style={styles.checkoutText}>{t('dispatch_request')}</Text>
-                                <Ionicons name="send" size={18} color="#FFF" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+            <TechnicianPartRequestModal
+                visible={isCustomOrderVisible}
+                onClose={() => setIsCustomOrderVisible(false)}
+                onSubmit={handlePartRequest}
+                suppliers={uniqueSuppliers}
+                partsSource="garage"
+                vehicles={vehicles}
+                submitting={isSubmittingCustom}
+            />
 
             <Modal visible={orderConfirmed} animationType="fade" transparent>
                 <View style={styles.modalOverlay}>
@@ -916,12 +688,12 @@ export default function TechnicianWholesaleStore() {
                         </LinearGradient>
                         <Text style={[styles.successTitle, { color: colors.text }]}>{t('order_dispatched')}</Text>
                         <Text style={[styles.successDesc, { color: colors.icon }]}>
-                            {supplierName ? `${supplierName} ${t('order_success_msg')}` : `${t('the_supplier')} ${t('order_success_msg')}`}
+                            {submittedSupplierName ? `${submittedSupplierName} ${t('order_success_msg')}` : `${t('the_supplier')} ${t('order_success_msg')}`}
                         </Text>
                         <TouchableOpacity
                             onPress={() => {
                                 setOrderConfirmed(false);
-                                setSupplierName('');
+                                setSubmittedSupplierName('');
                             }}
                             activeOpacity={0.8}
                             style={{ width: '100%' }}
@@ -936,7 +708,7 @@ export default function TechnicianWholesaleStore() {
                         <TouchableOpacity
                             onPress={() => {
                                 setOrderConfirmed(false);
-                                setSupplierName('');
+                                setSubmittedSupplierName('');
                                 router.replace('/(technician)/(tabs)');
                             }}
                             style={{ marginTop: 20 }}

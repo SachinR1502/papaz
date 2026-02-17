@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { WithdrawModal } from '@/components/technician/WithdrawModal';
 import { DashboardSkeleton } from '@/components/ui/Skeleton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -192,91 +193,99 @@ export default function TechnicianHome() {
                     </View>
                 </Animated.View>
 
-                {/* Wallet Card */}
-                <Animated.View style={[styles.earningsCard, { backgroundColor: colors.walletCard, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                    <View style={styles.walletHeader}>
-                        <Text style={styles.earningsLabel}>{t('total_operational_revenue')}</Text>
-                        <TouchableOpacity
-                            style={styles.withdrawBtn}
-                            onPress={() => setIsWithdrawVisible(true)}
-                        >
-                            <Text style={styles.withdrawText}>{t('settle_funds')}</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <Text style={styles.earningsValue}>{currencySymbol}{(profile?.totalEarnings || 0).toFixed(0)}</Text>
-                    <View style={styles.earningsFooter}>
-                        <MaterialCommunityIcons name="wallet-outline" size={16} color="#4CAF50" />
-                        <Text style={styles.earningsTrend}>{t('available_to_settle') || 'Available'}: {currencySymbol}{(walletBalance || 0).toFixed(0)}</Text>
-                    </View>
+                {/* Wallet Card - Premium Gradient */}
+                <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+                    <LinearGradient
+                        colors={isDark ? ['#1A1A1A', '#2C2C2E'] : ['#1A1A1A', '#000000']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.earningsCard}
+                    >
+                        {/* Background Decoration */}
+                        <View style={{ position: 'absolute', top: -50, right: -50, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+
+                        <View style={styles.walletHeader}>
+                            <Text style={styles.earningsLabel}>{t('total_operational_revenue')}</Text>
+                            <TouchableOpacity
+                                style={styles.withdrawBtn}
+                                onPress={() => setIsWithdrawVisible(true)}
+                            >
+                                <Text style={styles.withdrawText}>{t('settle_funds')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.earningsValue}>{currencySymbol}{(profile?.totalEarnings || 0).toFixed(0)}</Text>
+                        <View style={styles.earningsFooter}>
+                            <MaterialCommunityIcons name="wallet-outline" size={14} color="#4CAF50" />
+                            <Text style={styles.earningsTrend}>{t('available_to_settle') || 'Available'}: {currencySymbol}{(walletBalance || 0).toFixed(0)}</Text>
+                        </View>
+                    </LinearGradient>
                 </Animated.View>
 
-                {/* Stats Grid */}
+                {/* Stats Grid - Premium Layout */}
                 <Animated.View style={[styles.statsGrid, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
                     {/* Direct Requests - High Priority (Red) */}
                     <TouchableOpacity
-                        style={[styles.statCard, { backgroundColor: '#FF3B30', shadowColor: '#FF3B30', shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }]}
+                        style={[styles.statCard, { backgroundColor: '#FFF5F5', borderColor: '#FFE5E5' }]}
                         onPress={() => router.push({ pathname: '/(technician)/(tabs)/jobs', params: { tab: 'requests' } })}
                     >
-                        <View style={[styles.statIconBg, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                        <View style={[styles.statIconBg, { backgroundColor: '#FF3B30' }]}>
                             <MaterialCommunityIcons name="account-alert" size={24} color="#FFFFFF" />
                         </View>
-                        <Text style={[styles.statValue, { color: '#FFFFFF' }]}>{pendingMyJobsCount}</Text>
-                        <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.9)' }]}>{t('direct_requests')}</Text>
+                        <Text style={styles.statValue}>{pendingMyJobsCount}</Text>
+                        <Text style={styles.statLabel}>{t('direct_requests')}</Text>
                     </TouchableOpacity>
 
                     {/* Broadcast Leads - Opportunity (Orange) */}
                     <TouchableOpacity
-                        style={[styles.statCard, { backgroundColor: '#FF9500', shadowColor: '#FF9500', shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }]}
+                        style={[styles.statCard, { backgroundColor: '#FFF8F0', borderColor: '#FFECCE' }]}
                         onPress={() => router.push({ pathname: '/(technician)/(tabs)/jobs', params: { tab: 'broadcasts' } })}
                     >
-                        <View style={[styles.statIconBg, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                        <View style={[styles.statIconBg, { backgroundColor: '#FF9500' }]}>
                             <MaterialCommunityIcons name="broadcast" size={24} color="#FFFFFF" />
                         </View>
-                        <Text style={[styles.statValue, { color: '#FFFFFF' }]}>{availableJobs.length}</Text>
-                        <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.9)' }]}>{t('nearby_leads')}</Text>
+                        <Text style={styles.statValue}>{availableJobs.length}</Text>
+                        <Text style={styles.statLabel}>{t('nearby_leads')}</Text>
                     </TouchableOpacity>
 
                     {/* Active Jobs - Standard Card */}
                     <TouchableOpacity
-                        style={[styles.statCard, { backgroundColor: isDark ? colors.card : '#FFF7ED', borderColor: isDark ? colors.border : 'transparent', borderWidth: isDark ? 1 : 0 }]}
+                        style={[styles.statCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
                         onPress={() => router.push({ pathname: '/(technician)/(tabs)/jobs', params: { tab: 'active' } })}
                     >
-                        {!isDark && <View style={[styles.innerBlob, { backgroundColor: '#FF6B0015' }]} />}
-                        <View style={[styles.statIconBg, { backgroundColor: '#FF6B0015' }]}>
+                        <View style={[styles.statIconBg, { backgroundColor: '#F2F2F7' }]}>
                             <MaterialCommunityIcons name="hammer-wrench" size={24} color="#FF6B00" />
                         </View>
-                        <Text style={[styles.statValue, { color: isDark ? colors.text : '#FF6B00' }]}>{activeMyJobsCount}</Text>
-                        <Text style={[styles.statLabel, { color: colors.subText }]}>{t('active_jobs')}</Text>
+                        <Text style={[styles.statValue, { color: isDark ? colors.text : '#1C1C1E' }]}>{activeMyJobsCount}</Text>
+                        <Text style={styles.statLabel}>{t('active_jobs')}</Text>
                     </TouchableOpacity>
 
                     {/* Completed Jobs */}
                     <TouchableOpacity
-                        style={[styles.statCard, { backgroundColor: isDark ? colors.card : '#E8F5E9', borderColor: isDark ? colors.border : 'transparent', borderWidth: isDark ? 1 : 0 }]}
+                        style={[styles.statCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
                         onPress={() => router.push('/(technician)/profile/history')}
                     >
-                        {!isDark && <View style={[styles.innerBlob, { backgroundColor: '#34C75915' }]} />}
-                        <View style={[styles.statIconBg, { backgroundColor: '#34C75915' }]}>
+                        <View style={[styles.statIconBg, { backgroundColor: '#F2F2F7' }]}>
                             <MaterialCommunityIcons name="check-decagram" size={24} color="#34C759" />
                         </View>
-                        <Text style={[styles.statValue, { color: isDark ? colors.text : '#34C759' }]}>{myJobs.filter(j => j.status === 'completed').length}</Text>
-                        <Text style={[styles.statLabel, { color: colors.subText }]}>{t('completed_caps')}</Text>
+                        <Text style={[styles.statValue, { color: isDark ? colors.text : '#1C1C1E' }]}>{myJobs.filter(j => j.status === 'completed').length}</Text>
+                        <Text style={styles.statLabel}>{t('completed_caps')}</Text>
                     </TouchableOpacity>
 
-                    {/* Rating */}
+                    {/* Rating - Full Width */}
                     <TouchableOpacity
-                        style={[styles.statCard, { backgroundColor: isDark ? colors.card : '#FFF9C4', borderColor: isDark ? colors.border : 'transparent', borderWidth: isDark ? 1 : 0, width: '100%' }]}
+                        style={[styles.statCard, styles.fullWidthCard, { backgroundColor: '#FFFDE7', borderColor: '#FFF9C4', flexDirection: 'row', alignItems: 'center' }]}
                         onPress={() => router.push('/(technician)/profile/profile_info')}
                     >
-                        {!isDark && <View style={[styles.innerBlob, { backgroundColor: '#FFD70015' }]} />}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-                            <View style={[styles.statIconBg, { backgroundColor: '#FFD70015', marginBottom: 0 }]}>
-                                <MaterialCommunityIcons name="star-face" size={24} color="#FFD700" />
-                            </View>
-                            <View>
-                                <Text style={[styles.statValue, { color: isDark ? colors.text : '#D4AF37' }]}>{profile?.rating || 'New'}</Text>
-                                <Text style={[styles.statLabel, { color: colors.subText, marginTop: 0 }]}>{t('pro_rating')}</Text>
-                            </View>
+                        <View style={[styles.statIconBg, { backgroundColor: '#FFD700', marginRight: 16, marginBottom: 0 }]}>
+                            <MaterialCommunityIcons name="star" size={24} color="#FFF" />
+                        </View>
+                        <View>
+                            <Text style={[styles.statValue, { color: '#D4AF37' }]}>{profile?.rating || 'New'}</Text>
+                            <Text style={[styles.statLabel, { marginTop: 0 }]}>{t('pro_rating')}</Text>
+                        </View>
+                        <View style={{ position: 'absolute', right: 20 }}>
+                            <MaterialCommunityIcons name="chevron-right" size={24} color="#D4AF37" style={{ opacity: 0.5 }} />
                         </View>
                     </TouchableOpacity>
                 </Animated.View>
@@ -362,75 +371,164 @@ export default function TechnicianHome() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF', position: 'relative', overflow: 'hidden' },
-    bgBlob1: { position: 'absolute', top: -100, right: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: '#FF6B0010', zIndex: -1 },
-    bgBlob2: { position: 'absolute', bottom: 100, left: -150, width: 400, height: 400, borderRadius: 200, backgroundColor: '#34C75908', zIndex: -1 },
-    bgBlob3: { position: 'absolute', top: '40%', right: -150, width: 350, height: 350, borderRadius: 175, backgroundColor: '#FFD70008', zIndex: -1 },
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 20 },
-    greeting: { fontSize: 26, fontWeight: 'bold', color: '#1A1A1A' },
-    subGreeting: { fontSize: 13, color: '#8E8E93', fontWeight: '500' },
-    iconBtn: { padding: 4 },
+    bgBlob1: { position: 'absolute', top: -100, right: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: '#FF6B0008', zIndex: -1 },
+    bgBlob2: { position: 'absolute', bottom: 100, left: -150, width: 400, height: 400, borderRadius: 200, backgroundColor: '#34C75905', zIndex: -1 },
+    bgBlob3: { position: 'absolute', top: '40%', right: -150, width: 350, height: 350, borderRadius: 175, backgroundColor: '#FFD70005', zIndex: -1 },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 110, paddingTop: 10 },
+
+    // Header
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+    greeting: { fontSize: 28, fontFamily: 'NotoSans-Bold', color: '#1A1A1A', letterSpacing: -0.5 },
+    subGreeting: { fontSize: 13, color: '#8E8E93', fontFamily: 'NotoSans-Medium', marginTop: -4 },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+
     iconButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
         position: 'relative',
     },
-    notificationDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF3B30', borderWidth: 1.5, borderColor: '#FFF', zIndex: 10 },
-    earningsCard: {
-        backgroundColor: '#1A1A1A',
-        borderRadius: 20,
-        padding: 24,
-        marginBottom: 25,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-        elevation: 5,
+    notificationDot: {
+        position: 'absolute',
+        top: 10,
+        right: 12,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#FF3B30',
+        borderWidth: 1.5,
+        borderColor: '#FFF',
+        zIndex: 10
     },
-    earningsLabel: { color: '#8E8E93', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
-    earningsValue: { color: '#FFFFFF', fontSize: 36, fontWeight: '900', marginVertical: 10 },
-    earningsFooter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    earningsTrend: { color: '#4CAF50', fontSize: 13, fontWeight: '600' },
+
+    // Status Toggle
+    statusToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        marginTop: 4
+    },
+    statusOnline: { backgroundColor: '#E8F5E9', borderColor: '#C8E6C9' },
+    statusOffline: { backgroundColor: '#FFEBEE', borderColor: '#FFCDD2' },
+    statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
+    statusText: { fontSize: 11, fontFamily: 'NotoSans-Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
+
+    // Wallet Card
+    earningsCard: {
+        borderRadius: 24,
+        padding: 24,
+        marginBottom: 30,
+        shadowColor: '#FF6B00',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+        elevation: 8,
+        position: 'relative',
+        overflow: 'hidden'
+    },
+    walletHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    earningsLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'NotoSans-Bold', letterSpacing: 1, textTransform: 'uppercase' },
+    withdrawBtn: {
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)'
+    },
+    withdrawText: { color: '#FFF', fontSize: 11, fontFamily: 'NotoSans-Bold' },
+    earningsValue: { color: '#FFFFFF', fontSize: 38, fontFamily: 'NotoSans-Black', marginBottom: 16, letterSpacing: -1 },
+    earningsFooter: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+    earningsTrend: { color: '#4CAF50', fontSize: 12, fontFamily: 'NotoSans-Bold', marginLeft: 4 },
+
+    // Stats Grid
     statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12, marginBottom: 30 },
-    statCard: { width: '48%', padding: 16, borderRadius: 20, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-    innerBlob: { position: 'absolute', width: 80, height: 80, borderRadius: 40, top: -20, right: -20, zIndex: 0 },
-    headerRight: { flexDirection: 'row', alignItems: 'center' },
-    statusToggle: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
-    statusOnline: { backgroundColor: '#E8F5E9' },
-    statusOffline: { backgroundColor: '#FFEBEE' },
-    statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-    statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-    walletHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    withdrawBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-    withdrawText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-    statIconBg: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    statValue: { fontSize: 20, fontWeight: 'bold', color: '#1C1C1E' },
-    statLabel: { fontSize: 12, color: '#8E8E93', marginTop: 4 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 15 },
+    statCard: {
+        width: '48%',
+        padding: 18,
+        borderRadius: 24,
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.03)'
+    },
+    fullWidthCard: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+    innerBlob: { position: 'absolute', width: 100, height: 100, borderRadius: 50, top: -30, right: -30, zIndex: 0, opacity: 0.6 },
+    statIconBg: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8
+    },
+    statValue: { fontSize: 24, fontFamily: 'NotoSans-Bold', color: '#1C1C1E', letterSpacing: -0.5 },
+    statLabel: { fontSize: 12, fontFamily: 'NotoSans-Medium', color: '#8E8E93', marginTop: 2 },
+
+    // Section Headers
+    sectionTitle: { fontSize: 18, fontFamily: 'NotoSans-Bold', color: '#1A1A1A', marginBottom: 16, letterSpacing: -0.5 },
+
+    // Quick Actions
     actionRow: { flexDirection: 'row', gap: 12, marginBottom: 30 },
-    actionBtn: { flex: 1, height: 100, borderRadius: 18, justifyContent: 'center', alignItems: 'center', gap: 8 },
-    actionBtnText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-    recentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    seeAll: { fontSize: 14, color: '#FF6B00', fontWeight: '600' },
-    activityCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F0F0F0', padding: 15, borderRadius: 16, marginBottom: 10 },
-    activityIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#E3F2FD', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    actionBtn: {
+        flex: 1,
+        height: 110,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 6
+    },
+    actionBtnText: { color: '#fff', fontSize: 14, fontFamily: 'NotoSans-Bold' },
+
+    // Recent Activity
+    recentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    seeAll: { fontSize: 13, color: '#FF6B00', fontFamily: 'NotoSans-Bold' },
+    activityCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        padding: 16,
+        borderRadius: 20,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.03)'
+    },
+    activityIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
     activityInfo: { flex: 1 },
-    activityTitle: { fontSize: 15, fontWeight: 'bold', color: '#1C1C1E' },
-    activitySub: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
-    emptyCard: { padding: 30, backgroundColor: '#F8F9FE', borderRadius: 16, alignItems: 'center' },
-    emptyText: { color: '#999', fontSize: 14 },
+    activityTitle: { fontSize: 15, fontFamily: 'NotoSans-Bold', color: '#1C1C1E', marginBottom: 4 },
+    activitySub: { fontSize: 12, color: '#8E8E93', fontFamily: 'NotoSans-Medium' },
 
-    // Modal Styles matching Supplier/Customer
+    emptyCard: { padding: 40, backgroundColor: '#F8F9FE', borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+    emptyText: { color: '#8E8E93', fontSize: 14, fontFamily: 'NotoSans-Medium' },
 
+    // Modal Styles
     notifItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F2F2F7', gap: 12 },
     notifIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
     notifTitle: { fontSize: 14, fontWeight: 'bold', color: '#1A1A1A' },

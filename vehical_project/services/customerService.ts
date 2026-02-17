@@ -31,6 +31,8 @@ export interface PartRequestData {
         fuelType?: string;
         registrationNumber?: string;
     };
+    photos?: string[];
+    voiceNote?: string | null;
 }
 
 

@@ -45,6 +45,21 @@ export default function OrderDetailsScreen() {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [isPaymentVisible, setIsPaymentVisible] = useState(false);
 
+    // Derived state for display
+    const mainParsed = parseDescription(order ? (order.partName || order.name || order.description || '') : '');
+
+    // Robust items fallback matching supplier logic
+    const displayItems = (order?.items && order.items.length > 0) ? order.items : (order ? [{
+        _id: 'root-item',
+        name: order.partName || order.name || t('Item'),
+        description: order.description,
+        price: order.amount || order.totalAmount,
+        quantity: order.quantity || 1,
+        photos: order.photos,
+        image: order.image,
+        brand: order.brand
+    }] : []);
+
     useEffect(() => {
         loadOrder();
 
@@ -122,8 +137,9 @@ export default function OrderDetailsScreen() {
                         <Text style={[styles.statusMain, { color: colors.text }]}>{order.status.toUpperCase()}</Text>
                         <Text style={[styles.statusSub, { color: colors.icon }]}>
                             {order.status === 'confirmed' ? t('We have received your order') :
-                                order.status === 'shipped' ? t('Your order is on the way') :
-                                    order.status === 'delivered' ? t('Order delivered successfully') : t('Status updated')}
+                                order.status === 'shipped' || order.status === 'out_for_delivery' ? t('Your order is on the way') :
+                                    order.status === 'packed' ? t('Order is packed and ready') :
+                                        order.status === 'delivered' ? t('Order delivered successfully') : t('Status updated')}
                         </Text>
                     </View>
                 </View>
@@ -134,7 +150,7 @@ export default function OrderDetailsScreen() {
                     <View style={styles.timeline}>
                         {[
                             { id: 'confirmed', label: t('Confirmed'), active: true },
-                            { id: 'shipped', label: t('Shipped'), active: ['shipped', 'delivered'].includes(order.status) },
+                            { id: 'shipped', label: t('Shipped'), active: ['shipped', 'out_for_delivery', 'delivered'].includes(order.status) },
                             { id: 'delivered', label: t('Delivered'), active: order.status === 'delivered' }
                         ].map((step, index, arr) => (
                             <View key={index} style={styles.stepRow}>
@@ -150,67 +166,252 @@ export default function OrderDetailsScreen() {
                     </View>
                 </View>
 
+                {/* Global Attachments (If any) */}
+                {(mainParsed.photoUris.length > 0 || mainParsed.voiceUri) && (
+                    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>{t('Attachments')}</Text>
+                        <View style={{ gap: 12 }}>
+                            {mainParsed.photoUris.length > 0 && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    {mainParsed.photoUris.map((uri: string, idx: number) => (
+                                        <TouchableOpacity key={idx} onPress={() => setSelectedImage(getMediaUrl(uri))} style={{ marginRight: 10 }}>
+                                            <Image source={{ uri: getMediaUrl(uri) || '' }} style={{ width: 150, height: 150, borderRadius: 12, backgroundColor: '#f0f0f0' }} resizeMode="cover" />
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            )}
+                            {mainParsed.voiceUri && <AudioPlayer uri={mainParsed.voiceUri} />}
+                        </View>
+                    </View>
+                )}
+
+                {/* Vehicle Details */}
+                {order.vehicleDetails && (
+                    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                            <Ionicons name="car-sport" size={24} color={colors.primary} />
+                            <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 0, marginLeft: 10 }]}>{t('Vehicle Details')}</Text>
+                        </View>
+                        <View>
+                            <Text style={{ fontSize: 16, fontFamily: 'NotoSans-Bold', color: colors.text }}>
+                                {order.vehicleDetails.make} {order.vehicleDetails.model}
+                            </Text>
+                            <Text style={{ fontSize: 14, color: colors.icon, marginTop: 2 }}>
+                                {order.vehicleDetails.variant} ({order.vehicleDetails.year})
+                            </Text>
+                            {order.vehicleDetails.fuelType && (
+                                <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                                    <View style={{ backgroundColor: colors.background, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                        <Text style={{ fontSize: 12, color: colors.text }}>{order.vehicleDetails.fuelType}</Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                )}
+
                 {/* Delivery Details (If available) */}
                 {order.deliveryDetails && (
                     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                        <Text style={[styles.cardTitle, { color: colors.text }]}>{t('Delivery Information')}</Text>
-                        <View style={styles.deliveryInfoRow}>
-                            <View style={styles.deliveryInfoItem}>
-                                <Ionicons name="car-sport" size={20} color={colors.primary} />
-                                <View style={{ marginLeft: 12 }}>
-                                    <Text style={[styles.deliveryLabel, { color: colors.icon }]}>{t('Vehicle Number')}</Text>
-                                    <Text style={[styles.deliveryValue, { color: colors.text }]}>{order.deliveryDetails.vehicleNumber}</Text>
-                                </View>
-                            </View>
-                            <View style={[styles.deliveryInfoItem, { marginTop: 15 }]}>
-                                <Ionicons name="person" size={20} color={colors.primary} />
-                                <View style={{ marginLeft: 12 }}>
-                                    <Text style={[styles.deliveryLabel, { color: colors.icon }]}>{t('Driver')}</Text>
-                                    <Text style={[styles.deliveryValue, { color: colors.text }]}>{order.deliveryDetails.driverName} • {order.deliveryDetails.driverPhone}</Text>
-                                </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                            <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 0 }]}>{t('Delivery Information')}</Text>
+                            <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: colors.primary + '20', borderRadius: 6 }}>
+                                <Text style={{ fontSize: 10, fontFamily: 'NotoSans-Bold', color: colors.primary, textTransform: 'uppercase' }}>
+                                    {order.deliveryDetails.type === 'courier' ? t('Courier') : t('Local')}
+                                </Text>
                             </View>
                         </View>
-                        <TouchableOpacity
-                            style={[styles.callDriverBtn, { borderColor: colors.primary }]}
-                            onPress={() => Linking.openURL(`tel:${order.deliveryDetails.driverPhone}`)}
-                        >
-                            <Ionicons name="call" size={18} color={colors.primary} />
-                            <Text style={[styles.callDriverText, { color: colors.primary }]}>{t('Call Driver')}</Text>
-                        </TouchableOpacity>
+
+                        {/* Local Delivery */}
+                        {(order.deliveryDetails.type === 'local' || !order.deliveryDetails.type) && (
+                            <>
+                                <View style={styles.deliveryInfoRow}>
+                                    <View style={styles.deliveryInfoItem}>
+                                        <Ionicons name="car-sport" size={20} color={colors.primary} />
+                                        <View style={{ marginLeft: 12 }}>
+                                            <Text style={[styles.deliveryLabel, { color: colors.icon }]}>{t('Vehicle Number')}</Text>
+                                            <Text style={[styles.deliveryValue, { color: colors.text }]}>{order.deliveryDetails.vehicleNumber || 'N/A'}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={[styles.deliveryInfoItem, { marginTop: 15 }]}>
+                                        <Ionicons name="person" size={20} color={colors.primary} />
+                                        <View style={{ marginLeft: 12 }}>
+                                            <Text style={[styles.deliveryLabel, { color: colors.icon }]}>{t('Driver')}</Text>
+                                            <Text style={[styles.deliveryValue, { color: colors.text }]}>{order.deliveryDetails.driverName}</Text>
+                                            {order.deliveryDetails.driverPhone && (
+                                                <Text style={{ fontSize: 13, color: colors.icon }}>{order.deliveryDetails.driverPhone}</Text>
+                                            )}
+                                        </View>
+                                    </View>
+                                    {order.deliveryDetails.personName && (
+                                        <View style={[styles.deliveryInfoItem, { marginTop: 15 }]}>
+                                            <Ionicons name="people" size={20} color={colors.primary} />
+                                            <View style={{ marginLeft: 12 }}>
+                                                <Text style={[styles.deliveryLabel, { color: colors.icon }]}>{t('Contact Person')}</Text>
+                                                <Text style={[styles.deliveryValue, { color: colors.text }]}>{order.deliveryDetails.personName}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                                {order.deliveryDetails.driverPhone && (
+                                    <TouchableOpacity
+                                        style={[styles.callDriverBtn, { borderColor: colors.primary }]}
+                                        onPress={() => Linking.openURL(`tel:${order.deliveryDetails.driverPhone}`)}
+                                    >
+                                        <Ionicons name="call" size={18} color={colors.primary} />
+                                        <Text style={[styles.callDriverText, { color: colors.primary }]}>{t('Call Driver')}</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </>
+                        )}
+
+                        {/* Courier Delivery */}
+                        {order.deliveryDetails.type === 'courier' && (
+                            <View style={styles.deliveryInfoRow}>
+                                <View style={styles.deliveryInfoItem}>
+                                    <MaterialCommunityIcons name="truck-fast" size={20} color={colors.primary} />
+                                    <View style={{ marginLeft: 12 }}>
+                                        <Text style={[styles.deliveryLabel, { color: colors.icon }]}>{t('Courier Partner')}</Text>
+                                        <Text style={[styles.deliveryValue, { color: colors.text }]}>{order.deliveryDetails.courierName}</Text>
+                                    </View>
+                                </View>
+                                <View style={[styles.deliveryInfoItem, { marginTop: 15 }]}>
+                                    <MaterialCommunityIcons name="barcode-scan" size={20} color={colors.primary} />
+                                    <View style={{ marginLeft: 12 }}>
+                                        <Text style={[styles.deliveryLabel, { color: colors.icon }]}>{t('Tracking ID')}</Text>
+                                        <Text style={[styles.deliveryValue, { color: colors.text }]}>{order.deliveryDetails.trackingId}</Text>
+                                    </View>
+                                </View>
+                                {order.deliveryDetails.trackingUrl && (
+                                    <TouchableOpacity
+                                        style={{ marginTop: 15, flexDirection: 'row', alignItems: 'center' }}
+                                        onPress={() => Linking.openURL(order.deliveryDetails.trackingUrl)}
+                                    >
+                                        <Text style={{ color: colors.primary, fontFamily: 'NotoSans-Bold', marginRight: 5 }}>{t('Track Shipment')}</Text>
+                                        <Ionicons name="open-outline" size={16} color={colors.primary} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Notes */}
+                        {order.deliveryDetails.notes && (
+                            <View style={{ marginTop: 15, padding: 12, backgroundColor: colors.background, borderRadius: 12 }}>
+                                <Text style={{ fontSize: 12, color: colors.icon, marginBottom: 4 }}>{t('Notes')}</Text>
+                                <Text style={{ color: colors.text }}>{order.deliveryDetails.notes}</Text>
+                            </View>
+                        )}
                     </View>
                 )}
+
+                {/* Global Attachments (if any) */}
+                {(() => {
+                    const mainParsed = parseDescription(order.description || '');
+                    const globalPhotos = Array.from(new Set([
+                        ...(order.photos || []),
+                        ...(order.images || []),
+                        ...(order.image ? [order.image] : []),
+                        ...(order.items?.[0]?.image ? [order.items[0].image] : []),
+                        ...(order.items?.[0]?.images || []),
+                        ...(order.items?.[0]?.photos || []),
+                        ...(mainParsed.photoUris || [])
+                    ].map(p => getMediaUrl(p)).filter(Boolean))) as string[];
+
+                    const globalVoice = getMediaUrl(order.voiceNote) ||
+                        getMediaUrl(order.voiceUri) ||
+                        getMediaUrl(order.items?.[0]?.voiceUri) ||
+                        getMediaUrl(order.items?.[0]?.voiceNote) ||
+                        mainParsed.voiceUri;
+                    const hasGeneralNote = mainParsed.displayNotes && mainParsed.displayNotes.trim().length > 0;
+
+                    if (globalPhotos.length === 0 && !globalVoice && !hasGeneralNote) return null;
+
+                    return (
+                        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('Main Attachments')}</Text>
+
+                            {hasGeneralNote && (
+                                <View style={{ marginBottom: 12 }}>
+                                    <Text style={{ fontSize: 13, color: colors.text }}>{mainParsed.displayNotes}</Text>
+                                </View>
+                            )}
+
+                            {globalPhotos.length > 0 && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 5 }}>
+                                    {globalPhotos.map((uri, idx) => (
+                                        <TouchableOpacity key={idx} onPress={() => setSelectedImage(uri)}>
+                                            <Image source={{ uri }} style={{ width: 120, height: 120, borderRadius: 12, backgroundColor: colors.border }} />
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            )}
+
+                            {globalVoice && (
+                                <View style={{ marginTop: 12 }}>
+                                    <AudioPlayer uri={globalVoice} />
+                                </View>
+                            )}
+                        </View>
+                    );
+                })()}
 
                 {/* Items */}
                 <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Text style={[styles.cardTitle, { color: colors.text }]}>{t('Items')}</Text>
-                    {order.items.map((item: any, index: number) => {
-                        const parsed = parseDescription(item.description || item.name);
-                        let displayName = parsed.displayName || item.name || '';
-                        let displayNotes = parsed.displayNotes;
-                        const { photoUri, voiceUri } = parsed;
+                    {displayItems.map((item: any, index: number) => {
+                        // Parse the original description (contains customer request + metadata)
+                        const parsed = parseDescription(item.description || '');
 
-                        // Metadata extraction from name
+                        // authoritative product name (from supplier/quote)
+                        const productName = item.name;
+
+                        // original customer request (from description)
+                        const originalRequest = parsed.displayName;
+
+                        // Logic: 
+                        // 1. If we have a specific productName (quoted), that is the PRIMARY display.
+                        // 2. The originalRequest becomes the REFERENCE.
+                        // 3. Fallback: if no productName, usage originalRequest as Primary.
+
+                        const mainTitle = productName || originalRequest || t('Unknown Item');
+                        const showReference = !!productName && !!originalRequest && (productName.trim() !== originalRequest.trim());
+
+                        let displayNotes = parsed.displayNotes;
+                        const { photoUri, voiceUri, photoUris, voiceUris } = parsed;
+
+                        // Metadata extraction from main title
                         let displayMeta = '';
-                        if (displayName.includes(' - ')) {
-                            const parts = displayName.split(' - ');
+                        if (mainTitle.includes(' - ')) {
+                            const parts = mainTitle.split(' - ');
                             const brand = parts.pop();
-                            displayName = parts.join(' - ');
+                            // mainTitle = parts.join(' - '); // Don't modify mainTitle here, it's already set
                             displayMeta = brand ? ` • ${brand}` : '';
                         }
 
-                        const pnMatch = displayName.match(/\(PN: (.*?)\)/);
+                        const pnMatch = mainTitle.match(/\(PN: (.*?)\)/);
                         if (pnMatch) {
                             const pn = pnMatch[1];
-                            displayName = displayName.replace(pnMatch[0], '').trim();
+                            // mainTitle = mainTitle.replace(pnMatch[0], '').trim(); // Don't modify mainTitle here
                             displayMeta = ` • PN: ${pn}` + displayMeta;
                         }
 
+                        // Determine if it's a note (price is 0 and no product linked)
+                        // If it's quoted, price should be > 0, so it won't be a note.
                         const isNote = (item.price === 0 || item.unitPrice === 0) && !item.product;
-                        const allPhotos = item.photos || (item.image || photoUri ? [item.image || photoUri] : []);
-                        const itemVoice = item.voiceNote || voiceUri;
+
+                        // Aggregate all photos from various possible fields
+                        const allPhotos = Array.from(new Set([
+                            ...(item.photos || []),
+                            ...(item.images || []),
+                            ...(item.image ? [item.image] : []),
+                            ...(photoUris || [])
+                        ])).filter(Boolean);
+
+                        // Pick the first available voice note
+                        const itemVoice = item.voiceNote || item.voiceUri || voiceUri || (voiceUris && voiceUris[0]);
 
                         return (
-                            <View key={index} style={[styles.itemRow, { borderBottomColor: colors.border, borderBottomWidth: index === order.items.length - 1 ? 0 : 1 }]}>
+                            <View key={index} style={[styles.itemRow, { borderBottomColor: colors.border, borderBottomWidth: index === displayItems.length - 1 ? 0 : 1 }]}>
                                 {allPhotos.length > 0 ? (
                                     <View>
                                         <TouchableOpacity onPress={() => setSelectedImage(getMediaUrl(allPhotos[0]))}>
@@ -228,11 +429,30 @@ export default function OrderDetailsScreen() {
                                     </View>
                                 )}
                                 <View style={styles.itemInfo}>
-                                    <Text style={[styles.itemName, { color: colors.text }]}>{displayName}</Text>
-                                    {(displayMeta || displayNotes) ? (
+                                    {/* Main Product Name (Quoted) */}
+                                    <Text style={[styles.itemName, { color: colors.text }]}>{mainTitle}</Text>
+
+                                    {/* Original Request Reference */}
+                                    {showReference && (
+                                        <View style={{ marginTop: 6, padding: 8, backgroundColor: colors.background, borderRadius: 8 }}>
+                                            <Text style={{ fontSize: 10, color: colors.icon, fontFamily: 'NotoSans-Bold', textTransform: 'uppercase', marginBottom: 2 }}>
+                                                {t('Original Request')}
+                                            </Text>
+                                            <Text style={{ fontSize: 13, color: colors.text, fontFamily: 'NotoSans-Medium' }}>
+                                                {originalRequest}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {/* Brand Display */}
+                                    {(item.brand || order.brand || item.company) && (
                                         <Text style={{ fontSize: 12, color: colors.icon, marginTop: 2 }}>
-                                            {displayMeta.replace(/^ • /, '')}
-                                            {displayMeta && displayNotes ? '\n' : ''}
+                                            {item.brand || order.brand || item.company}
+                                        </Text>
+                                    )}
+
+                                    {(displayNotes) ? (
+                                        <Text style={{ fontSize: 12, color: colors.icon, marginTop: 4 }}>
                                             {displayNotes}
                                         </Text>
                                     ) : null}

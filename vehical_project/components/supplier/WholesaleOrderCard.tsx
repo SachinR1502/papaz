@@ -3,7 +3,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Colors } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { parseDescription } from '@/utils/mediaHelpers';
+import { getMediaUrl, parseDescription } from '@/utils/mediaHelpers';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -51,24 +51,32 @@ export const WholesaleOrderCard = ({ item, onQuote, onViewImage, onAction, actio
                 let displayNotes = parsed.displayNotes;
 
                 // Prioritize explicit fields, fallback to parsed from description
-                const photoUri = (part.photos && part.photos.length > 0) ? part.photos[0] : (part.photoUri || parsed.photoUri);
-                const voiceUri = part.voiceNote || part.voiceUri || parsed.voiceUri;
-                const allPhotos = part.photos || (photoUri ? [photoUri] : []);
+                const photoUri = (part.photos && part.photos.length > 0) ? getMediaUrl(part.photos[0]) : (getMediaUrl(part.photoUri) || parsed.photoUri);
+                const voiceUri = getMediaUrl(part.voiceNote) || getMediaUrl(part.voiceUri) || parsed.voiceUri;
 
-                let displayMeta = '';
-                if (displayName.includes(' - ')) {
+                // Aggregate all photos from both sources and deduplicate
+                const allPhotos = [
+                    ...(part.photos || []).map((p: string) => getMediaUrl(p)),
+                    ...(parsed.photoUris || [])
+                ].filter((v, i, a) => v && a.indexOf(v) === i);
+
+                let brand = part.brand;
+                if (!brand && displayName.includes(' - ')) {
                     const parts = displayName.split(' - ');
-                    const brand = parts.pop();
+                    brand = parts.pop();
                     displayName = parts.join(' - ');
-                    displayMeta = brand ? ` • ${brand}` : '';
                 }
 
+                let partNumber = part.partNumber;
                 const pnMatch = displayName.match(/\(PN: (.*?)\)/);
                 if (pnMatch) {
-                    const pn = pnMatch[1];
+                    partNumber = pnMatch[1];
                     displayName = displayName.replace(pnMatch[0], '').trim();
-                    displayMeta = ` • PN: ${pn}` + displayMeta;
                 }
+
+                let displayMeta = '';
+                if (brand) displayMeta += ` • ${brand}`;
+                if (partNumber) displayMeta += ` • PN: ${partNumber}`;
 
                 const isNote = (part.price === 0 || part.unitPrice === 0) && !part.product;
 
@@ -119,6 +127,42 @@ export const WholesaleOrderCard = ({ item, onQuote, onViewImage, onAction, actio
                     </View>
                 );
             })}
+
+            {item.deliveryDetails ? (
+                <View style={{ backgroundColor: colors.background, padding: 12, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: colors.border }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            {item.deliveryDetails.type === 'courier' ? (
+                                <Ionicons name="bus" size={16} color={colors.primary} />
+                            ) : (
+                                <Ionicons name="car-sport" size={16} color={colors.primary} />
+                            )}
+                            <Text style={{ fontSize: 13, fontFamily: 'NotoSans-Bold', color: colors.text, marginLeft: 8 }}>
+                                {item.deliveryDetails.type === 'courier'
+                                    ? (item.deliveryDetails.courierName || t('courier_partner'))
+                                    : (item.deliveryDetails.vehicleNumber || t('vehicle_number'))}
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        {item.deliveryDetails.type === 'courier' ? (
+                            <>
+                                <Ionicons name="barcode-outline" size={16} color={colors.primary} />
+                                <Text style={{ fontSize: 13, color: colors.icon, marginLeft: 8 }}>
+                                    {t('tracking')}: {item.deliveryDetails.trackingId}
+                                </Text>
+                            </>
+                        ) : (
+                            <>
+                                <Ionicons name="person" size={16} color={colors.primary} />
+                                <Text style={{ fontSize: 13, color: colors.icon, marginLeft: 8 }}>
+                                    {item.deliveryDetails.driverName} • {item.deliveryDetails.driverPhone}
+                                </Text>
+                            </>
+                        )}
+                    </View>
+                </View>
+            ) : null}
 
             {isActionable ? (
                 <View style={styles.actionRow}>

@@ -10,42 +10,38 @@ export const getMediaUrl = (uri: string | null | undefined) => {
         return uri;
     }
 
-    // Prepend base URL (removing /api/ from the end of API_URL)
-    const baseUrl = (API_URL || '').replace(/\/api\/?$/, '');
+    // Prepend base URL (removing /api from end if exists to avoid doubling)
+    let baseUrl = (API_URL || '').replace(/\/api\/?$/, '');
+    if (baseUrl.endsWith('/')) {
+        baseUrl = baseUrl.slice(0, -1);
+    }
+
     if (!baseUrl && !uri.startsWith('http')) {
         console.warn('[getMediaUrl] No baseUrl available, returning original URI:', uri);
-        return uri; // Fallback to original if we can't resolve
+        return uri;
     }
 
     let cleanUri = uri.startsWith('/') ? uri : `/${uri}`;
 
     // Handle old flat structure: if path is /uploads/file.ext (no subdirectory)
-    // Try to infer the subdirectory from file extension
     if (cleanUri.match(/^\/uploads\/[^\/]+\.(m4a|mp3|wav|aac)$/i)) {
-        // Audio file in old format, try new format
         const filename = cleanUri.split('/').pop();
         cleanUri = `/uploads/audio/${filename}`;
-        console.log('[getMediaUrl] Converted audio path:', { original: uri, converted: cleanUri });
     } else if (cleanUri.match(/^\/uploads\/[^\/]+\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
-        // Image file in old format
         const filename = cleanUri.split('/').pop();
         cleanUri = `/uploads/images/${filename}`;
-        console.log('[getMediaUrl] Converted image path:', { original: uri, converted: cleanUri });
     } else if (cleanUri.match(/^\/uploads\/[^\/]+\.(mp4|mov|avi)$/i)) {
-        // Video file in old format
         const filename = cleanUri.split('/').pop();
         cleanUri = `/uploads/videos/${filename}`;
-        console.log('[getMediaUrl] Converted video path:', { original: uri, converted: cleanUri });
     } else if (cleanUri.match(/^\/uploads\/[^\/]+\.(pdf|doc|docx)$/i)) {
-        // Document file in old format
         const filename = cleanUri.split('/').pop();
         cleanUri = `/uploads/documents/${filename}`;
-        console.log('[getMediaUrl] Converted document path:', { original: uri, converted: cleanUri });
     }
 
+    // Combine baseUrl and cleanUri, ensuring exactly one slash between them
     const fullUrl = `${baseUrl}${cleanUri}`;
 
-    console.log('[getMediaUrl] Resolved:', { original: uri, baseUrl, fullUrl });
+    // console.log('[getMediaUrl] Resolved:', { original: uri, baseUrl, fullUrl });
     return fullUrl;
 };
 
@@ -56,17 +52,31 @@ export const getMediaUrl = (uri: string | null | undefined) => {
 export const parseDescription = (rawDescription: string | null | undefined) => {
     const fullDesc = rawDescription || '';
 
-    // Extract URIs
-    const photoMatch = fullDesc.match(/\[PhotoURI:(.*?)\]/);
-    const voiceMatch = fullDesc.match(/\[VoiceURI:(.*?)\]/);
+    // Extract ALL URIs
+    const photoUris: string[] = [];
+    const photoRegex = /\[PhotoURI:(.*?)\]/g;
+    let pMatch;
+    while ((pMatch = photoRegex.exec(fullDesc)) !== null) {
+        const url = getMediaUrl(pMatch[1]);
+        if (url) photoUris.push(url);
+    }
 
-    const photoUri = photoMatch ? photoMatch[1] : null;
-    const voiceUri = voiceMatch ? voiceMatch[1] : null;
+    const voiceUris: string[] = [];
+    const voiceRegex = /\[VoiceURI:(.*?)\]/g;
+    let vMatch;
+    while ((vMatch = voiceRegex.exec(fullDesc)) !== null) {
+        const url = getMediaUrl(vMatch[1]);
+        if (url) voiceUris.push(url);
+    }
+
+    const photoUri = photoUris.length > 0 ? photoUris[0] : null;
+    const voiceUri = voiceUris.length > 0 ? voiceUris[0] : null;
 
     // Clean tags
     const cleanText = (text: string) => text
         .replace(/\[PhotoURI:.*?\]/g, '')
         .replace(/\[VoiceURI:.*?\]/g, '')
+        .replace(/\[Vehicle:.*?\]/g, '')
         .replace(/\[Photo Attached\]/g, '')
         .replace(/\[Voice Note Attached\]/g, '')
         .replace(/\[Voice Note\]/g, '')
@@ -87,6 +97,8 @@ export const parseDescription = (rawDescription: string | null | undefined) => {
         displayNotes,
         photoUri,
         voiceUri,
+        photoUris,
+        voiceUris,
         hasPhoto: !!photoUri || fullDesc.includes('[Photo Attached]'),
         hasVoice: !!voiceUri || fullDesc.includes('[Voice Note]')
     };

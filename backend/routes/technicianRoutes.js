@@ -54,6 +54,7 @@ router.put('/jobs/:id/status', protect, updateJobStatus);
 router.post('/jobs/:id/quote', protect, sendQuote);
 router.post('/jobs/:id/bill', protect, sendBill);
 router.post('/jobs/:id/parts-request', protect, requestParts);
+router.post('/parts/request', protect, requestParts);
 router.put('/jobs/:id/details', protect, addRepairDetails);
 router.get('/inventory', protect, getInventory);
 router.post('/inventory', protect, addPart);

@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import api, { API_URL } from './apiClient';
+import { PartRequestData } from './customerService';
 
 export const technicianService = {
     getProfile: async () => {
@@ -67,8 +68,12 @@ export const technicianService = {
         return response.data;
     },
 
-    requestParts: async (jobId: string, parts: any[]) => {
-        const response = await api.post(`/technician/jobs/${jobId}/parts-request`, { parts });
+    requestParts: async (jobId: string, parts: any[], metadata?: { photos?: string[], voiceNote?: string | null, supplierId?: string | null }) => {
+        const response = await api.post(`/technician/jobs/${jobId}/parts-request`, { parts, ...metadata });
+        return response.data;
+    },
+    requestPart: async (data: PartRequestData) => {
+        const response = await api.post(`/technician/parts/request`, data);
         return response.data;
     },
 
@@ -82,8 +87,8 @@ export const technicianService = {
         return response.data;
     },
 
-    requestProduct: async (productId: string, quantity: number, shopId: string, jobId?: string, customName?: string, customDescription?: string) => {
-        const response = await api.post(`/technician/store/request`, { productId, quantity, shopId, jobId, customName, customDescription });
+    requestProduct: async (productId: string, quantity: number, shopId: string, jobId?: string, customName?: string, customDescription?: string, customBrand?: string, photos?: string[], voiceNote?: string | null) => {
+        const response = await api.post(`/technician/store/request`, { productId, quantity, shopId, jobId, customName, customDescription, customBrand, photos, voiceNote });
         return response.data;
     },
 
@@ -96,6 +101,7 @@ export const technicianService = {
         const response = await api.post('/technician/store/custom-order', { supplierName, items, vehicleDetails });
         return response.data;
     },
+
 
     getVehicleHistory: async (vehicleId: string) => {
         const response = await api.get(`/technician/vehicle-history/${vehicleId}`);

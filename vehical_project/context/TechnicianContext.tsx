@@ -53,10 +53,10 @@ interface TechnicianContextType {
     addToBusinessCart: (product: any) => Promise<void>;
     updateBusinessCartQuantity: (id: string, delta: number) => Promise<void>;
     clearBusinessCart: () => Promise<void>;
-    requestParts: (jobId: string, parts: any[]) => Promise<void>;
+    requestParts: (jobId: string, parts: any[], metadata?: { photos?: string[], voiceNote?: string | null, supplierId?: string | null }) => Promise<void>;
     addRepairDetails: (jobId: string, details: any) => Promise<void>;
     getVehicleHistory: (vehicleId: string) => Promise<any>;
-    requestProduct: (productId: string, quantity: number, shopId: string, jobId?: string, customName?: string, customDescription?: string) => Promise<void>;
+    requestProduct: (productId: string, quantity: number, shopId: string, jobId?: string, customName?: string, customDescription?: string, customBrand?: string, photos?: string[], voiceNote?: string | null) => Promise<void>;
     updateRequirementStatus: (jobId: string, reqId: string, isCompleted: boolean) => Promise<void>;
     uploadFile: (fileUri: string, type: 'image' | 'audio') => Promise<any>;
     requestWithdrawal: (amount: number, bankAccountId?: string) => Promise<void>;
@@ -93,10 +93,10 @@ const TechnicianContext = createContext<TechnicianContextType>({
     addToBusinessCart: async () => { },
     updateBusinessCartQuantity: async () => { },
     clearBusinessCart: async () => { },
-    requestParts: async () => { },
+    requestParts: async (jobId: string, parts: any[], metadata?: any) => { },
     addRepairDetails: async () => { },
     getVehicleHistory: async () => null,
-    requestProduct: async () => { },
+    requestProduct: async (productId: string, quantity: number, shopId: string, jobId?: string, customName?: string, customDescription?: string, customBrand?: string, photos?: string[], voiceNote?: string | null) => { },
     updateRequirementStatus: async () => { },
     uploadFile: async () => { },
     requestWithdrawal: async () => { },
@@ -260,8 +260,8 @@ export function TechnicianProvider({ children }: { children: React.ReactNode }) 
                 }));
 
                 console.log('[TechnicianContext] Setting state:');
-                console.log('  - Available jobs:', mappedAvailable.length, mappedAvailable.map(j => j.id));
-                console.log('  - My jobs:', mappedMyJobs.length, mappedMyJobs.map(j => j.id));
+                console.log('  - Available jobs:', mappedAvailable.length, mappedAvailable.map((j: any) => j.id));
+                console.log('  - My jobs:', mappedMyJobs.length, mappedMyJobs.map((j: any) => j.id));
                 setAvailableJobs(mappedAvailable);
                 setMyJobs(mappedMyJobs);
             } else {
@@ -386,9 +386,9 @@ export function TechnicianProvider({ children }: { children: React.ReactNode }) 
         }
     };
 
-    const requestParts = async (jobId: string, parts: any[]) => {
-        console.log(`Parts requested for job ${jobId}:`, parts);
-        await technicianService.requestParts(jobId, parts);
+    const requestParts = async (jobId: string, parts: any[], metadata?: { photos?: string[], voiceNote?: string | null, supplierId?: string | null }) => {
+        console.log(`Parts requested for job ${jobId}:`, parts, metadata);
+        await technicianService.requestParts(jobId, parts, metadata);
         await loadJobs();
     };
 
@@ -495,15 +495,9 @@ export function TechnicianProvider({ children }: { children: React.ReactNode }) 
         };
     }, [user, isOnline]);
 
-    const requestProduct = async (productId: string, quantity: number, shopId: string, jobId?: string, customName?: string, customDescription?: string) => {
-        try {
-            await technicianService.requestProduct(productId, quantity, shopId, jobId, customName, customDescription);
-            // alert(`Request sent successfully via API for Product ID: ${productId}`);
-            if (jobId) await loadJobs();
-        } catch (e) {
-            console.error(e);
-            throw e;
-        }
+    const requestProduct = async (productId: string, quantity: number, shopId: string, jobId?: string, customName?: string, customDescription?: string, customBrand?: string, photos?: string[], voiceNote?: string | null) => {
+        await technicianService.requestProduct(productId, quantity, shopId, jobId, customName, customDescription, customBrand, photos, voiceNote);
+        await loadJobs();
     };
 
     const getVehicleHistory = async (vehicleId: string) => {

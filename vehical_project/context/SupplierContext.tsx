@@ -31,6 +31,19 @@ interface SupplierOrder {
     type?: 'Car' | 'Bike';
     name?: string;
     supplier?: string | any;
+    technicianName?: string; // Add this too since we use it
+    technician?: any;
+    deliveryDetails?: {
+        type: 'local' | 'courier';
+        vehicleNumber?: string;
+        driverName?: string;
+        personName?: string;
+        driverPhone?: string;
+        courierName?: string;
+        trackingId?: string;
+        trackingUrl?: string;
+        notes?: string;
+    };
 }
 
 interface SupplierContextType {
@@ -238,7 +251,12 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
             // Optimistic update for standard orders
             setOrders(prev => prev.map(o => {
                 if (o.id === orderId) {
-                    return { ...o, status: finalStatus as any, ...(data?.totalAmount ? { amount: data.totalAmount } : {}) };
+                    return {
+                        ...o,
+                        status: finalStatus as any,
+                        ...(data?.totalAmount ? { amount: data.totalAmount } : {}),
+                        ...(data?.deliveryDetails ? { deliveryDetails: { ...(o.deliveryDetails || {}), ...data.deliveryDetails } } : {})
+                    };
                 }
                 return o;
             }));
@@ -246,7 +264,12 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
             // Optimistic update for wholesale orders
             setWholesaleOrders(prev => prev.map(o => {
                 if (o.id === orderId) {
-                    return { ...o, status: finalStatus as any, ...(data?.totalAmount ? { amount: data.totalAmount } : {}) };
+                    return {
+                        ...o,
+                        status: finalStatus as any,
+                        ...(data?.totalAmount ? { amount: data.totalAmount } : {}),
+                        ...(data?.deliveryDetails ? { deliveryDetails: { ...(o.deliveryDetails || {}), ...data.deliveryDetails } } : {})
+                    };
                 }
                 return o;
             }));

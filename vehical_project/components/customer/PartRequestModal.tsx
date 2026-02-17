@@ -234,11 +234,22 @@ export const PartRequestModal: React.FC<PartRequestModalProps> = ({
                 name: t('custom_request_item') || 'General Part Request',
                 description: customNotes || 'See details below',
                 quantity: 1,
-                image: photos[0],
+                // Image is no longer set here to avoid conflation with global media
             }];
         }
 
         await onSubmit(items, customNotes, selectedSupplier, photos, voiceNote, selectedVehicle);
+        //clear filds after submit form
+        setPartName('');
+        setPartNumber('');
+        setBrand('');
+        setPrice('');
+        setQty('1');
+        setCustomNotes('');
+        setPhotos([]);
+        setVoiceNote(null);
+        setSelectedSupplier(null);
+        setSelectedVehicle(null);
     };
 
     return (

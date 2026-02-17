@@ -552,7 +552,8 @@ const respondToBill = asyncHandler(async (req, res) => {
 // @route   POST /api/customer/parts/request
 const requestPart = async (req, res) => {
     try {
-        const { name, partNumber, brand, description, quantity, supplierId, items, jobId } = req.body;
+        const { name, partNumber, brand, description, quantity, supplierId, items, jobId, photos, voiceNote } = req.body;
+        console.log(req.body);
         const customer = await Customer.findOne({ user: req.user._id });
         if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
@@ -618,7 +619,9 @@ const requestPart = async (req, res) => {
                 name: customer.fullName,
                 phone: customer.phoneNumber || req.user.phoneNumber
             },
-            vehicleDetails: req.body.vehicleDetails || undefined
+            vehicleDetails: req.body.vehicleDetails || undefined,
+            photos: photos || [],
+            voiceNote: voiceNote || null
         });
 
         // 6. If vehicleId is provided but no details in body, try to fetch it to populate details
@@ -649,9 +652,10 @@ const requestPart = async (req, res) => {
             }
         }
 
-        // Notify Supplier
+        // Notify Supplier(s)
         try {
             if (supplierId) {
+                // Direct Request to specific supplier
                 const supplier = await Supplier.findById(supplierId);
                 if (supplier && supplier.user) {
                     await createNotification(req, {
@@ -669,6 +673,49 @@ const requestPart = async (req, res) => {
                         message: 'New inquiry received'
                     });
                 }
+            } else {
+                // Broadcast Request to Nearby Suppliers
+                let nearbySuppliers = [];
+                const lat = customer.location?.coordinates?.[1];
+                const lng = customer.location?.coordinates?.[0];
+
+                if (lat && lng) {
+                    nearbySuppliers = await Supplier.find({
+                        location: {
+                            $near: {
+                                $geometry: { type: "Point", coordinates: [lng, lat] },
+                                $maxDistance: 50000 // 50km radius
+                            }
+                        },
+                        isApproved: true
+                    });
+                } else {
+                    // Fallback: Notify all approved suppliers if no location
+                    nearbySuppliers = await Supplier.find({ isApproved: true }).limit(20);
+                }
+
+                console.log(`[PartRequest] Broadcasting inquiry ${orderId} to ${nearbySuppliers.length} suppliers.`);
+
+                // Notify all found suppliers
+                const notifications = nearbySuppliers.map(async (supplier) => {
+                    if (supplier.user) {
+                        await createNotification(req, {
+                            recipient: supplier.user,
+                            title: 'New Part Inquiry (Broadcast)',
+                            body: `New part inquiry #${orderId} available in your area from ${customer.fullName}.`,
+                            type: 'order',
+                            relatedId: order._id
+                        });
+
+                        emitOrderUpdate(req, supplier.user, {
+                            orderId: order._id,
+                            status: order.status,
+                            message: 'New open inquiry available'
+                        });
+                    }
+                });
+
+                await Promise.all(notifications);
             }
         } catch (e) {
             console.error('Notification Error:', e);
@@ -899,7 +946,7 @@ const createProductOrder = async (req, res) => {
         console.log('[customerController] createProductOrder called');
         console.log('[customerController] Body:', JSON.stringify(req.body, null, 2));
 
-        const { items, totalAmount, garageId, supplierId, paymentMethod, deliveryType, deliveryAddressId, deliveryFee } = req.body;
+        const { items, totalAmount, garageId, supplierId, paymentMethod, deliveryType, deliveryAddressId, deliveryFee, photos, voiceNote, description } = req.body;
         const customer = await Customer.findOne({ user: req.user._id });
         if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
@@ -1004,7 +1051,10 @@ const createProductOrder = async (req, res) => {
                 lat: deliveryAddress.location.coordinates[1],
                 lng: deliveryAddress.location.coordinates[0]
             } : null,
-            vehicleDetails: req.body.vehicleDetails || undefined
+            vehicleDetails: req.body.vehicleDetails || undefined,
+            photos: photos || [],
+            voiceNote: voiceNote || null,
+            description: description || ''
         };
 
         const order = await Order.create(orderData);
@@ -1191,8 +1241,11 @@ const getOrder = async (req, res) => {
         const { id } = req.params;
         const query = id.match(/^[0-9a-fA-F]{24}$/) ? { _id: id } : { orderId: id };
 
-        const order = await Order.findOne(query)
-            .populate('supplier', 'storeName fullName phone address rating');
+        let order = await Order.findOne(query)
+            .populate('supplier', 'storeName fullName phone address rating')
+            .populate('technician', 'name businessName phone address location')
+            .populate('items.product', 'name price image brand model')
+            .lean();
 
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
@@ -1200,6 +1253,22 @@ const getOrder = async (req, res) => {
         if (!customer || (order.customer && order.customer.toString() !== customer._id.toString())) {
             return res.status(403).json({ message: 'Unauthorized' });
         }
+
+        // Enhance response for frontend
+        if (order.technician) {
+            order.technicianName = order.technician.name || order.technician.businessName;
+        }
+
+        // For single-item orders, lift details to root for "Global" display if missing
+        if ((!order.description || !order.partName) && order.items && order.items.length === 1) {
+            order.description = order.description || order.items[0].description;
+            order.partName = order.partName || order.items[0].name;
+            if (!order.photos || order.photos.length === 0) {
+                order.photos = order.items[0].image ? [order.items[0].image] : [];
+            }
+            order.voiceUri = order.voiceUri || order.items[0].voiceUri;
+        }
+
         res.json(order);
     } catch (error) {
         console.error('getOrder Error:', error);

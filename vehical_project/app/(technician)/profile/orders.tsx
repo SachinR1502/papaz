@@ -7,7 +7,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useTechnician } from '@/context/TechnicianContext';
 import { socketService } from '@/services/socket';
 import { technicianService } from '@/services/technicianService';
-import { getMediaUrl } from '@/utils/mediaHelpers';
+import { getMediaUrl, parseDescription } from '@/utils/mediaHelpers';
+import { ImageModal } from '@/components/ui/ImageModal';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -38,6 +39,7 @@ export default function TechnicianWholesaleOrders() {
     const [refreshing, setRefreshing] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [isPaymentVisible, setIsPaymentVisible] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     const colorScheme = useColorScheme();
     const theme = colorScheme || 'light';
@@ -76,8 +78,35 @@ export default function TechnicianWholesaleOrders() {
         if (selectedOrder) {
             const updated = orders.find(o => o._id === selectedOrder._id);
             if (updated) setSelectedOrder(updated);
+
+            console.log('[TechnicianOrders] Selected Order Metadata:', {
+                id: selectedOrder._id,
+                photos: selectedOrder.photos,
+                voiceNote: selectedOrder.voiceNote,
+                description: selectedOrder.description,
+                status: selectedOrder.status
+            });
         }
-    }, [orders]);
+    }, [orders, selectedOrder]);
+
+    const globalPhotos = selectedOrder ? Array.from(new Set([
+        ...(selectedOrder.photos || []),
+        ...(selectedOrder.images || []),
+        ...(selectedOrder.image ? [selectedOrder.image] : []),
+        ...(selectedOrder.items?.[0]?.image ? [selectedOrder.items[0].image] : []),
+        ...(selectedOrder.items?.[0]?.images || []),
+        ...(selectedOrder.items?.[0]?.photos || []),
+        ...(parseDescription(selectedOrder.description).photoUris || [])
+    ].map(p => getMediaUrl(p)).filter(Boolean))) as string[] : [];
+
+    const globalVoice = selectedOrder ? (
+        getMediaUrl(selectedOrder.voiceNote) ||
+        getMediaUrl(selectedOrder.voiceUri) ||
+        getMediaUrl(selectedOrder.items?.[0]?.voiceUri) ||
+        getMediaUrl(selectedOrder.items?.[0]?.voiceNote) ||
+        parseDescription(selectedOrder.description).voiceUri
+    ) : null;
+    const hasGeneralNote = selectedOrder?.description && parseDescription(selectedOrder.description).displayNotes.trim().length > 0;
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -110,14 +139,25 @@ export default function TechnicianWholesaleOrders() {
             </View>
 
             <View style={[styles.itemsPreview, { backgroundColor: isDark ? '#00000030' : '#F9F9F9' }]}>
-                {item.items.slice(0, 2).map((part: any, idx: number) => (
-                    <View key={idx} style={styles.partItem}>
-                        <Image source={{ uri: getMediaUrl(part.image) || '' }} style={styles.partImage} />
-                        <Text style={[styles.partName, { color: colors.text }]} numberOfLines={1}>
-                            {part.quantity}x {part.name}
-                        </Text>
-                    </View>
-                ))}
+                {item.items.slice(0, 2).map((part: any, idx: number) => {
+                    const partParsed = parseDescription(part.description || '');
+                    const partImage = getMediaUrl(part.image) || getMediaUrl(part.images?.[0]) || getMediaUrl(part.photos?.[0]) || partParsed.photoUri;
+
+                    return (
+                        <View key={idx} style={styles.partItem}>
+                            <View style={[styles.partImage, { backgroundColor: colors.primary + '05', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }]}>
+                                {partImage ? (
+                                    <Image source={{ uri: partImage }} style={{ width: '100%', height: '100%' }} />
+                                ) : (
+                                    <Ionicons name="cube-outline" size={14} color={colors.primary} />
+                                )}
+                            </View>
+                            <Text style={[styles.partName, { color: colors.text }]} numberOfLines={1}>
+                                {part.quantity}x {part.name}
+                            </Text>
+                        </View>
+                    );
+                })}
                 {item.items.length > 2 && (
                     <Text style={[styles.moreItems, { color: colors.primary }]}>
                         + {item.items.length - 2} {t('more_items')}
@@ -216,6 +256,38 @@ export default function TechnicianWholesaleOrders() {
                                     </View>
                                 </View>
 
+                                {/* Global Attachments Section */}
+                                {(globalPhotos.length > 0 || globalVoice || hasGeneralNote) && (
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={[styles.sectionHeading, { color: colors.text, marginTop: 0 }]}>{t('main_attachments') || 'Main Attachments'}</Text>
+                                        <View style={[styles.supplierCard, { backgroundColor: colors.background, borderColor: colors.border, gap: 12 }]}>
+                                            {hasGeneralNote && (
+                                                <View>
+                                                    <Text style={[styles.detailLabel, { color: colors.icon, marginBottom: 4, fontSize: 12 }]}>{t('general_note') || 'General Note'}</Text>
+                                                    <Text style={[styles.detailValue, { color: colors.text }]}>{selectedOrder.description}</Text>
+                                                </View>
+                                            )}
+
+                                            {globalPhotos.length > 0 && (
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                                                    {globalPhotos.map((uri, idx) => (
+                                                        <TouchableOpacity key={idx} onPress={() => setSelectedImage(uri)}>
+                                                            <Image source={{ uri }} style={{ width: 150, height: 150, borderRadius: 12, backgroundColor: colors.border }} />
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </ScrollView>
+                                            )}
+
+                                            {globalVoice && (
+                                                <View>
+                                                    <Text style={[styles.detailLabel, { color: colors.icon, marginBottom: 8, fontSize: 12 }]}>{t('voice_note') || 'Voice Note'}</Text>
+                                                    <AudioPlayer uri={globalVoice} />
+                                                </View>
+                                            )}
+                                        </View>
+                                    </View>
+                                )}
+
                                 <Text style={[styles.sectionHeading, { color: colors.text }]}>{t('supplier_details')}</Text>
                                 <View style={[styles.supplierCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                                     <Text style={[styles.supplierNameText, { color: colors.text }]}>
@@ -227,22 +299,64 @@ export default function TechnicianWholesaleOrders() {
                                 </View>
 
                                 <Text style={[styles.sectionHeading, { color: colors.text }]}>{t('items_caps')}</Text>
-                                {selectedOrder.items.map((item: any, idx: number) => (
-                                    <View key={idx} style={[styles.itemDetailRow, { borderBottomColor: colors.border }]}>
-                                        <Image source={{ uri: getMediaUrl(item.image) || '' }} style={styles.itemThumb} />
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[styles.itemNameText, { color: colors.text }]}>{item.name}</Text>
-                                            <Text style={[styles.itemQtyText, { color: colors.icon }]}>{item.quantity} x {currencySymbol}{item.price}</Text>
+                                {selectedOrder.items.map((item: any, idx: number) => {
+                                    const itemParsed = parseDescription(item.description || '');
+                                    const itemPhotos = Array.from(new Set([
+                                        ...(item.photos || []),
+                                        ...(item.images || []),
+                                        ...(item.image ? [item.image] : []),
+                                        ...(itemParsed.photoUris || [])
+                                    ].map(p => getMediaUrl(p)).filter(Boolean))) as string[];
 
-                                            {item.voiceUri && (
-                                                <View style={{ marginTop: 8, maxWidth: 200 }}>
-                                                    <AudioPlayer uri={item.voiceUri} />
+                                    const itemVoice = item.voiceUri || item.voiceNote || itemParsed.voiceUri;
+
+                                    return (
+                                        <View key={idx} style={[styles.itemDetailRow, { borderBottomColor: colors.border, paddingVertical: 15 }]}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                                                {itemPhotos.length > 0 ? (
+                                                    <TouchableOpacity onPress={() => setSelectedImage(itemPhotos[0])}>
+                                                        <Image source={{ uri: itemPhotos[0] }} style={styles.itemThumb} />
+                                                    </TouchableOpacity>
+                                                ) : (
+                                                    <View style={[styles.itemThumb, { backgroundColor: colors.primary + '10', justifyContent: 'center', alignItems: 'center' }]}>
+                                                        <Ionicons name="cube-outline" size={20} color={colors.primary} />
+                                                    </View>
+                                                )}
+                                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                                    <Text style={[styles.itemNameText, { color: colors.text }]}>{item.name}</Text>
+                                                    <Text style={[styles.itemQtyText, { color: colors.icon }]}>
+                                                        {item.quantity} x {currencySymbol}{(item.price || 0).toLocaleString()}
+                                                    </Text>
+
+                                                    {itemParsed.displayNotes ? (
+                                                        <Text style={{ fontSize: 12, color: colors.icon, marginTop: 4 }} numberOfLines={2}>
+                                                            {itemParsed.displayNotes}
+                                                        </Text>
+                                                    ) : null}
+
+                                                    {itemPhotos.length > 1 && (
+                                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                                                            {itemPhotos.slice(1).map((p, pIdx) => (
+                                                                <TouchableOpacity key={pIdx} onPress={() => setSelectedImage(p)} style={{ marginRight: 8 }}>
+                                                                    <Image source={{ uri: p }} style={{ width: 40, height: 40, borderRadius: 8 }} />
+                                                                </TouchableOpacity>
+                                                            ))}
+                                                        </ScrollView>
+                                                    )}
+
+                                                    {itemVoice && (
+                                                        <View style={{ marginTop: 8, maxWidth: 200 }}>
+                                                            <AudioPlayer uri={itemVoice} />
+                                                        </View>
+                                                    )}
                                                 </View>
-                                            )}
+                                                <View style={{ alignItems: 'flex-end' }}>
+                                                    <Text style={[styles.itemSubtotal, { color: colors.text }]}>{currencySymbol}{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</Text>
+                                                </View>
+                                            </View>
                                         </View>
-                                        <Text style={[styles.itemSubtotal, { color: colors.text }]}>{currencySymbol}{(item.price * item.quantity).toLocaleString()}</Text>
-                                    </View>
-                                ))}
+                                    );
+                                })}
 
                                 <View style={styles.totalSummary}>
                                     <View style={styles.summaryRow}>
@@ -330,6 +444,12 @@ export default function TechnicianWholesaleOrders() {
                 }}
                 onCancel={() => setIsPaymentVisible(false)}
                 onFailure={(err) => Alert.alert(t('Error'), err)}
+            />
+
+            <ImageModal
+                visible={!!selectedImage}
+                uri={selectedImage}
+                onClose={() => setSelectedImage(null)}
             />
         </SafeAreaView>
     );
