@@ -35,7 +35,7 @@ export default function ShippingPolicy() {
 
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '32px', marginBottom: '16px' }}>4. Damages</h2>
                         <p style={{ marginBottom: '16px' }}>
-                            Papaz Vehicle Solutions is not liable for any products damaged or lost during shipping. If you received your order damaged, please contact the shipment carrier to file a claim. Please save all packaging materials and damaged goods before filing a claim.
+                            Papaz LLP is not liable for any products damaged or lost during shipping. If you received your order damaged, please contact the shipment carrier to file a claim. Please save all packaging materials and damaged goods before filing a claim.
                         </p>
                     </div>
                 </div>

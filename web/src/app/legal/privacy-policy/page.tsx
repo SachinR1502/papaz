@@ -15,7 +15,7 @@ export default function PrivacyPolicy() {
 
                     <div style={{ lineHeight: 1.8, color: 'var(--text-body)' }}>
                         <p style={{ marginBottom: '16px' }}>
-                            At Papaz Vehicle Solutions ("we", "our", or "us"), we align with industry standards to respect and protect your privacy. This Privacy Policy describes how we collect, use, and disclose your information when you use our website and services.
+                            At Papaz LLP ("we", "our", or "us"), we align with industry standards to respect and protect your privacy. This Privacy Policy describes how we collect, use, and disclose your information when you use our website and services.
                         </p>
 
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '32px', marginBottom: '16px' }}>1. Information We Collect</h2>

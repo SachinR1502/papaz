@@ -116,11 +116,12 @@ export default function Footer() {
                     fontSize: '0.9rem',
                     fontWeight: 600
                 }}>
-                    <p style={{ letterSpacing: '0.5px' }}>&copy; {new Date().getFullYear()} Papaz Vehicle Solutions Pvt Ltd. Innovation in every rotation.</p>
+                    <p style={{ letterSpacing: '0.5px' }}>&copy; {new Date().getFullYear()} Papaz LLP. Innovation in every rotation.</p>
                     <div style={{ display: 'flex', gap: '32px', fontSize: '0.85rem' }}>
-                        <Link href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
-                        <Link href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Terms of Service</Link>
-                        <Link href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Sustainability</Link>
+                        <Link href="/legal/privacy-policy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
+                        <Link href="/legal/terms-conditions" style={{ color: 'inherit', textDecoration: 'none' }}>Terms of Service</Link>
+                        <Link href="/legal/shipping-policy" style={{ color: 'inherit', textDecoration: 'none' }}>Shipping Policy</Link>
+                        <Link href="/legal/refund-policy" style={{ color: 'inherit', textDecoration: 'none' }}>Refund Policy</Link>
                     </div>
                 </div>
             </div>

@@ -15,7 +15,7 @@ export default function TermsConditions() {
 
                     <div style={{ lineHeight: 1.8, color: 'var(--text-body)' }}>
                         <p style={{ marginBottom: '16px' }}>
-                            Welcome to Papaz Vehicle Solutions. By accessing or using our website and services, you agree to be bound by these Terms and Conditions.
+                            Welcome to Papaz LLP. By accessing or using our website and services, you agree to be bound by these Terms and Conditions.
                         </p>
 
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '32px', marginBottom: '16px' }}>1. Acceptance of Terms</h2>
@@ -35,7 +35,7 @@ export default function TermsConditions() {
 
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '32px', marginBottom: '16px' }}>4. Limitation of Liability</h2>
                         <p style={{ marginBottom: '16px' }}>
-                            To the fullest extent permitted by law, Papaz Vehicle Solutions shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or relating to your use of the services.
+                            To the fullest extent permitted by law, Papaz LLP shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or relating to your use of the services.
                         </p>
 
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '32px', marginBottom: '16px' }}>5. Governing Law</h2>
