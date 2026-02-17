@@ -297,6 +297,11 @@ const acceptJob = asyncHandler(async (req, res) => {
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
     if (job.status !== 'pending') return ApiResponse.error(res, 'Job is no longer available', 400);
 
+    // Security Check: If job is already assigned to a specific technician (Direct Request), only THAT technician can accept it.
+    if (job.technician && job.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'This job is reserved for another technician', 403);
+    }
+
     job.technician = technician._id;
     job.status = 'accepted';
 
@@ -336,14 +341,63 @@ const updateJobStatus = asyncHandler(async (req, res) => {
 
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
 
-    if (status) job.status = status;
+    // 1. Authorization Check: Ensure this technician is assigned to the job
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician || job.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized to update this job', 403);
+    }
+
+    // 2. Status Transition Checks
+    if (status) {
+        // If technician is trying to mark as completed
+        if (status === 'completed') {
+            // Check if bill exists
+            if (!job.bill) {
+                return ApiResponse.error(res, 'Cannot complete job without a generated bill', 400);
+            }
+
+            // Security: Only allow manual completion for CASH payments
+            // Online/Wallet payments must be handled by their respective verification controllers
+            const paymentMethod = job.bill.paymentMethod || 'cash'; // Fallback to cash if not set
+            if (paymentMethod !== 'cash') {
+                return ApiResponse.error(res, `Cannot manually complete job with ${paymentMethod.toUpperCase()} payment. Payment must be verified by the system.`, 400);
+            }
+
+            // For Cash payments, mark as paid and create audit transaction
+            job.bill.status = 'paid';
+            job.bill.paymentMethod = 'cash';
+            job.billTotal = job.bill.totalAmount;
+
+            // Create Transaction record for Cash (Audit Trail)
+            await Transaction.create({
+                customer: job.customer,
+                technician: technician._id,
+                type: 'payment',
+                amount: job.bill.totalAmount,
+                description: `Cash Payment for Job #${job._id.toString().slice(-6).toUpperCase()}`,
+                status: 'completed',
+                paymentMethod: 'cash'
+            });
+
+            // Update Technician Stats/Earnings (even though cash isn't in digital wallet)
+            technician.totalEarnings = (technician.totalEarnings || 0) + job.bill.totalAmount;
+            await technician.save();
+
+            await Transaction.create({
+                technician: technician._id,
+                type: 'earnings',
+                amount: job.bill.totalAmount,
+                description: `Cash Earnings for Job #${job._id.toString().slice(-6).toUpperCase()}`,
+                status: 'completed',
+                paymentMethod: 'cash'
+            });
+        }
+
+        job.status = status;
+    }
+
     if (note) job.repairDetails = { ...job.repairDetails, notes: note };
     if (requirements) job.requirements = requirements;
-
-    // If job is completed, ensure bill is marked as paid
-    if (status === 'completed' && job.bill) {
-        job.bill.status = 'paid';
-    }
 
     // Logic to update steps based on status
     if (status === 'in_progress' && job.steps) {
@@ -408,6 +462,13 @@ const getJob = asyncHandler(async (req, res) => {
 
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
 
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician) return ApiResponse.error(res, 'Technician profile not found', 404);
+
+    if (job.technician && job.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized to view this job details', 403);
+    }
+
     // Fetch associated part requests (Orders)
     const partRequests = await Order.find({ serviceRequest: job._id })
         .populate('supplier', 'storeName fullName')
@@ -424,6 +485,12 @@ const sendQuote = asyncHandler(async (req, res) => {
     const job = await ServiceRequest.findById(req.params.id);
 
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
+
+    // Authorization: Ensure this technician is assigned to the job
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician || job.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized to send quote for this job', 403);
+    }
 
     const processedItems = items.map(item => {
         // If it's a note, set total to 0 regardless of price/quantity
@@ -447,8 +514,8 @@ const sendQuote = asyncHandler(async (req, res) => {
         };
     });
 
-    // Add service charge to items for visibility
-    if (job.serviceCharge > 0) {
+    // Add service charge to items for visibility if not already present
+    if (job.serviceCharge > 0 && !(processedItems || []).some(i => (i.description || "").toLowerCase().includes("service fee") || (i.description || "").toLowerCase().includes("pickup fee"))) {
         processedItems.push({
             description: `Service Fee (${(job.serviceMethod || 'on_spot').replace('_', ' ').toUpperCase()})`,
             quantity: 1,
@@ -518,6 +585,12 @@ const sendBill = asyncHandler(async (req, res) => {
 
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
 
+    // Authorization: Ensure this technician is assigned to the job
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician || job.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized to send bill for this job', 403);
+    }
+
     const processedItems = items.map(item => {
         // If it's a note, set total to 0 regardless of price/quantity
         const isNote = item.isNote || false;
@@ -540,8 +613,8 @@ const sendBill = asyncHandler(async (req, res) => {
         };
     });
 
-    // Add service charge to items for visibility
-    if (job.serviceCharge > 0) {
+    // Add service charge to items for visibility if not already present
+    if (job.serviceCharge > 0 && !(processedItems || []).some(i => (i.description || "").toLowerCase().includes("service fee") || (i.description || "").toLowerCase().includes("pickup fee"))) {
         processedItems.push({
             description: `Service Fee (${(job.serviceMethod || 'on_spot').replace('_', ' ').toUpperCase()})`,
             quantity: 1,
@@ -636,7 +709,14 @@ const requestProduct = asyncHandler(async (req, res) => {
     let vehicleDetails = null;
     if (jobId) {
         const job = await ServiceRequest.findById(jobId).populate('vehicle');
-        if (job && job.vehicle) {
+        if (!job) return ApiResponse.error(res, 'Linked job not found', 404);
+
+        // Authorization: Ensure this technician is assigned to the job
+        if (job.technician && job.technician.toString() !== technician._id.toString()) {
+            return ApiResponse.error(res, 'Not authorized to request parts for this job', 403);
+        }
+
+        if (job.vehicle) {
             vehicleDetails = {
                 make: job.vehicle.make,
                 model: job.vehicle.model,
@@ -738,6 +818,56 @@ const requestProduct = asyncHandler(async (req, res) => {
     return ApiResponse.success(res, order, 'Product ordered successfully');
 });
 
+// @desc    Respond to Order Quotation (from Supplier)
+// @route   POST /api/technician/store/request/:id/respond
+const respondToPartRequest = asyncHandler(async (req, res) => {
+    const { action } = req.body; // 'approve' or 'reject' / 'accept'
+    const order = await Order.findById(req.params.id);
+
+    if (!order) return ApiResponse.error(res, 'Order not found', 404);
+
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician || (order.technician && order.technician.toString() !== technician._id.toString())) {
+        return ApiResponse.error(res, 'Not authorized to respond to this quotation', 403);
+    }
+
+    if (order.status !== 'quoted' && order.status !== 'inquiry') {
+        return ApiResponse.error(res, 'Order is not in a respondable state (quoted/inquiry)', 400);
+    }
+
+    if (action === 'approve' || action === 'accept') {
+        order.status = 'confirmed';
+    } else {
+        order.status = 'rejected';
+    }
+
+    await order.save();
+
+    // Notify Supplier
+    if (order.supplier) {
+        const supplier = await Supplier.findById(order.supplier).populate('user');
+        if (supplier && supplier.user) {
+            createNotification(req, {
+                recipient: supplier.user._id,
+                title: `Quotation ${action === 'approve' || action === 'accept' ? 'Accepted' : 'Rejected'}`,
+                body: `Technician has ${action === 'approve' || action === 'accept' ? 'accepted' : 'rejected'} your quotation for order #${order.orderId}.`,
+                type: 'order',
+                relatedId: order._id
+            }).catch(e => console.error('Notification Error:', e));
+
+            if (emitOrderUpdate) {
+                emitOrderUpdate(req, supplier.user._id, {
+                    orderId: order._id,
+                    status: order.status,
+                    message: `Quotation ${action} by technician`
+                });
+            }
+        }
+    }
+
+    return ApiResponse.success(res, order, `Quotation ${action} successfully responded`);
+});
+
 const addPart = asyncHandler(async (req, res) => {
     const part = req.body;
     const technician = await Technician.findOne({ user: req.user._id });
@@ -813,16 +943,43 @@ const requestCustomOrder = asyncHandler(async (req, res) => {
 
 const getVehicleHistory = asyncHandler(async (req, res) => {
     const { vehicleId } = req.params;
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician) return ApiResponse.error(res, 'Technician profile not found', 404);
+
     let vehicle = null;
 
     // First try valid ObjectId
     if (vehicleId.match(/^[0-9a-fA-F]{24}$/)) {
-        vehicle = await Vehicle.findById(vehicleId).populate('customer', 'fullName phoneNumber email');
+        vehicle = await Vehicle.findById(vehicleId);
     }
 
     // If not found by ID or not a valid ID format, try registration number
     if (!vehicle) {
-        vehicle = await Vehicle.findOne({ registrationNumber: vehicleId }).populate('customer', 'fullName phoneNumber email');
+        vehicle = await Vehicle.findOne({ registrationNumber: vehicleId });
+    }
+
+    // Authorization: Check if technician has a job for this vehicle (assigned or broadcast)
+    const query = {
+        $or: [
+            { vehicle: vehicle?._id },
+            { vehicleNumber: vehicleId }
+        ],
+        $or: [
+            { technician: technician._id },
+            { isBroadcast: true, status: 'pending' }
+        ]
+    };
+
+    const hasAccess = await ServiceRequest.findOne(query);
+
+    if (!hasAccess) {
+        return ApiResponse.error(res, 'Not authorized to view this vehicle history', 403);
+    }
+
+    // Only allow seeing customer contact details if explicitly assigned
+    const isAssigned = hasAccess.technician && hasAccess.technician.toString() === technician._id.toString();
+    if (vehicle && isAssigned) {
+        await vehicle.populate('customer', 'fullName phoneNumber email');
     }
 
     const history = await ServiceRequest.find({
@@ -853,7 +1010,14 @@ const placeWholesaleOrder = asyncHandler(async (req, res) => {
     let vehicleDetails = null;
     if (jobId) {
         const job = await ServiceRequest.findById(jobId).populate('vehicle');
-        if (job && job.vehicle) {
+        if (!job) return ApiResponse.error(res, 'Linked job not found', 404);
+
+        // Authorization: Ensure this technician is assigned to the job
+        if (job.technician && job.technician.toString() !== technician._id.toString()) {
+            return ApiResponse.error(res, 'Not authorized to place wholesale orders for this job', 403);
+        }
+
+        if (job.vehicle) {
             vehicleDetails = {
                 make: job.vehicle.make,
                 model: job.vehicle.model,
@@ -1068,6 +1232,11 @@ const updateRequirementStatus = asyncHandler(async (req, res) => {
 
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
 
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician || job.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized', 403);
+    }
+
     const requirement = job.requirements.id(req.params.reqId);
     if (!requirement) return ApiResponse.error(res, 'Requirement not found', 404);
 
@@ -1087,6 +1256,11 @@ const requestParts = asyncHandler(async (req, res) => {
     const { parts } = req.body;
     const job = await ServiceRequest.findById(req.params.id);
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
+
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician || job.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized', 403);
+    }
     // Logic for requesting parts from local store/admin
     return ApiResponse.success(res, null, 'Parts requested successfully');
 });
@@ -1095,6 +1269,11 @@ const addRepairDetails = asyncHandler(async (req, res) => {
     const { details } = req.body;
     const job = await ServiceRequest.findById(req.params.id);
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
+
+    const technician = await Technician.findOne({ user: req.user._id });
+    if (!technician || job.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized', 403);
+    }
     job.repairDetails = details;
     await job.save();
     return ApiResponse.success(res, job, 'Repair details added');
@@ -1205,5 +1384,6 @@ module.exports = {
     requestWithdrawal,
     getBankAccounts,
     addBankAccount,
-    getEarningsSummary
+    getEarningsSummary,
+    respondToPartRequest
 };

@@ -1,10 +1,9 @@
 'use client';
-import Navbar from '@/components/layout/Navbar';
 import Link from 'next/link';
-import AccountSidebar from '@/components/account/AccountSidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { MapPin, Plus, Phone, Edit2, Trash2 } from 'lucide-react';
 
 export default function AddressesPage() {
     const { token } = useAuth();
@@ -19,6 +18,7 @@ export default function AddressesPage() {
 
     const fetchAddresses = async () => {
         try {
+            setLoading(true);
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/addresses`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -34,68 +34,318 @@ export default function AddressesPage() {
     };
 
     return (
-        <main style={{ minHeight: '100vh', background: 'var(--bg-body)' }}>
-            <Navbar />
+        <section className="logistics-hub">
+            <header className="page-header">
+                <div>
+                    <h1>
+                        Saved <span className="text-primary">Locations</span>
+                    </h1>
+                    <p>Manage your delivery coordinates and logistics headquarters.</p>
+                </div>
+                <button className="add-btn">
+                    <Plus size={20} />
+                    New Coordinate
+                </button>
+            </header>
 
-            <div className="container" style={{ padding: '60px 24px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '40px' }} className="account-grid">
+            {loading ? (
+                <div className="skeleton-grid">
+                    {[1, 2].map(i => (
+                        <div key={i} className="skeleton-orb" />
+                    ))}
+                </div>
+            ) : addresses.length === 0 ? (
+                <div className="void-pane">
+                    <div className="void-icon">
+                        <MapPin size={48} />
+                    </div>
+                    <h3>No Coordinates Detected</h3>
+                    <p>Establish your first delivery point to expedite procurement.</p>
+                </div>
+            ) : (
+                <div className="address-grid">
+                    {addresses.map(address => (
+                        <div key={address._id || address.id} className="address-card">
+                            <div className="card-top">
+                                <div className="label-badge">
+                                    <div className="status-dot"></div>
+                                    <span>{address.label}</span>
+                                </div>
+                                {address.isDefault && (
+                                    <span className="primary-pill">Primary</span>
+                                )}
+                            </div>
 
-                    <AccountSidebar />
-
-                    {/* Content */}
-                    <section>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                            <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>Saved Addresses</h1>
-                            <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.9rem' }}>+ Add New</button>
-                        </div>
-
-                        {loading ? (
-                            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Loading addresses...</div>
-                        ) : addresses.length === 0 ? (
-                            <div className="glass-panel" style={{ padding: '60px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                                <div style={{ fontSize: '3rem' }}>📍</div>
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>No addresses saved</h3>
-                                    <p style={{ color: 'var(--text-muted)', margin: '8px 0 0' }}>Add an address for faster checkout.</p>
+                            <div className="card-body">
+                                <h4>{address.fullName}</h4>
+                                <div className="coordinates">
+                                    <p>{address.addressLine1}</p>
+                                    {address.addressLine2 && <p>{address.addressLine2}</p>}
+                                    <p>{address.city}, {address.state} - {address.zipCode}</p>
+                                </div>
+                                <div className="contact-strip">
+                                    <Phone size={14} />
+                                    <span>{address.phone}</span>
                                 </div>
                             </div>
-                        ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                                {addresses.map(address => (
-                                    <div key={address._id || address.id} className="glass-panel" style={{ padding: '24px', position: 'relative' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                            <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{address.label}</span>
-                                            {address.isDefault && (
-                                                <span style={{ fontSize: '0.75rem', background: 'rgba(46,204,113,0.1)', color: 'var(--status-success)', padding: '2px 8px', borderRadius: '100px', fontWeight: 600 }}>Default</span>
-                                            )}
-                                        </div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '20px' }}>
-                                            <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-body)' }}>{address.fullName}</p>
-                                            <p style={{ margin: 0 }}>{address.addressLine1}</p>
-                                            {address.addressLine2 && <p style={{ margin: 0 }}>{address.addressLine2}</p>}
-                                            <p style={{ margin: 0 }}>{address.city}, {address.state} - {address.zipCode}</p>
-                                            <p style={{ margin: '4px 0 0' }}>Ph: {address.phone}</p>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '12px' }}>
-                                            <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 600, cursor: 'pointer', padding: 0 }}>Edit</button>
-                                            <button style={{ background: 'none', border: 'none', color: 'var(--status-error)', fontWeight: 600, cursor: 'pointer', padding: 0 }}>Delete</button>
-                                        </div>
-                                    </div>
-                                ))}
+
+                            <div className="card-actions">
+                                <button className="action-btn edit">
+                                    <Edit2 size={16} />
+                                    Edit
+                                </button>
+                                <button className="action-btn delete">
+                                    <Trash2 size={16} />
+                                    Remove
+                                </button>
                             </div>
-                        )}
-                    </section>
-
+                        </div>
+                    ))}
                 </div>
-            </div>
+            )}
 
-            <style jsx global>{`
-                @media (max-width: 768px) {
-                    .account-grid {
-                        grid-template-columns: 1fr !important;
-                    }
-                }
-            `}</style>
-        </main>
+            <style jsx>{`
+        .logistics-hub {
+          animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          margin-bottom: 48px;
+          gap: 24px;
+        }
+
+        h1 {
+          font-size: clamp(2rem, 4vw, 2.6rem);
+          font-weight: 950;
+          margin: 0;
+          letter-spacing: -2px;
+        }
+
+        .text-primary {
+          color: var(--color-primary);
+        }
+
+        p {
+          margin: 8px 0 0;
+          color: var(--text-muted);
+          font-weight: 500;
+          font-size: 1.1rem;
+        }
+
+        .add-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 16px 32px;
+          background: var(--color-primary);
+          color: white;
+          border: none;
+          border-radius: 16px;
+          font-weight: 800;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          box-shadow: 0 10px 20px rgba(255, 140, 0, 0.2);
+        }
+
+        .add-btn:hover {
+          transform: translateY(-4px) scale(1.02);
+          box-shadow: 0 15px 30px rgba(255, 140, 0, 0.3);
+        }
+
+        /* GRID */
+        .address-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          gap: 24px;
+        }
+
+        .address-card {
+          background: rgba(var(--bg-card-rgb), 0.5);
+          backdrop-filter: blur(16px);
+          border: 1px solid var(--border-color);
+          border-radius: 32px;
+          padding: 32px;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .address-card:hover {
+          transform: translateY(-8px);
+          border-color: var(--color-primary);
+          background: rgba(var(--bg-card-rgb), 0.7);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+
+        .label-badge {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 8px 16px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+        }
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          background: var(--color-primary);
+          border-radius: 50%;
+          box-shadow: 0 0 10px var(--color-primary);
+        }
+
+        .label-badge span {
+          font-weight: 800;
+          font-size: 1.1rem;
+          letter-spacing: -0.5px;
+        }
+
+        .primary-pill {
+          font-size: 0.7rem;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          background: rgba(var(--status-success-rgb, 52, 199, 89), 0.1);
+          color: var(--status-success);
+          padding: 6px 14px;
+          border-radius: 100px;
+          border: 1px solid rgba(var(--status-success-rgb, 52, 199, 89), 0.2);
+        }
+
+        .card-body h4 {
+          margin: 0 0 12px;
+          font-size: 1.3rem;
+          font-weight: 900;
+        }
+
+        .coordinates p {
+          margin: 0;
+          font-size: 1rem;
+          color: var(--text-muted);
+          line-height: 1.6;
+        }
+
+        .contact-strip {
+          margin-top: 20px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--text-body);
+          font-weight: 600;
+        }
+
+        .card-actions {
+          margin-top: 32px;
+          display: flex;
+          gap: 12px;
+          padding-top: 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .action-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px;
+          border-radius: 14px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: 0.2s;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border-color);
+          color: var(--text-body);
+        }
+
+        .action-btn:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: var(--text-muted);
+        }
+
+        .action-btn.delete {
+          color: var(--status-error);
+        }
+
+        .action-btn.delete:hover {
+          background: rgba(255, 59, 48, 0.05);
+          border-color: var(--status-error);
+        }
+
+        /* VOID STATE */
+        .void-pane {
+          text-align: center;
+          padding: 100px 40px;
+          background: rgba(var(--bg-card-rgb), 0.2);
+          border: 2px dashed var(--border-color);
+          border-radius: 40px;
+          backdrop-filter: blur(10px);
+        }
+
+        .void-icon {
+          width: 80px;
+          height: 80px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 24px;
+          color: var(--text-muted);
+        }
+
+        /* SKELETON */
+        .skeleton-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          gap: 24px;
+        }
+
+        .skeleton-orb {
+          height: 280px;
+          border-radius: 32px;
+          background: rgba(var(--bg-card-rgb), 0.3);
+          border: 1px solid var(--border-color);
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0% { opacity: 0.5; }
+          50% { opacity: 0.8; }
+          100% { opacity: 0.5; }
+        }
+
+        @media (max-width: 768px) {
+          .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .add-btn {
+            width: 100%;
+            justify-content: center;
+          }
+          .address-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+        </section>
     );
 }

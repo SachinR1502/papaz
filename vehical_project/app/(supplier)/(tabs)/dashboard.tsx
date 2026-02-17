@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SupplierDashboard() {
     const { user, logout } = useAuth();
-    const { profile, orders, wholesaleOrders, walletBalance, refreshData, isLoading, inventory, requestWithdrawal } = useSupplier();
+    const { profile, orders, wholesaleOrders: directWholesaleOrders, walletBalance, refreshData, isLoading, inventory, requestWithdrawal } = useSupplier();
     const { settings } = useAdmin();
     const { conversations } = useChat();
     const { t } = useLanguage();
@@ -41,6 +41,20 @@ export default function SupplierDashboard() {
     }, []);
 
     // Derived Metrics
+    // Derived Metrics
+    // Combine direct wholesale orders and broadcast inquiries
+    const broadcastInquiries = orders.filter(o => o.status === 'inquiry' && !o.supplier);
+
+    // Merge and deduplicate wholesale requests
+    const allWholesaleMap = new Map();
+    directWholesaleOrders.forEach(o => allWholesaleMap.set(o.id, o));
+    broadcastInquiries.forEach(o => allWholesaleMap.set(o.id, o));
+
+    const allWholesale = Array.from(allWholesaleMap.values());
+
+    // Filter for active wholesale requests/inquiries
+    const activeWholesale = allWholesale.filter(o => ['inquiry', 'pending', 'quoted'].includes(o.status));
+
     const pendingOrders = orders.filter(o => o.status === 'pending').length;
     const completedOrders = orders.filter(o => o.status === 'delivered').length;
     const lowStockItems = inventory.filter(i => i.quantity < 5).length;
@@ -139,7 +153,7 @@ export default function SupplierDashboard() {
                     />
                     <StatCard
                         title={t('wholesale_req')}
-                        value={wholesaleOrders.length}
+                        value={activeWholesale.length}
                         icon="briefcase-outline"
                         color="#5856D6"
                         onPress={() => router.push('/(supplier)/(tabs)/orders')}
@@ -190,9 +204,9 @@ export default function SupplierDashboard() {
                     }
                 />
 
-                {wholesaleOrders.length > 0 ? (
+                {activeWholesale.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.wholesaleScroll}>
-                        {wholesaleOrders.map((request, index) => (
+                        {activeWholesale.map((request, index) => (
                             <WholesaleSummaryCard key={request.id || `whale-${index}`} request={request} index={index} />
                         ))}
                     </ScrollView>

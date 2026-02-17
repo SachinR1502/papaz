@@ -259,6 +259,14 @@ const getJob = asyncHandler(async (req, res) => {
         return ApiResponse.error(res, 'Job not found', 404);
     }
 
+    const customer = await Customer.findOne({ user: req.user._id });
+
+    // Check if authorized (handle populated customer field)
+    const jobCustomerId = job.customer?._id || job.customer;
+    if (!customer || !jobCustomerId || jobCustomerId.toString() !== customer._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized', 403);
+    }
+
     return ApiResponse.success(res, job, 'Job details fetched successfully');
 });
 
@@ -269,6 +277,11 @@ const rateJob = asyncHandler(async (req, res) => {
     const job = await ServiceRequest.findById(req.params.id);
 
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
+
+    const customer = await Customer.findOne({ user: req.user._id });
+    if (!customer || job.customer.toString() !== customer._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized', 403);
+    }
     if (job.status !== 'completed' && job.status !== 'vehicle_delivered') {
         return ApiResponse.error(res, 'Job must be completed to rate', 400);
     }
@@ -302,6 +315,11 @@ const cancelJob = asyncHandler(async (req, res) => {
     const job = await ServiceRequest.findById(req.params.id);
 
     if (!job) return ApiResponse.error(res, 'Job not found', 404);
+
+    const customer = await Customer.findOne({ user: req.user._id });
+    if (!customer || job.customer.toString() !== customer._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized', 403);
+    }
 
     if (job.status !== 'pending' && job.status !== 'accepted') {
         return ApiResponse.error(res, 'Cannot cancel job in its current state', 400);
@@ -345,7 +363,7 @@ const respondToQuote = asyncHandler(async (req, res) => {
 
     if (!finalAction) {
         console.warn(`[RESPOND_QUOTE] Missing action in request body:`, req.body);
-        return ApiResponse.error(res, 'Action is required', 400);
+        return ApiResponse.error(res, `Action is required. Received body: ${JSON.stringify(req.body)}`, 400);
     }
 
     const job = await ServiceRequest.findById(req.params.id);
@@ -354,12 +372,16 @@ const respondToQuote = asyncHandler(async (req, res) => {
         console.warn(`[RESPOND_QUOTE] Job not found: ${req.params.id}`);
         return ApiResponse.error(res, 'Job not found', 404);
     }
+    const customer = await Customer.findOne({ user: req.user._id });
+    if (!customer || job.customer.toString() !== customer._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized to respond to this quote', 403);
+    }
 
     console.log(`[RESPOND_QUOTE] Found Job: ${job._id}, Current Status: ${job.status}`);
 
     if (job.status !== 'quote_pending') {
         console.warn(`[RESPOND_QUOTE] Invalid status for response: ${job.status}`);
-        return ApiResponse.error(res, `No pending quote for this job (Current status: ${job.status})`, 400);
+        return ApiResponse.error(res, `No pending quote for this job. Current status: '${job.status}'. JobID: ${job._id}`, 400);
     }
 
     if (finalAction === 'approve' || finalAction === 'approved' || finalAction === 'accept_with_parts' || finalAction === 'accept_own_parts') {
@@ -421,15 +443,16 @@ const respondToBill = asyncHandler(async (req, res) => {
     }
 
     console.log(`[RESPOND_BILL] Job Status: ${job.status}`);
+    const customer = await Customer.findOne({ user: req.user._id });
+    if (!customer || job.customer.toString() !== customer._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized to respond to this bill', 403);
+    }
 
     if (action === 'approve') {
         const billAmount = job.bill?.totalAmount || 0;
         const jobShortId = job._id.toString().slice(-6).toUpperCase();
 
         if (paymentMethod === 'wallet') {
-            const customer = await Customer.findOne({ user: req.user._id });
-            if (!customer) return ApiResponse.error(res, 'Customer not found', 404);
-
             // Atomic update to prevent race conditions
             const updatedCustomer = await Customer.findOneAndUpdate(
                 { _id: customer._id, walletBalance: { $gte: billAmount } },
@@ -569,6 +592,9 @@ const requestPart = async (req, res) => {
         if (jobId) {
             const job = await ServiceRequest.findById(jobId);
             if (job) {
+                if (job.customer.toString() !== customer._id.toString()) {
+                    return res.status(403).json({ message: 'Not authorized for this job' });
+                }
                 technicianId = job.technician;
             }
         }
@@ -591,8 +617,37 @@ const requestPart = async (req, res) => {
                 address: customer.address,
                 name: customer.fullName,
                 phone: customer.phoneNumber || req.user.phoneNumber
-            }
+            },
+            vehicleDetails: req.body.vehicleDetails || undefined
         });
+
+        // 6. If vehicleId is provided but no details in body, try to fetch it to populate details
+        if (!req.body.vehicleDetails && (req.body.vehicleId || (jobId))) {
+            try {
+                let vId = req.body.vehicleId;
+                if (!vId && jobId) {
+                    const job = await ServiceRequest.findById(jobId);
+                    if (job) vId = job.vehicle;
+                }
+
+                if (vId) {
+                    const vehicle = await Vehicle.findById(vId);
+                    if (vehicle) {
+                        order.vehicleDetails = {
+                            make: vehicle.make,
+                            model: vehicle.model,
+                            year: vehicle.year,
+                            vin: vehicle.vin || vehicle.chassisNumber,
+                            registrationNumber: vehicle.registrationNumber,
+                            fuelType: vehicle.fuelType
+                        };
+                        await order.save();
+                    }
+                }
+            } catch (err) {
+                console.error('Error populating vehicle details for request:', err);
+            }
+        }
 
         // Notify Supplier
         try {
@@ -948,7 +1003,8 @@ const createProductOrder = async (req, res) => {
             location: (deliveryAddress && deliveryAddress.location && deliveryAddress.location.coordinates) ? {
                 lat: deliveryAddress.location.coordinates[1],
                 lng: deliveryAddress.location.coordinates[0]
-            } : null
+            } : null,
+            vehicleDetails: req.body.vehicleDetails || undefined
         };
 
         const order = await Order.create(orderData);
@@ -1005,6 +1061,10 @@ const createOrderPayment = async (req, res) => {
         const customer = await Customer.findOne({ user: req.user._id });
         if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
+        if (order.customer && order.customer.toString() !== customer._id.toString()) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
         const amount = order.totalAmount;
         const rzpOrder = await createOrder(amount, 'INR', {
             customerId: customer._id.toString(),
@@ -1030,6 +1090,11 @@ const verifyOrderPayment = async (req, res) => {
         const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        const customer = await Customer.findOne({ user: req.user._id });
+        if (!customer || (order.customer && order.customer.toString() !== customer._id.toString())) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
 
         // Verify signature
         const isValid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
@@ -1130,6 +1195,11 @@ const getOrder = async (req, res) => {
             .populate('supplier', 'storeName fullName phone address rating');
 
         if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        const customer = await Customer.findOne({ user: req.user._id });
+        if (!customer || (order.customer && order.customer.toString() !== customer._id.toString())) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         res.json(order);
     } catch (error) {
         console.error('getOrder Error:', error);
@@ -1217,6 +1287,14 @@ const updateProfile = asyncHandler(async (req, res) => {
 });
 
 const getVehicleHistory = asyncHandler(async (req, res) => {
+    const customer = await Customer.findOne({ user: req.user._id });
+    if (!customer) return ApiResponse.error(res, 'Customer not found', 404);
+
+    const vehicle = await Vehicle.findById(req.params.id);
+    if (!vehicle || vehicle.customer.toString() !== customer._id.toString()) {
+        return ApiResponse.error(res, 'Vehicle not found or not authorized', 403);
+    }
+
     const jobs = await ServiceRequest.find({ vehicle: req.params.id })
         .populate({
             path: 'technician',
@@ -1277,6 +1355,7 @@ const removeCard = asyncHandler(async (req, res) => {
 
     return ApiResponse.success(res, customer.savedCards, 'Card removed successfully');
 });
+
 const getSuppliers = async (req, res) => {
     try {
         const { lat, lng } = req.query;
@@ -1435,6 +1514,11 @@ const respondToOrderQuotation = asyncHandler(async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) return ApiResponse.error(res, 'Order not found', 404);
+
+    const customer = await Customer.findOne({ user: req.user._id });
+    if (!customer || (order.customer && order.customer.toString() !== customer._id.toString())) {
+        return ApiResponse.error(res, 'Not authorized to respond to this quotation', 403);
+    }
 
     if (order.status !== 'quoted') {
         return ApiResponse.error(res, 'Order is not in quoted status', 400);

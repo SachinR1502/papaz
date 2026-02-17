@@ -220,8 +220,9 @@ export default function JobDetailsScreen() {
         try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
             await updateJobStatus(job.id, newStatus);
-        } catch (e) {
-            Alert.alert('Error', 'Failed to update status');
+        } catch (e: any) {
+            const errorMsg = e.response?.data?.message || e.message || 'Failed to update status';
+            Alert.alert('Error', errorMsg);
         } finally {
             setActionLoading(false);
         }

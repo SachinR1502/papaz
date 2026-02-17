@@ -199,8 +199,24 @@ function BookingDetailsContent() {
         try {
             await respondToQuote(job.id, responseType as any);
             Alert.alert(t('job_approved'), t('technician_notified'));
-        } catch (e) {
-            Alert.alert(t('error'), t('failed_to_approve'));
+        } catch (e: any) {
+            const errorMessage = e.response?.data?.message || e.message || t('failed_to_approve');
+            Alert.alert(t('error'), errorMessage);
+            console.error('Approve Error:', errorMessage, e);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleReject = async () => {
+        setActionLoading(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        try {
+            await respondToQuote(job.id, 'reject');
+            Alert.alert(t('job_rejected'), t('technician_notified'));
+        } catch (e: any) {
+            const errorMessage = e.response?.data?.message || e.message || 'Failed to reject quote';
+            Alert.alert(t('error'), errorMessage);
         } finally {
             setActionLoading(false);
         }
@@ -890,7 +906,7 @@ function BookingDetailsContent() {
                             )}
                         </View>
                         <View style={styles.actionButtons}>
-                            <AppButton title={t('Reject')} onPress={() => respondToQuote(job.id, 'reject')} variant="danger" style={{ flex: 1 }} />
+                            <AppButton title={t('Reject')} onPress={handleReject} variant="danger" style={{ flex: 1 }} />
                             <AppButton title={t('Approve Work')} onPress={() => setApprovalModalVisible(true)} variant="primary" style={{ flex: 2 }} />
                         </View>
                     </View>

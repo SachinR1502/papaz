@@ -80,6 +80,7 @@ export default function TechnicianWholesaleStore() {
 
     const [isCustomOrderVisible, setIsCustomOrderVisible] = useState(false);
     const [supplierName, setSupplierName] = useState('');
+    const [customOrderVehicle, setCustomOrderVehicle] = useState({ make: '', model: '', year: '', vin: '', fuelType: '' });
     const [customParts, setCustomParts] = useState<any[]>([{ id: '1', name: '', company: '', partNumber: '', qty: '1', description: '', photos: [], voiceNote: null }]);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
@@ -303,11 +304,12 @@ export default function TechnicianWholesaleStore() {
                 voiceNote: item.voiceNote || null
             }));
 
-            const response: any = await technicianService.requestCustomOrder(supplierName, processedItems);
+            const response: any = await technicianService.requestCustomOrder(supplierName, processedItems, customOrderVehicle);
             if (response.success) {
                 setIsCustomOrderVisible(false);
                 setOrderConfirmed(true);
                 setCustomParts([{ id: '1', name: '', company: '', partNumber: '', qty: '1', description: '', photos: [], voiceNote: null }]);
+                setCustomOrderVehicle({ make: '', model: '', year: '', vin: '', fuelType: '' });
             } else {
                 Alert.alert(t('error'), t('dispatch_error'));
             }
@@ -683,6 +685,51 @@ export default function TechnicianWholesaleStore() {
                                         onChangeText={setSupplierName}
                                         placeholderTextColor={colors.icon}
                                     />
+                                </View>
+                            </View>
+
+                            <View style={[styles.formGroup, { marginBottom: 15 }]}>
+                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('vehicle_details_optional') || 'Vehicle Details (Optional)'}</Text>
+                                <View style={styles.inputRow}>
+                                    <View style={{ flex: 1, marginRight: 8 }}>
+                                        <TextInput
+                                            placeholder={t('make_e_g_toyota') || 'Make (e.g. Toyota)'}
+                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                                            value={customOrderVehicle.make}
+                                            onChangeText={(v) => setCustomOrderVehicle(prev => ({ ...prev, make: v }))}
+                                            placeholderTextColor={colors.icon}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <TextInput
+                                            placeholder={t('model_e_g_camry') || 'Model (e.g. Camry)'}
+                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                                            value={customOrderVehicle.model}
+                                            onChangeText={(v) => setCustomOrderVehicle(prev => ({ ...prev, model: v }))}
+                                            placeholderTextColor={colors.icon}
+                                        />
+                                    </View>
+                                </View>
+                                <View style={[styles.inputRow, { marginTop: 8 }]}>
+                                    <View style={{ width: 80, marginRight: 8 }}>
+                                        <TextInput
+                                            placeholder={t('year') || 'Year'}
+                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                                            value={customOrderVehicle.year}
+                                            onChangeText={(v) => setCustomOrderVehicle(prev => ({ ...prev, year: v }))}
+                                            keyboardType="numeric"
+                                            placeholderTextColor={colors.icon}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <TextInput
+                                            placeholder={t('vin_optional') || 'VIN (Optional)'}
+                                            style={[styles.premiumInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                                            value={customOrderVehicle.vin}
+                                            onChangeText={(v) => setCustomOrderVehicle(prev => ({ ...prev, vin: v }))}
+                                            placeholderTextColor={colors.icon}
+                                        />
+                                    </View>
                                 </View>
                             </View>
 

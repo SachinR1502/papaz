@@ -258,7 +258,50 @@ export default function TechnicianWholesaleOrders() {
                                         </Text>
                                     </View>
 
-                                    {selectedOrder.paymentStatus !== 'paid' && selectedOrder.status !== 'cancelled' && (
+                                    {selectedOrder.status === 'quoted' ? (
+                                        <View style={{ marginTop: 20, flexDirection: 'row', gap: 10 }}>
+                                            <TouchableOpacity
+                                                style={[styles.payBtn, { flex: 1, backgroundColor: colors.error, marginTop: 0 }]}
+                                                onPress={() => {
+                                                    Alert.alert(t('Reject Quote'), t('Are you sure you want to reject this quote?'), [
+                                                        { text: t('Cancel'), style: 'cancel' },
+                                                        {
+                                                            text: t('Reject'), style: 'destructive', onPress: async () => {
+                                                                try {
+                                                                    await technicianService.respondToPartRequest(selectedOrder._id, 'reject');
+                                                                    setSelectedOrder({ ...selectedOrder, status: 'rejected' });
+                                                                    fetchOrders(true);
+                                                                    Alert.alert(t('Quote Rejected'));
+                                                                } catch (e) { Alert.alert(t('Error'), t('Action failed')); }
+                                                            }
+                                                        }
+                                                    ]);
+                                                }}
+                                            >
+                                                <Text style={styles.payBtnText}>{t('Reject')}</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.payBtn, { flex: 1, backgroundColor: colors.success, marginTop: 0 }]}
+                                                onPress={() => {
+                                                    Alert.alert(t('Approve Quote'), t('Accept this price and proceed?'), [
+                                                        { text: t('Cancel'), style: 'cancel' },
+                                                        {
+                                                            text: t('Approve'), onPress: async () => {
+                                                                try {
+                                                                    await technicianService.respondToPartRequest(selectedOrder._id, 'accept');
+                                                                    setSelectedOrder({ ...selectedOrder, status: 'confirmed' }); // Optimistic update
+                                                                    fetchOrders(true);
+                                                                    Alert.alert(t('Quote Approved'), t('Order confirmed. You can now pay.'));
+                                                                } catch (e) { Alert.alert(t('Error'), t('Action failed')); }
+                                                            }
+                                                        }
+                                                    ]);
+                                                }}
+                                            >
+                                                <Text style={styles.payBtnText}>{t('Approve')}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ) : (selectedOrder.paymentStatus !== 'paid' && selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'rejected') && (
                                         <TouchableOpacity
                                             style={[styles.payBtn, { backgroundColor: colors.primary }]}
                                             onPress={() => setIsPaymentVisible(true)}

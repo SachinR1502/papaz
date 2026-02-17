@@ -69,6 +69,8 @@ export default function RegisterPage() {
 
             if (form.role === 'supplier') {
                 router.push('/supplier/onboarding');
+            } else if (form.role === 'technician') {
+                router.push('/technician/dashboard');
             } else {
                 router.push('/');
             }

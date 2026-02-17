@@ -183,11 +183,29 @@ export default function OrderDetailScreen() {
                         <View style={{ flex: 1, marginLeft: 12 }}>
                             <Text style={[styles.detailLabel, { color: colors.icon }]}>{t('delivery_address') || 'Address'}</Text>
                             <Text style={[styles.detailValue, { color: colors.text }]}>
-                                {order.location || order.customer?.city || 'Direct Shop Pickup'}
+                                {typeof order.location === 'string' ? order.location : (order.deliveryAddress?.address || order.customer?.city || 'Location Shared')}
                             </Text>
                         </View>
                     </View>
                 </View>
+
+                {/* Vehicle Details */}
+                {order.vehicleDetails && (
+                    <View style={[styles.detailSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <View style={styles.detailRow}>
+                            <View style={[styles.iconBox, { backgroundColor: colors.primary + '15' }]}>
+                                <Ionicons name="car-sport" size={20} color={colors.primary} />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={[styles.detailLabel, { color: colors.icon }]}>{t('vehicle_details') || 'Vehicle'}</Text>
+                                <Text style={[styles.detailValue, { color: colors.text }]}>
+                                    {order.vehicleDetails.make} {order.vehicleDetails.model} ({order.vehicleDetails.year})
+                                </Text>
+                                {order.vehicleDetails.fuelType && <Text style={{ fontSize: 13, color: colors.icon }}>{order.vehicleDetails.fuelType}</Text>}
+                            </View>
+                        </View>
+                    </View>
+                )}
 
                 {/* Order Items with Per-Item Attachments */}
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('items_ordered') || 'Items Ordered'}</Text>

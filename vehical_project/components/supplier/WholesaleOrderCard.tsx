@@ -88,32 +88,33 @@ export const WholesaleOrderCard = ({ item, onQuote, onViewImage, onAction, actio
                             </View>
 
                             {(displayMeta || displayNotes) ? (
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 2 }}>
-                                    <Text style={{ fontSize: 11, color: colors.icon }}>
-                                        {displayMeta.replace(/^ • /, '')}
-                                        {displayMeta && displayNotes ? ' • ' : ''}
-                                        {displayNotes}
-                                    </Text>
-                                </View>
+                                <Text style={{ fontSize: 11, color: colors.icon, marginTop: 2 }}>
+                                    {displayMeta ? displayMeta.replace(/^ • /, '') : ''}
+                                    {(displayMeta && displayNotes) ? ' • ' : ''}
+                                    {displayNotes}
+                                </Text>
                             ) : null}
 
-                            <View style={{ flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                                {allPhotos.map((p: string, pIdx: number) => (
-                                    <TouchableOpacity
-                                        key={pIdx}
-                                        onPress={() => onViewImage(p)}
-                                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '10', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}
-                                    >
-                                        <Ionicons name="image" size={10} color={colors.primary} />
-                                        <Text style={{ fontSize: 10, color: colors.primary, marginLeft: 2, fontFamily: 'NotoSans-Bold' }}>Photo {allPhotos.length > 1 ? pIdx + 1 : ''}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                                {voiceUri && (
-                                    <View style={{ width: 180, marginTop: 2 }}>
-                                        <AudioPlayer uri={voiceUri} />
-                                    </View>
-                                )}
-                            </View>
+                            {/* Item Media (Photos/Voice) */}
+                            {(allPhotos.length > 0 || voiceUri) && (
+                                <View style={{ flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                                    {allPhotos.map((p: string, pIdx: number) => (
+                                        <TouchableOpacity
+                                            key={pIdx}
+                                            onPress={() => onViewImage(p)}
+                                            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '10', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}
+                                        >
+                                            <Ionicons name="image" size={10} color={colors.primary} />
+                                            <Text style={{ fontSize: 10, color: colors.primary, marginLeft: 2, fontFamily: 'NotoSans-Bold' }}>Photo {allPhotos.length > 1 ? pIdx + 1 : ''}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                    {voiceUri && (
+                                        <View style={{ width: 180, marginTop: 2 }}>
+                                            <AudioPlayer uri={voiceUri} />
+                                        </View>
+                                    )}
+                                </View>
+                            )}
                         </View>
                     </View>
                 );

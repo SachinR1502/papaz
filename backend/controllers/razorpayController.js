@@ -112,6 +112,10 @@ const verifyBillPayment = asyncHandler(async (req, res) => {
     const customer = await Customer.findOne({ user: req.user._id });
     if (!customer) return ApiResponse.error(res, 'Customer not found', 404);
 
+    if (job.customer.toString() !== customer._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized to verify payment for this job', 403);
+    }
+
     const isValid = verifyPaymentSignature(orderId, paymentId, signature);
     if (!isValid) return ApiResponse.error(res, 'Invalid payment signature', 400);
 
@@ -231,6 +235,10 @@ const verifyWholesaleOrderPayment = asyncHandler(async (req, res) => {
 
     const technician = await Technician.findOne({ user: req.user._id });
     if (!technician) return ApiResponse.error(res, 'Technician not found', 404);
+
+    if (order.technician.toString() !== technician._id.toString()) {
+        return ApiResponse.error(res, 'Not authorized to verify payment for this order', 403);
+    }
 
     const isValid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
     if (!isValid) return ApiResponse.error(res, 'Invalid payment signature', 400);

@@ -1,5 +1,4 @@
-'use client';
-
+import { Suspense } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Hero from '@/components/storefront/Hero';
@@ -15,7 +14,9 @@ export default function Storefront() {
       <Hero />
       <Brands />
       <Categories />
-      <FeaturedProducts />
+      <Suspense fallback={<div style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>}>
+        <FeaturedProducts />
+      </Suspense>
       <CTA />
       <Footer />
     </main>

@@ -26,10 +26,11 @@ interface SupplierOrder {
     quantity: number;
     location: string;
     urgency: string;
-    status: 'pending' | 'accepted' | 'rejected' | 'packed' | 'out_for_delivery' | 'delivered';
+    status: 'pending' | 'accepted' | 'rejected' | 'packed' | 'out_for_delivery' | 'delivered' | 'inquiry' | 'quoted' | 'cancelled';
     amount: number;
     type?: 'Car' | 'Bike';
     name?: string;
+    supplier?: string | any;
 }
 
 interface SupplierContextType {

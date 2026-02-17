@@ -22,7 +22,8 @@ const {
     payWholesaleOrderWithWallet,
     payWholesaleOrderWithCash,
     cancelJob,
-    updateRequirementStatus
+    updateRequirementStatus,
+    respondToPartRequest
 } = require('../controllers/technicianController');
 const { protect } = require('../middleware/authMiddleware');
 const {
@@ -65,6 +66,7 @@ router.get('/store/orders', protect, getWholesaleOrders);
 router.post('/store/orders/:id/wallet-pay', protect, payWholesaleOrderWithWallet);
 router.post('/store/orders/:id/cash-pay', protect, payWholesaleOrderWithCash);
 router.put('/jobs/:id/requirements/:reqId', protect, updateRequirementStatus);
+router.post('/store/request/:id/respond', protect, respondToPartRequest);
 
 // Wallet & Withdrawal Routes
 router.get('/wallet', protect, getTechnicianWallet);

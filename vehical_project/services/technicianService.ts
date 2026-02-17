@@ -92,8 +92,8 @@ export const technicianService = {
         return response.data;
     },
 
-    requestCustomOrder: async (supplierName: string, items: any[]) => {
-        const response = await api.post('/technician/store/custom-order', { supplierName, items });
+    requestCustomOrder: async (supplierName: string, items: any[], vehicleDetails?: any) => {
+        const response = await api.post('/technician/store/custom-order', { supplierName, items, vehicleDetails });
         return response.data;
     },
 
@@ -117,8 +117,8 @@ export const technicianService = {
         return response.data;
     },
 
-    placeWholesaleOrder: async (items: any[], supplierId?: string, totalAmount?: number) => {
-        const response = await api.post('/technician/store/order', { items, supplierId, totalAmount });
+    placeWholesaleOrder: async (items: any[], supplierId?: string, totalAmount?: number, jobId?: string) => {
+        const response = await api.post('/technician/store/order', { items, supplierId, totalAmount, jobId });
         return response.data;
     },
 

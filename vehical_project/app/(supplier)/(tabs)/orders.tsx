@@ -204,7 +204,20 @@ export default function SupplierOrdersScreen() {
                             </TouchableOpacity>
                         </View>
 
+
                         <View style={styles.modalBody}>
+                            {quoteOrder && quoteOrder.vehicleDetails && (
+                                <View style={{ marginBottom: 20, padding: 12, backgroundColor: colors.card, borderRadius: 12 }}>
+                                    <Text style={{ fontSize: 13, color: colors.icon, marginBottom: 4 }}>Requested Vehicle</Text>
+                                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text }}>
+                                        {quoteOrder.vehicleDetails.make} {quoteOrder.vehicleDetails.model}
+                                    </Text>
+                                    <Text style={{ fontSize: 13, color: colors.text, marginTop: 2 }}>
+                                        {quoteOrder.vehicleDetails.year} • {quoteOrder.vehicleDetails.fuelType || 'N/A'}
+                                    </Text>
+                                </View>
+                            )}
+
                             <Text style={[styles.inputLabel, { color: colors.text }]}>{t('enter_price_desc') || "Enter the total price for this request."}</Text>
                             <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
                                 <Text style={[styles.currencyPrefix, { color: colors.primary }]}>{currencySymbol}</Text>

@@ -291,8 +291,54 @@ export default function OrderDetailsScreen() {
                 </View>
             </ScrollView>
 
-            {/* Pay Now Button */}
-            {(order.paymentStatus !== 'paid' && order.status !== 'cancelled' && order.status !== 'rejected') && (
+            {/* Respond to Quote / Pay Now */}
+            {order.status === 'quoted' ? (
+                <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+                    <Text style={{ textAlign: 'center', marginBottom: 10, color: colors.text, fontFamily: 'NotoSans-Bold' }}>
+                        {t('Quote Received')} - {currencySymbol}{order.totalAmount.toLocaleString()}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity
+                            style={[styles.payBtn, { flex: 1, backgroundColor: colors.error }]}
+                            onPress={() => {
+                                Alert.alert(t('Reject Quote'), t('Are you sure you want to reject this quote?'), [
+                                    { text: t('Cancel'), style: 'cancel' },
+                                    {
+                                        text: t('Reject'), style: 'destructive', onPress: async () => {
+                                            try {
+                                                await customerService.respondToOrderQuotation(order._id || order.id, 'reject');
+                                                loadOrder();
+                                                Alert.alert(t('Quote Rejected'));
+                                            } catch (e) { Alert.alert(t('Error'), t('Action failed')); }
+                                        }
+                                    }
+                                ]);
+                            }}
+                        >
+                            <Text style={styles.payBtnText}>{t('Reject')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.payBtn, { flex: 1, backgroundColor: colors.success }]}
+                            onPress={() => {
+                                Alert.alert(t('Approve Quote'), t('Accept this price and proceed to payment?'), [
+                                    { text: t('Cancel'), style: 'cancel' },
+                                    {
+                                        text: t('Approve'), onPress: async () => {
+                                            try {
+                                                await customerService.respondToOrderQuotation(order._id || order.id, 'approve');
+                                                loadOrder();
+                                                Alert.alert(t('Quote Approved'), t('You can now proceed to payment.'));
+                                            } catch (e) { Alert.alert(t('Error'), t('Action failed')); }
+                                        }
+                                    }
+                                ]);
+                            }}
+                        >
+                            <Text style={styles.payBtnText}>{t('Approve')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : (order.paymentStatus !== 'paid' && order.status !== 'cancelled' && order.status !== 'rejected') && (
                 <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
                     <TouchableOpacity
                         style={[styles.payBtn, { backgroundColor: colors.primary }]}

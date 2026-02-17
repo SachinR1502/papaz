@@ -281,8 +281,8 @@ export function TechnicianProvider({ children }: { children: React.ReactNode }) 
 
     const completeJob = async (jobId: string) => {
         await technicianService.updateJobStatus(jobId, 'completed');
-        setWalletBalance((prev: number) => prev + 150);
-        await loadJobs();
+        // Refresh jobs and profile to get updated balance from backend
+        await loadJobs(false, true);
     };
 
     const acceptJob = async (jobId: string) => {

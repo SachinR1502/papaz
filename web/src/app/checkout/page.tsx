@@ -1,6 +1,7 @@
 'use client';
 import { useCart } from '@/context/CartContext';
 import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -14,10 +15,8 @@ export default function CheckoutPage() {
     const { Razorpay } = useRazorpay();
     const [step, setStep] = useState(1);
 
-    // Payment Method Options
     const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'cod' | 'wallet'>('upi');
 
-    // Address State
     const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     const [isAddingAddress, setIsAddingAddress] = useState(false);
@@ -36,7 +35,6 @@ export default function CheckoutPage() {
         icon: 'home'
     });
 
-    // Initialize form with user data when available
     useEffect(() => {
         if (user) {
             setNewAddress(prev => ({
@@ -49,7 +47,6 @@ export default function CheckoutPage() {
         }
     }, [user]);
 
-    // Fetch Addresses
     useEffect(() => {
         if (token) {
             fetchAddresses();
@@ -64,7 +61,6 @@ export default function CheckoutPage() {
             });
             if (res.ok) {
                 const responseData = await res.json();
-                console.log('Fetch Addresses Response:', responseData);
                 const data = responseData.data || responseData;
 
                 if (Array.isArray(data)) {
@@ -74,9 +70,6 @@ export default function CheckoutPage() {
                     } else {
                         setIsAddingAddress(true);
                     }
-                } else {
-                    console.error('Invalid address format received');
-                    setSavedAddresses([]);
                 }
             }
         } catch (error) {
@@ -88,7 +81,7 @@ export default function CheckoutPage() {
 
     const handleAddAddress = async () => {
         if (!newAddress.addressLine1 || !newAddress.city || !newAddress.zipCode || !newAddress.phone) {
-            toast.error('Please fill in all required fields');
+            toast.error('Protocol violation: All required fields must be populated');
             return;
         }
 
@@ -109,9 +102,6 @@ export default function CheckoutPage() {
 
             if (res.ok) {
                 const responseData = await res.json();
-                console.log('Add Address Response:', responseData);
-
-                // Handle ApiResponse structure (success, data) or direct array
                 const addresses = responseData.data || responseData;
 
                 if (Array.isArray(addresses)) {
@@ -121,38 +111,34 @@ export default function CheckoutPage() {
                         setSelectedAddressId(newAddr._id);
                     }
                     setIsAddingAddress(false);
-                    toast.success('Address added successfully');
-                } else {
-                    console.error('Unexpected address response format:', addresses);
-                    toast.error('Received invalid data from server');
+                    toast.success('Location protocol synchronized');
                 }
             } else {
-                toast.error('Failed to add address');
+                toast.error('Synchronization failed');
             }
         } catch (error) {
             console.error(error);
-            toast.error('Error adding address');
+            toast.error('Network integrity compromised');
         }
     };
 
     const handlePlaceOrder = async () => {
         if (!token) {
-            toast.error('Please login to place an order');
+            toast.error('Authorization required');
             return router.push('/login');
         }
 
         if (!selectedAddressId) {
-            toast.error('Please select a delivery address');
+            toast.error('Destination required');
             return;
         }
 
         const deliveryAddress = savedAddresses.find(addr => addr._id === selectedAddressId);
 
         try {
-            // 1. Create Order in Backend
             const orderPayload = {
                 items: cart.map(item => ({
-                    id: item.id, // Backend expects 'id' for the product ID
+                    id: item.id,
                     name: item.name,
                     price: item.price,
                     quantity: item.quantity,
@@ -163,7 +149,7 @@ export default function CheckoutPage() {
                 totalAmount: totalPrice,
                 paymentMethod: paymentMethod === 'cod' ? 'cash' : (paymentMethod === 'upi' ? 'razorpay' : paymentMethod),
                 deliveryType: 'address',
-                deliveryAddressId: selectedAddressId, // Backend expects 'deliveryAddressId'
+                deliveryAddressId: selectedAddressId,
                 deliveryFee: 0
             };
 
@@ -178,17 +164,14 @@ export default function CheckoutPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error('Order creation failed:', errorData);
-                throw new Error(errorData.message || 'Failed to create order');
+                throw new Error(errorData.message || 'Transmission failed');
             }
             const orderData = await response.json();
 
-            // 2. Handle Payment
             if (paymentMethod === 'cod') {
                 clearCart();
                 router.push(`/order-success?id=${orderData.orderId}`);
             } else if (paymentMethod === 'wallet') {
-                // Wallet Payment
                 const payRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/orders/${orderData._id}/wallet-pay`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -198,22 +181,20 @@ export default function CheckoutPage() {
                     clearCart();
                     router.push(`/order-success?id=${orderData.orderId}`);
                 } else {
-                    toast.error('Wallet payment failed');
+                    toast.error('Wallet balance insufficient');
                 }
             } else {
-                // Razorpay Payment (UPI/Card)
                 await handleRazorpayPayment(orderData._id, orderData.orderId, totalPrice, deliveryAddress);
             }
 
         } catch (error) {
             console.error(error);
-            toast.error('Something went wrong processing your order');
+            toast.error('Order sequence failed');
         }
     };
 
     const handleRazorpayPayment = async (mongoOrderId: string, orderNumber: string, amount: number, address: any) => {
         try {
-            // Get Order ID from Razorpay via Backend
             const paymentRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/orders/${mongoOrderId}/pay`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -221,7 +202,7 @@ export default function CheckoutPage() {
 
             if (!paymentRes.ok) {
                 const errorData = await paymentRes.json();
-                throw new Error(errorData.message || 'Failed to initiate payment');
+                throw new Error(errorData.message || 'Payment initiation failed');
             }
 
             const paymentData = await paymentRes.json();
@@ -252,12 +233,10 @@ export default function CheckoutPage() {
                             clearCart();
                             router.push(`/order-success?id=${orderNumber}`);
                         } else {
-                            const errorData = await verifyRes.json();
-                            toast.error(errorData.message || 'Payment verification failed');
+                            toast.error('Integrity check failed');
                         }
                     } catch (err) {
-                        console.error('Verification error:', err);
-                        toast.error('Payment verification failed');
+                        toast.error('Verification timeout');
                     }
                 },
                 prefill: {
@@ -266,249 +245,306 @@ export default function CheckoutPage() {
                     email: user?.email || ''
                 },
                 theme: {
-                    color: "#34C759"
-                },
-                modal: {
-                    ondismiss: function () {
-                        toast.info('Payment cancelled');
-                    }
+                    color: "#FF8C00"
                 }
             };
 
-            const rzp = new Razorpay(options);
+            const rzp = new (Razorpay as any)(options);
             rzp.open();
 
         } catch (error: any) {
-            console.error('Payment Error:', error);
-            toast.error(error.message || 'Failed to initiate payment');
+            toast.error(error.message || 'Payment gateway unreachable');
         }
     };
 
     return (
-        <main style={{ minHeight: '100vh', background: 'var(--bg-body)' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-body)' }}>
             <Navbar />
 
-            <div className="container" style={{ padding: '60px 24px', maxWidth: '1000px' }}>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '40px' }}>Checkout</h1>
+            <main style={{ flex: 1, paddingTop: '120px', paddingBottom: '80px' }}>
+                <div className="container" style={{ padding: '0 24px' }}>
+                    <div style={{ marginBottom: '48px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '20px' }}>
+                        <div>
+                            <h1 style={{ fontSize: 'clamp(2.4rem, 6vw, 3.8rem)', fontWeight: 900, letterSpacing: '-2px', margin: 0, lineHeight: 1 }}>
+                                Final <span style={{ color: 'var(--color-primary)' }}>Execution</span>
+                            </h1>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem', marginTop: '12px', fontWeight: 500 }}>
+                                Finalize your high-performance procurement sequence.
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            {[1, 2].map(num => (
+                                <div key={num} style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '12px',
+                                    background: step >= num ? 'var(--color-primary)' : 'var(--bg-card)',
+                                    color: step >= num ? 'white' : 'var(--text-muted)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontWeight: 800,
+                                    border: '1px solid var(--border-color)',
+                                    transition: 'all 0.3s'
+                                }}>{num}</div>
+                            ))}
+                        </div>
+                    </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '40px' }} className="checkout-grid">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) 1fr', gap: '48px' }} className="checkout-grid">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            <div className="glass-panel" style={{
+                                padding: '40px',
+                                borderRadius: '40px',
+                                background: step === 1 ? 'var(--bg-card)' : 'rgba(255,255,255,0.02)',
+                                border: '1px solid var(--border-color)',
+                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                                opacity: step === 1 ? 1 : 0.6
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                                    <h2 style={{ fontSize: '1.8rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>1. Logistics Destination</h2>
+                                    {step > 1 && (
+                                        <button onClick={() => setStep(1)} style={{
+                                            background: 'rgba(255,140,0,0.1)',
+                                            color: 'var(--color-primary)',
+                                            border: 'none',
+                                            padding: '8px 20px',
+                                            borderRadius: '12px',
+                                            fontWeight: 800,
+                                            cursor: 'pointer'
+                                        }}>Modify</button>
+                                    )}
+                                </div>
 
-                    <div>
-                        {/* Step 1: Address */}
-                        <div className="glass-panel" style={{ padding: '32px', marginBottom: '24px', opacity: step === 1 ? 1 : 0.6 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>1. Delivery Address</h2>
-                                {step > 1 && !isAddingAddress && savedAddresses.length > 0 && (
-                                    <button
-                                        onClick={() => setStep(1)}
-                                        style={{ color: 'var(--color-primary)', border: 'none', background: 'transparent', cursor: 'pointer', fontWeight: 600 }}
-                                    >
-                                        Change
-                                    </button>
-                                )}
-                            </div>
-
-                            {step === 1 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-                                    {!isAddingAddress && savedAddresses.length > 0 ? (
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                                            {savedAddresses.map((addr) => (
-                                                <div
-                                                    key={addr._id}
-                                                    onClick={() => setSelectedAddressId(addr._id)}
-                                                    style={{
-                                                        padding: '16px',
-                                                        borderRadius: '12px',
-                                                        border: `2px solid ${selectedAddressId === addr._id ? 'var(--color-primary)' : 'var(--border-color)'}`,
-                                                        background: selectedAddressId === addr._id ? 'rgba(var(--color-primary-rgb), 0.05)' : 'transparent',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s',
-                                                        position: 'relative'
-                                                    }}
-                                                >
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                        <span style={{ fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                            {addr.icon === 'home' ? '🏠' : addr.icon === 'work' ? '🏢' : '📍'} {addr.label}
-                                                        </span>
-                                                        {selectedAddressId === addr._id && <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>✓ Selected</span>}
+                                {step === 1 && (
+                                    <div className="animate-fade-in">
+                                        {!isAddingAddress && savedAddresses.length > 0 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                {savedAddresses.map((addr) => (
+                                                    <div
+                                                        key={addr._id}
+                                                        onClick={() => setSelectedAddressId(addr._id)}
+                                                        className={`address-option ${selectedAddressId === addr._id ? 'active' : ''}`}
+                                                        style={{
+                                                            padding: '24px',
+                                                            borderRadius: '24px',
+                                                            border: '1px solid var(--border-color)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.3s',
+                                                            background: selectedAddressId === addr._id ? 'rgba(255,140,0,0.05)' : 'var(--bg-body)'
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                                            <span style={{ fontWeight: 900, fontSize: '1.1rem', letterSpacing: '-0.2px' }}>
+                                                                {addr.label}
+                                                            </span>
+                                                            {selectedAddressId === addr._id && <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.7rem' }}>✓</div>}
+                                                        </div>
+                                                        <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 500, lineHeight: 1.5 }}>{addr.address}</p>
                                                     </div>
-                                                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>{addr.address}</p>
-                                                    <p style={{ margin: '4px 0 0', color: 'var(--text-body)', fontWeight: 500 }}>{addr.phone}</p>
-                                                </div>
-                                            ))}
+                                                ))}
 
-                                            <button
-                                                onClick={() => setIsAddingAddress(true)}
-                                                style={{
-                                                    padding: '16px',
-                                                    borderRadius: '12px',
+                                                <button onClick={() => setIsAddingAddress(true)} style={{
+                                                    padding: '20px',
+                                                    borderRadius: '24px',
                                                     border: '2px dashed var(--border-color)',
                                                     background: 'transparent',
                                                     color: 'var(--text-muted)',
+                                                    fontWeight: 800,
                                                     cursor: 'pointer',
-                                                    fontWeight: 600
-                                                }}
-                                            >
-                                                + Add New Address
-                                            </button>
+                                                    transition: 'all 0.2s',
+                                                    fontSize: '1rem'
+                                                }}>+ Add New Coordinates</button>
 
-                                            <button className="btn btn-primary" onClick={() => setStep(2)} style={{ marginTop: '16px' }}>
-                                                Deliver Here
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        // Add Address Form
-                                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{savedAddresses.length === 0 ? 'Add your first address' : 'Add New Address'}</h3>
-                                                {savedAddresses.length > 0 && <button onClick={() => setIsAddingAddress(false)} style={{ color: 'var(--text-muted)' }}>Cancel</button>}
+                                                <button className="btn btn-primary" onClick={() => setStep(2)} style={{ padding: '20px', borderRadius: '18px', fontWeight: 900, marginTop: '16px', fontSize: '1.1rem' }}>
+                                                    Set Destination
+                                                </button>
                                             </div>
+                                        ) : (
+                                            <div className="animate-fade-in">
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+                                                    <div className="input-group">
+                                                        <label className="premium-label">Full Name</label>
+                                                        <input type="text" style={premiumInputStyle} value={newAddress.fullName} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} />
+                                                    </div>
+                                                    <div className="input-group">
+                                                        <label className="premium-label">Mobile</label>
+                                                        <input type="tel" style={premiumInputStyle} value={newAddress.phone} onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })} />
+                                                    </div>
+                                                </div>
+                                                <div className="input-group" style={{ marginBottom: '20px' }}>
+                                                    <label className="premium-label">Address Line 1</label>
+                                                    <input type="text" style={premiumInputStyle} value={newAddress.addressLine1} onChange={e => setNewAddress({ ...newAddress, addressLine1: e.target.value })} />
+                                                </div>
+                                                <div className="input-group" style={{ marginBottom: '20px' }}>
+                                                    <label className="premium-label">Landmark / Area</label>
+                                                    <input type="text" style={premiumInputStyle} value={newAddress.addressLine2} onChange={e => setNewAddress({ ...newAddress, addressLine2: e.target.value })} />
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+                                                    <div className="input-group">
+                                                        <label className="premium-label">Pincode</label>
+                                                        <input type="text" style={premiumInputStyle} value={newAddress.zipCode} onChange={e => setNewAddress({ ...newAddress, zipCode: e.target.value })} />
+                                                    </div>
+                                                    <div className="input-group">
+                                                        <label className="premium-label">City</label>
+                                                        <input type="text" style={premiumInputStyle} value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
+                                                    </div>
+                                                </div>
 
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                                                <input type="text" placeholder="Full Name" style={inputStyle} value={newAddress.fullName} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} />
-                                                <input type="tel" placeholder="Mobile Number" style={inputStyle} value={newAddress.phone} onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })} />
-                                            </div>
-
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '20px' }}>
-                                                <input type="text" placeholder="Flat, House no., Building" style={inputStyle} value={newAddress.addressLine1} onChange={e => setNewAddress({ ...newAddress, addressLine1: e.target.value })} />
-                                                <input type="text" placeholder="Area, Colony, Street" style={inputStyle} value={newAddress.addressLine2} onChange={e => setNewAddress({ ...newAddress, addressLine2: e.target.value })} />
-                                            </div>
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                                                <input type="text" placeholder="Pincode" style={inputStyle} value={newAddress.zipCode} onChange={e => setNewAddress({ ...newAddress, zipCode: e.target.value })} />
-                                                <input type="text" placeholder="City" style={inputStyle} value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
-                                            </div>
-
-                                            <div style={{ marginBottom: '24px' }}>
-                                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem' }}>Address Type</label>
-                                                <div style={{ display: 'flex', gap: '12px' }}>
-                                                    {['Home', 'Work', 'Other'].map(type => (
-                                                        <button
-                                                            key={type}
-                                                            onClick={() => setNewAddress({ ...newAddress, label: type, icon: type.toLowerCase() })}
-                                                            style={{
-                                                                padding: '8px 16px',
-                                                                borderRadius: '20px',
-                                                                border: `1px solid ${newAddress.label === type ? 'var(--color-primary)' : 'var(--border-color)'}`,
-                                                                background: newAddress.label === type ? 'var(--color-primary)' : 'transparent',
-                                                                color: newAddress.label === type ? 'white' : 'var(--text-body)',
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.2s'
-                                                            }}
-                                                        >
-                                                            {type}
-                                                        </button>
+                                                <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+                                                    {['Home', 'Work'].map(type => (
+                                                        <button key={type} onClick={() => setNewAddress({ ...newAddress, label: type })} style={{
+                                                            padding: '12px 24px',
+                                                            borderRadius: '100px',
+                                                            border: `1px solid ${newAddress.label === type ? 'var(--color-primary)' : 'var(--border-color)'}`,
+                                                            background: newAddress.label === type ? 'var(--color-primary)' : 'transparent',
+                                                            color: newAddress.label === type ? 'white' : 'var(--text-body)',
+                                                            fontWeight: 800,
+                                                            cursor: 'pointer'
+                                                        }}>{type}</button>
                                                     ))}
                                                 </div>
+
+                                                <div style={{ display: 'flex', gap: '16px' }}>
+                                                    <button className="btn btn-primary" onClick={handleAddAddress} style={{ flex: 1, padding: '18px', borderRadius: '16px', fontWeight: 900 }}>Initialize Destination</button>
+                                                    {savedAddresses.length > 0 && <button onClick={() => setIsAddingAddress(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>}
+                                                </div>
                                             </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
-                                            <button className="btn btn-primary" onClick={handleAddAddress} style={{ width: '100%' }}>
-                                                Save & Deliver Here
-                                            </button>
+                            <div className="glass-panel" style={{
+                                padding: '40px',
+                                borderRadius: '40px',
+                                background: step === 2 ? 'var(--bg-card)' : 'rgba(255,255,255,0.02)',
+                                border: '1px solid var(--border-color)',
+                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                                opacity: step === 2 ? 1 : 0.6
+                            }}>
+                                <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '32px', letterSpacing: '-0.5px' }}>2. Payment Protocol</h2>
+
+                                {step === 2 && (
+                                    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {[
+                                            { id: 'upi', label: 'Universal Interface (UPI)', icon: '📱' },
+                                            { id: 'card', label: 'Asset Cards (Bank)', icon: '💳' },
+                                            { id: 'wallet', label: 'PAPAZ Secure Wallet', icon: '👛' },
+                                            { id: 'cod', label: 'Liquidity on Delivery', icon: '💵' }
+                                        ].map(method => (
+                                            <div
+                                                key={method.id}
+                                                className={`payment-option ${paymentMethod === method.id ? 'active' : ''}`}
+                                                onClick={() => setPaymentMethod(method.id as any)}
+                                                style={{
+                                                    padding: '24px',
+                                                    borderRadius: '24px',
+                                                    border: '1px solid var(--border-color)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.3s',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '20px',
+                                                    background: paymentMethod === method.id ? 'rgba(255,140,0,0.05)' : 'var(--bg-body)'
+                                                }}
+                                            >
+                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--border-color)', background: paymentMethod === method.id ? 'var(--color-primary)' : 'transparent', borderColor: paymentMethod === method.id ? 'var(--color-primary)' : 'var(--border-color)' }}></div>
+                                                <span style={{ fontSize: '1.8rem' }}>{method.icon}</span>
+                                                <span style={{ fontWeight: 800, fontSize: '1.1rem', flex: 1 }}>{method.label}</span>
+                                            </div>
+                                        ))}
+
+                                        <button className="btn btn-primary" style={{ marginTop: '24px', padding: '24px', borderRadius: '20px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 10px 30px rgba(255,140,0,0.2)' }} onClick={handlePlaceOrder}>
+                                            Authorize ₹{totalPrice.toLocaleString()}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="glass-panel" style={{
+                                padding: '40px',
+                                position: 'sticky',
+                                top: '120px',
+                                background: 'var(--bg-card)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '40px',
+                                boxShadow: '0 40px 100px rgba(0,0,0,0.1)'
+                            }}>
+                                <h3 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '32px', letterSpacing: '-1px' }}>Protocol Summary</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    {cart.map((item: any) => (
+                                        <div key={item.id} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--bg-body)', position: 'relative', overflow: 'hidden' }}>
+                                                <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <p style={{ margin: 0, fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-body)' }}>{item.name}</p>
+                                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{item.quantity} unit{item.quantity > 1 ? 's' : ''}</p>
+                                            </div>
+                                            <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>₹{(item.price * item.quantity).toLocaleString()}</span>
                                         </div>
-                                    )}
-
+                                    ))}
+                                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '12px 0' }} />
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontWeight: 700 }}>
+                                        <span>Logistics</span>
+                                        <span style={{ color: 'var(--status-success)' }}>FREE</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.8rem', fontWeight: 900, marginTop: '20px' }}>
+                                        <span>To Pay</span>
+                                        <span style={{ color: 'var(--color-primary)' }}>₹{totalPrice.toLocaleString()}</span>
+                                    </div>
                                 </div>
-                            ) : (
-                                <div style={{ color: 'var(--text-muted)' }}>
-                                    {(() => {
-                                        const addr = savedAddresses.find(a => a._id === selectedAddressId);
-                                        if (addr) return (
-                                            <>
-                                                <span style={{ fontWeight: 600, color: 'var(--text-body)' }}>{addr.label}</span> • {addr.address}
-                                            </>
-                                        );
-                                        return 'Select an address';
-                                    })()}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Step 2: Payment */}
-                        <div className="glass-panel" style={{ padding: '32px', opacity: step === 2 ? 1 : 0.6 }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '24px' }}>2. Payment Method</h2>
-
-                            {step === 2 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                                    <div
-                                        style={{ ...paymentOptionStyle, borderColor: paymentMethod === 'upi' ? 'var(--color-primary)' : 'var(--border-color)' }}
-                                        onClick={() => setPaymentMethod('upi')}
-                                    >
-                                        <input type="radio" name="payment" id="upi" checked={paymentMethod === 'upi'} readOnly />
-                                        <label htmlFor="upi" style={{ flex: 1, fontWeight: 600 }}>UPI (Google Pay, PhonePe, Paytm)</label>
-                                        <span style={{ fontSize: '1.5rem' }}>📱</span>
-                                    </div>
-
-                                    <div
-                                        style={{ ...paymentOptionStyle, borderColor: paymentMethod === 'card' ? 'var(--color-primary)' : 'var(--border-color)' }}
-                                        onClick={() => setPaymentMethod('card')}
-                                    >
-                                        <input type="radio" name="payment" id="card" checked={paymentMethod === 'card'} readOnly />
-                                        <label htmlFor="card" style={{ flex: 1, fontWeight: 600 }}>Credit / Debit Card</label>
-                                        <span style={{ fontSize: '1.5rem' }}>💳</span>
-                                    </div>
-
-                                    <div
-                                        style={{ ...paymentOptionStyle, borderColor: paymentMethod === 'cod' ? 'var(--color-primary)' : 'var(--border-color)' }}
-                                        onClick={() => setPaymentMethod('cod')}
-                                    >
-                                        <input type="radio" name="payment" id="cod" checked={paymentMethod === 'cod'} readOnly />
-                                        <label htmlFor="cod" style={{ flex: 1, fontWeight: 600 }}>Cash on Delivery</label>
-                                        <span style={{ fontSize: '1.5rem' }}>💵</span>
-                                    </div>
-
-                                    <div
-                                        style={{ ...paymentOptionStyle, borderColor: paymentMethod === 'wallet' ? 'var(--color-primary)' : 'var(--border-color)' }}
-                                        onClick={() => setPaymentMethod('wallet')}
-                                    >
-                                        <input type="radio" name="payment" id="wallet" checked={paymentMethod === 'wallet'} readOnly />
-                                        <label htmlFor="wallet" style={{ flex: 1, fontWeight: 600 }}>Papaz Wallet</label>
-                                        <span style={{ fontSize: '1.5rem' }}>👛</span>
-                                    </div>
-
-                                    <button className="btn btn-primary" style={{ marginTop: '20px', padding: '16px' }} onClick={handlePlaceOrder}>
-                                        Pay ₹{totalPrice.toLocaleString()} & Place Order
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right Summary */}
-                    <div>
-                        <div className="glass-panel" style={{ padding: '32px', position: 'sticky', top: '120px' }}>
-                            <h3 style={{ fontWeight: 700, marginBottom: '20px' }}>Order Summary</h3>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                <span style={{ color: 'var(--text-muted)' }}>Items Total</span>
-                                <span>₹{totalPrice.toLocaleString()}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                <span style={{ color: 'var(--text-muted)' }}>Delivery Charges</span>
-                                <span style={{ color: 'var(--status-success)', fontWeight: 600 }}>FREE</span>
-                            </div>
-                            <div style={{ height: '1px', background: 'var(--border-color)', margin: '20px 0' }} />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 800 }}>
-                                <span>To Pay</span>
-                                <span>₹{totalPrice.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
-
                 </div>
-            </div>
+            </main>
 
-            <style jsx global>{`
-                @media (max-width: 768px) {
+            <Footer />
+
+            <style jsx>{`
+                .address-option.active, .payment-option.active {
+                    border-color: var(--color-primary) !important;
+                    transform: translateX(4px);
+                }
+                .premium-label {
+                    display: block;
+                    margin-bottom: 10px;
+                    font-weight: 800;
+                    font-size: 0.85rem;
+                    text-transform: uppercase;
+                    letter-spacing: 1.5px;
+                    color: var(--text-muted);
+                }
+                @media (max-width: 992px) {
                     .checkout-grid {
                         grid-template-columns: 1fr !important;
                     }
                 }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in {
+                    animation: fadeIn 0.4s ease forwards;
+                }
             `}</style>
-        </main>
+        </div>
     );
 }
 
-const inputStyle = { width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-body)', fontSize: '1rem', outline: 'none' };
-const paymentOptionStyle = { display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'all 0.2s ease' };
+const premiumInputStyle = {
+    width: '100%',
+    padding: '18px 24px',
+    borderRadius: '18px',
+    border: '1px solid var(--border-color)',
+    background: 'var(--bg-body)',
+    color: 'var(--text-body)',
+    fontSize: '1.1rem',
+    fontWeight: 600,
+    outline: 'none',
+    transition: 'all 0.3s'
+};

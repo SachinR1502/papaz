@@ -65,7 +65,7 @@ export default function LoginPage() {
             } else if (role === 'technician') {
                 router.push('/technician/dashboard');
             } else {
-                // Standard customer
+                // Standard customer - goes to home page or their account
                 router.push('/');
             }
         } catch (err: any) {
