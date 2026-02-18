@@ -97,7 +97,7 @@ const sendOtp = asyncHandler(async (req, res) => {
     }
 
     // Send SMS
-    // await sendSmsOtp(phoneNumber, otp);
+    await sendSmsOtp(phoneNumber, otp);
 
     return ApiResponse.success(res, { otp }, 'OTP sent successfully');
 });
