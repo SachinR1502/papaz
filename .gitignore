@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 
 .CODEBASE_ANALYSIS.md
+
+
+backend/node_modules
+backend/uploads/
