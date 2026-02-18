@@ -195,25 +195,7 @@ export function PaymentSimulator({
                     name: userData?.name || 'Customer'
                 },
                 theme: { color: colors.primary },
-                // Enable all payment methods
-                config: {
-                    display: {
-                        language: 'en' as const,
-                        blocks: {
-                            banks: {
-                                name: 'Pay via UPI / Cards / Netbanking',
-                                instruments: [
-                                    { method: 'upi' },
-                                    { method: 'card' },
-                                    { method: 'netbanking' },
-                                    { method: 'wallet' }
-                                ]
-                            }
-                        },
-                        sequence: ['block.banks'],
-                        preferences: { show_default_blocks: true }
-                    }
-                }
+                // Enable all payment methods (removed custom config to show UPI)
             };
 
             if (!RazorpayCheckout?.open) {
