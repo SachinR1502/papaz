@@ -14,7 +14,8 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    Image
 } from 'react-native';
 import RazorpayCheckout from 'react-native-razorpay';
 
@@ -182,11 +183,11 @@ export function PaymentSimulator({
 
             const options = {
                 description: type === 'topup' ? 'Wallet Topup' : type === 'bill' ? 'Service Bill Payment' : type === 'wholesale' ? 'Wholesale Order Payment' : 'Store Order Payment',
-                image: 'https://cdn.razorpay.com/static/assets/logo/pay_at_razorpay.png',
+                image: Image.resolveAssetSource(require('@/assets/logo/logo.jpeg')).uri,
                 currency: 'INR',
                 key: RAZORPAY_KEY,
                 amount: Math.round(amount * 100),
-                name: 'PAPAZ Autocare',
+                name: 'PAPAZ LLP',
                 order_id: rzpOrderId,
                 prefill: {
                     email: userData?.email || 'customer@vehical.app',
