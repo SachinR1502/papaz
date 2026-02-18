@@ -48,7 +48,7 @@ export default function LoginScreen() {
     const isDark = theme === 'dark';
 
     const [step, setStep] = useState<'phone' | 'otp'>('phone');
-    const [role, setRole] = useState<Role>('customer');
+    // Role state removed as we determine it dynamically
     const [phoneNumber, setPhoneNumber] = useState('');
     const [otp, setOtp] = useState(['', '', '', '']);
     const [localLoading, setLocalLoading] = useState(false);
@@ -137,13 +137,13 @@ export default function LoginScreen() {
             Alert.alert('Invalid Number', 'Please enter a valid 10-digit phone number.');
             return;
         }
-        console.log(`[LOGIN] Attempting login. Number: ${phoneNumber}, Role: ${role}`);
+        console.log(`[LOGIN] Attempting login. Number: ${phoneNumber}`);
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
         try {
             setLocalLoading(true);
-            // Login flow (isRegister = false)
-            await login(phoneNumber, role, false);
+            // Login flow (isRegister = false) - Role is empty/auto-detected
+            await login(phoneNumber, '', false);
 
             // If successful, move to next step
             animateTransition('otp');
@@ -155,7 +155,7 @@ export default function LoginScreen() {
                     [
                         {
                             text: 'OK',
-                            onPress: () => router.push({ pathname: '/(auth)/register', params: { role, mobile: phoneNumber } })
+                            onPress: () => router.push({ pathname: '/(auth)/register', params: { mobile: phoneNumber } })
                         }
                     ]
                 );
@@ -199,15 +199,9 @@ export default function LoginScreen() {
         }
     };
 
-    const handleRoleChange = (newRole: Role) => {
-        Haptics.selectionAsync();
-        setRole(newRole);
-    }
-
-    const handleQuickLogin = async (number: string, r: Role) => {
+    const handleQuickLogin = async (number: string) => {
         Haptics.selectionAsync();
         setPhoneNumber(number);
-        setRole(r);
 
         if (number.length < 10) {
             Alert.alert(t('error'), t('invalid_number') || 'Please enter a valid 10-digit phone number.');
@@ -216,7 +210,7 @@ export default function LoginScreen() {
 
         try {
             setLocalLoading(true);
-            await login(number, r, false);
+            await login(number, '', false);
             animateTransition('otp');
         } catch (e: any) {
             if (e.response?.status === 404) {
@@ -226,7 +220,7 @@ export default function LoginScreen() {
                     [
                         {
                             text: 'OK',
-                            onPress: () => router.push({ pathname: '/(auth)/register', params: { role: r, mobile: number } })
+                            onPress: () => router.push({ pathname: '/(auth)/register', params: { mobile: number } })
                         }
                     ]
                 );
@@ -238,10 +232,10 @@ export default function LoginScreen() {
         }
     }
 
-    const QuickActionBtn = ({ r, number, label, icon, color, bgColor }: any) => (
+    const QuickActionBtn = ({ number, label, icon, color, bgColor }: any) => (
         <TouchableOpacity
             style={[styles.quickBtn, { backgroundColor: isDark ? colors.card : bgColor, borderColor: isDark ? colors.border : 'transparent', borderWidth: isDark ? 1 : 0 }]}
-            onPress={() => handleQuickLogin(number, r)}
+            onPress={() => handleQuickLogin(number)}
         >
             <MaterialCommunityIcons name={icon} size={16} color={color} />
             <Text style={[styles.quickBtnText, { color: color }]}>{label}</Text>
@@ -310,31 +304,8 @@ export default function LoginScreen() {
                                 <Text style={[styles.stepSubtitle, { color: colors.icon }]}>
                                     {step === 'phone'
                                         ? t('auth_subtitle_phone')
-                                        : `${t('auth_subtitle_otp')} as a ${role.toUpperCase()}`}
+                                        : t('verify_otp_subtitle') || t('auth_subtitle_otp')}
                                 </Text>
-
-                                {step === 'phone' && (
-                                    <View style={[styles.roleToggleContainer, { backgroundColor: colors.background }]}>
-                                        {(['customer', 'technician', 'supplier', 'admin'] as Role[]).map((r) => (
-                                            <TouchableOpacity
-                                                key={r}
-                                                style={[
-                                                    styles.roleOption,
-                                                    role === r && styles.roleOptionActive,
-                                                    role === r && { backgroundColor: isDark ? colors.border : '#FFFFFF' }
-                                                ]}
-                                                onPress={() => handleRoleChange(r)}
-                                            >
-                                                <Text style={[
-                                                    styles.roleOptionText,
-                                                    { color: role === r ? colors.primary : colors.icon }
-                                                ]}>
-                                                    {r === 'technician' ? t('partner') : t(r).toUpperCase()}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                )}
 
                                 {step === 'phone' ? (
                                     <View style={styles.form}>
@@ -409,10 +380,10 @@ export default function LoginScreen() {
                                                 </View>
 
                                                 <View style={styles.quickActions}>
-                                                    <QuickActionBtn r="customer" number="9876543210" label={t('customer')} icon="account" color="#007AFF" bgColor="#F0F7FF" />
-                                                    <QuickActionBtn r="technician" number="8888888888" label={t('partner')} icon="cog" color="#34C759" bgColor="#F0FFF4" />
-                                                    <QuickActionBtn r="supplier" number="9900880077" label={t('supplier')} icon="truck-delivery" color="#FF9500" bgColor="#FFF5F0" />
-                                                    <QuickActionBtn r="admin" number="1234567890" label={t('admin_hub')} icon="shield-account" color="#5856D6" bgColor="#F5F2FF" />
+                                                    <QuickActionBtn number="9876543210" label={t('customer')} icon="account" color="#007AFF" bgColor="#F0F7FF" />
+                                                    <QuickActionBtn number="8888888888" label={t('partner')} icon="cog" color="#34C759" bgColor="#F0FFF4" />
+                                                    <QuickActionBtn number="9900880077" label={t('supplier')} icon="truck-delivery" color="#FF9500" bgColor="#FFF5F0" />
+                                                    <QuickActionBtn number="1234567890" label={t('admin_hub')} icon="shield-account" color="#5856D6" bgColor="#F5F2FF" />
                                                 </View>
                                             </>
                                         )}
@@ -469,9 +440,9 @@ export default function LoginScreen() {
 
                             <View style={styles.footer}>
                                 <Text style={[styles.footerText, { color: colors.icon }]}>{t('new_to_app')}</Text>
-                                <TouchableOpacity onPress={() => router.push({ pathname: '/(auth)/register', params: { role: role === 'admin' ? 'customer' : role } })}>
+                                <TouchableOpacity onPress={() => router.push({ pathname: '/(auth)/register', params: { role: 'customer' } })}>
                                     <Text style={[styles.footerLink, { color: colors.text }]}>
-                                        {role === 'customer' ? t('create_customer_acc') : t('join_as_partner')}
+                                        {t('create_account') || 'Create Account'}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
