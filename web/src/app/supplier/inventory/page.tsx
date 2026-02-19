@@ -7,22 +7,25 @@ import { useState } from 'react';
 import {
     Plus,
     Search,
-    Filter,
     Package,
     Car,
-    PlusCircle,
     LayoutGrid,
-    ListFilter
+    ChevronRight,
+    Loader2,
+    Truck,
+    Zap,
+    Tractor
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const FILTER_TYPES = [
     { label: 'All Listings', value: 'All', icon: <LayoutGrid size={18} /> },
-    { label: 'Car Parts', value: 'Car', icon: <Car size={18} /> },
-    { label: 'Bike Accessories', value: 'Bike', icon: '🏍️' },
-    { label: 'Commercial Truck', value: 'Truck', icon: '🚚' },
-    { label: 'Heavy Bus', value: 'Bus', icon: '🚌' },
-    { label: 'Agriculture', value: 'Tractor', icon: '🚜' },
-    { label: 'EV Components', value: 'EV Vehicle', icon: '⚡' }
+    { label: 'Batteries', value: 'Batteries', icon: <Zap size={18} /> },
+    { label: 'Tires', value: 'Tires', icon: <span className="text-lg">🛞</span> },
+    { label: 'Engine Oil', value: 'Engine Oil', icon: <span className="text-lg">🛢️</span> },
+    { label: 'Brakes', value: 'Brakes', icon: <span className="text-lg">🛑</span> },
+    { label: 'Spare Parts', value: 'Spare Parts', icon: <Package size={18} /> },
+    { label: 'Electrical', value: 'Electrical', icon: <Zap size={18} /> }
 ];
 
 export default function InventoryPage() {
@@ -32,243 +35,134 @@ export default function InventoryPage() {
 
     const filteredInventory = inventory.filter(item => {
         const matchesSearch = (item.name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-            (item.type?.toLowerCase() || '').includes(search.toLowerCase());
-        const matchesFilter = filterType === 'All' || item.type === filterType;
+            (item.category?.toLowerCase() || '').includes(search.toLowerCase()) ||
+            (item.brand?.toLowerCase() || '').includes(search.toLowerCase());
+        const matchesFilter = filterType === 'All' || item.category === filterType;
         return matchesSearch && matchesFilter;
     });
 
     return (
-        <div style={{ padding: '40px', position: 'relative', minHeight: '100vh' }}>
-            {/* Background Ambient Glow */}
-            <div style={{
-                position: 'fixed',
-                bottom: '5%',
-                left: '5%',
-                width: '400px',
-                height: '400px',
-                background: 'var(--color-primary)',
-                filter: 'blur(180px)',
-                opacity: 0.04,
-                zIndex: -1,
-                pointerEvents: 'none',
-                borderRadius: '50%'
-            }} />
-
+        <div className="flex flex-col gap-10 md:gap-14 animate-fade-in pb-20">
             {/* Header Section */}
-            <header style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end',
-                marginBottom: '48px'
-            }}>
+            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
                 <div>
-                    <h1 className="text-gradient" style={{
-                        fontSize: '3rem',
-                        fontWeight: 900,
-                        margin: 0,
-                        letterSpacing: '-1.5px'
-                    }}>
-                        Stock Inventory
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4 lg:mb-6">
+                        <Package size={10} className="text-primary fill-primary" />
+                        <span className="text-[10px] uppercase font-black tracking-widest text-primary">Warehouse Management</span>
+                    </div>
+                    <h1 className="text-4xl lg:text-6xl font-black m-0 tracking-tighter text-foreground italic uppercase">
+                        Stock <span className="text-primary">Inventory</span>
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500, marginTop: '4px' }}>
-                        Manage and track your listed products across the PAPAZ network
+                    <p className="mt-4 text-base md:text-lg text-muted font-bold max-w-2xl opacity-80 leading-relaxed">
+                        Manage and track your listed components across the global network.
                     </p>
                 </div>
                 <Link href="/supplier/inventory/add">
-                    <button className="btn btn-primary" style={{
-                        padding: '16px 32px',
-                        borderRadius: '20px',
-                        fontSize: '1rem',
-                        fontWeight: 800,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        boxShadow: '0 15px 30px rgba(var(--color-primary-rgb), 0.2)'
-                    }}>
-                        <Plus size={20} strokeWidth={3} />
+                    <button className="flex items-center justify-center gap-3 px-10 py-5 bg-primary text-white rounded-[24px] text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic shrink-0">
+                        <Plus size={20} />
                         List New Product
                     </button>
                 </Link>
             </header>
 
             {/* Search & Filter Bar */}
-            <div style={{ marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="flex flex-col gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6">
                     {/* Search Field */}
-                    <div className="glass-panel" style={{
-                        flex: 1,
-                        padding: '0 24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '16px',
-                        borderRadius: '24px',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        background: 'rgba(255,255,255,0.02)',
-                        transition: 'all 0.3s ease'
-                    }}>
-                        <Search size={22} color="var(--color-primary)" />
+                    <div className="relative group">
+                        <Search size={22} className="absolute left-6 top-1/2 -translate-y-1/2 text-primary opacity-50 group-focus-within:opacity-100 transition-opacity" />
                         <input
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Find a specific part by name or category..."
-                            style={{
-                                flex: 1,
-                                padding: '20px 0',
-                                border: 'none',
-                                background: 'transparent',
-                                color: 'var(--text-body)',
-                                outline: 'none',
-                                fontSize: '1.1rem',
-                                fontWeight: 500
-                            }}
+                            placeholder="Find a specific component by name or tag..."
+                            className="w-full bg-card/20 border border-border group-focus-within:border-primary/50 group-focus-within:bg-card/40 rounded-[28px] py-6 pl-16 pr-8 text-lg font-bold outline-none transition-all placeholder:text-muted/40 backdrop-blur-xl"
                         />
                     </div>
 
-                    {/* Quick Info Box */}
-                    <div className="glass-panel" style={{
-                        padding: '0 32px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '16px',
-                        borderRadius: '24px',
-                        background: 'rgba(var(--color-primary-rgb), 0.05)',
-                        border: '1px solid rgba(var(--color-primary-rgb), 0.1)'
-                    }}>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-primary)' }}>{inventory.length}</div>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>TOTAL LISTINGS</div>
+                    {/* Quick Stats */}
+                    <div className="flex items-center justify-between px-8 py-5 bg-primary/5 border border-primary/10 rounded-[28px] group hover:bg-primary/10 transition-colors">
+                        <div>
+                            <div className="text-3xl font-black text-primary italic leading-none">{inventory.length}</div>
+                            <div className="text-[9px] font-black uppercase tracking-[0.2em] text-muted opacity-60 mt-1">Total Items</div>
                         </div>
-                        <div style={{ width: '1px', height: '32px', background: 'var(--border-color)' }} />
-                        <Package size={24} color="var(--color-primary)" opacity={0.6} />
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-lg shadow-primary/5 group-hover:rotate-6 transition-transform">
+                            <Package size={22} />
+                        </div>
                     </div>
                 </div>
 
                 {/* Filter Chips */}
-                <div style={{
-                    display: 'flex',
-                    gap: '12px',
-                    overflowX: 'auto',
-                    paddingBottom: '16px',
-                    scrollbarWidth: 'none'
-                }}>
+                <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
                     {FILTER_TYPES.map(filter => (
                         <button
                             key={filter.value}
                             onClick={() => setFilterType(filter.value)}
-                            style={{
-                                padding: '12px 24px',
-                                borderRadius: '100px',
-                                border: '1px solid',
-                                borderColor: filterType === filter.value ? 'var(--color-primary)' : 'var(--border-color)',
-                                background: filterType === filter.value ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.03)',
-                                color: filterType === filter.value ? 'white' : 'var(--text-muted)',
-                                fontWeight: 700,
-                                fontSize: '0.9rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                whiteSpace: 'nowrap'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (filterType !== filter.value) {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (filterType !== filter.value) {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                                    e.currentTarget.style.borderColor = 'var(--border-color)';
-                                }
-                            }}
-                        >
-                            {typeof filter.icon === 'string' ? (
-                                <span style={{ fontSize: '1.2rem' }}>{filter.icon}</span>
-                            ) : (
-                                filter.icon
+                            className={cn(
+                                "flex items-center gap-3 px-6 py-4 rounded-full border transition-all duration-300 whitespace-nowrap active:scale-95",
+                                filterType === filter.value
+                                    ? "bg-primary border-primary text-white shadow-xl shadow-primary/20 -translate-y-1"
+                                    : "bg-card/20 border-border text-muted hover:border-primary/30 hover:bg-card/40"
                             )}
-                            {filter.label}
+                        >
+                            <span className={cn(
+                                "transition-colors",
+                                filterType === filter.value ? "text-white" : "text-primary/70"
+                            )}>
+                                {filter.icon}
+                            </span>
+                            <span className="text-[10px] font-black uppercase tracking-widest italic">{filter.label}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
             {/* Catalog Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                gap: '32px'
-            }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
                 {isLoading ? (
-                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '100px' }}>
-                        <div style={{ color: 'var(--color-primary)', marginBottom: '16px' }}>
-                            {/* Simple CSS Spinner */}
-                            <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid rgba(var(--color-primary-rgb), 0.1)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', margin: '0 auto' }}></div>
+                    <div className="col-span-full py-32 flex flex-col items-center gap-6">
+                        <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary animate-spin">
+                            <Loader2 size={32} />
                         </div>
-                        <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Syncing global inventory data...</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted opacity-60">Syncing Warehouse Data</p>
                     </div>
                 ) : filteredInventory.length > 0 ? (
                     filteredInventory.map(item => (
                         <InventoryItemCard key={item.id} item={item} />
                     ))
                 ) : (
-                    <div className="glass-panel" style={{
-                        gridColumn: '1/-1',
-                        textAlign: 'center',
-                        padding: '120px 40px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '24px',
-                        borderRadius: '40px',
-                        borderStyle: 'dashed',
-                        borderWidth: '2px',
-                        background: 'transparent'
-                    }}>
-                        <div style={{
-                            width: '100px',
-                            height: '100px',
-                            borderRadius: '30px',
-                            background: 'rgba(255,255,255,0.03)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--text-muted)',
-                            opacity: 0.5
-                        }}>
-                            <Package size={50} />
-                        </div>
-                        <div>
-                            <h3 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '12px' }}>
-                                {search ? 'Search yield no results' : 'Your catalog is empty'}
-                            </h3>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '500px', margin: '0 auto', lineHeight: '1.6' }}>
-                                {search
-                                    ? `We couldn't find any products matching "${search}". Try refining your keywords or check the filters.`
-                                    : 'Start growing your business by listing your first auto parts. Your inventory will be visible to thousands of technicians.'}
-                            </p>
-                        </div>
+                    <div className="col-span-full relative group">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-primary/10 to-blue-500/10 rounded-[40px] blur-xl opacity-20" />
+                        <div className="relative p-12 md:p-24 rounded-[40px] border border-border border-dashed bg-card/5 backdrop-blur-3xl flex flex-col items-center text-center gap-10 overflow-hidden shadow-2xl">
+                            <div className="w-24 h-24 bg-card/20 rounded-[32px] flex items-center justify-center text-muted/30 group-hover:scale-110 transition-transform duration-500">
+                                <Package size={48} />
+                            </div>
+                            <div className="max-w-md">
+                                <h3 className="text-3xl font-black text-foreground italic uppercase mb-4">
+                                    {search ? 'No Matches Found' : 'Warehouse Empty'}
+                                </h3>
+                                <p className="text-muted font-black uppercase tracking-widest text-[10px] opacity-60 leading-loose">
+                                    {search
+                                        ? `We couldn't find any products matching "${search}". Try refining your keywords.`
+                                        : 'Start expanding your reach by listing your first vehicle components. Your inventory will be visible to thousands of experts.'}
+                                </p>
+                            </div>
 
-                        {!search && (
-                            <Link href="/supplier/inventory/add">
-                                <button className="btn btn-primary" style={{ padding: '14px 40px', borderRadius: '16px', fontWeight: 800 }}>
-                                    <Plus size={20} style={{ marginRight: '8px' }} /> Create First Listing
+                            {!search ? (
+                                <Link href="/supplier/inventory/add">
+                                    <button className="px-10 py-5 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:-translate-y-1 transition-all active:scale-95 italic">
+                                        <Plus size={20} className="inline mr-2" /> Create First Listing
+                                    </button>
+                                </Link>
+                            ) : (
+                                <button
+                                    onClick={() => { setSearch(''); setFilterType('All'); }}
+                                    className="px-10 py-5 bg-card/40 border border-border text-foreground rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-card/60 transition-all active:scale-95 italic"
+                                >
+                                    Clear Search
                                 </button>
-                            </Link>
-                        )}
-
-                        {search && (
-                            <button
-                                onClick={() => { setSearch(''); setFilterType('All'); }}
-                                className="btn btn-secondary"
-                                style={{ padding: '12px 32px', borderRadius: '14px', fontWeight: 700 }}
-                            >
-                                Clear All Filters
-                            </button>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

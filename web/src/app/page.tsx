@@ -9,12 +9,12 @@ import CTA from '@/components/storefront/CTA';
 
 export default function Storefront() {
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-body)' }}>
+    <main className="min-h-screen bg-[var(--bg-body)]">
       <Navbar />
       <Hero />
       <Brands />
       <Categories />
-      <Suspense fallback={<div style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>}>
+      <Suspense fallback={<div className="py-20 text-center text-[var(--text-muted)] opacity-50 font-black uppercase tracking-widest text-xs">Loading Intelligence...</div>}>
         <FeaturedProducts />
       </Suspense>
       <CTA />

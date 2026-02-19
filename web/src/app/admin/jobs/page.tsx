@@ -2,28 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { adminService } from '@/services/adminService';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
-    Wrench,
     Search,
-    Filter,
     ExternalLink,
     MoreVertical,
-    Clock,
-    CheckCircle2,
-    XCircle,
-    Activity,
-    MapPin,
-    IndianRupee,
-    Calendar,
-    ChevronRight,
-    LayoutGrid
+    X,
+    FileText
 } from 'lucide-react';
 
 export default function AdminJobsPage() {
+    const router = useRouter();
     const [jobs, setJobs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
 
     useEffect(() => {
         fetchJobs();
@@ -47,6 +42,20 @@ export default function AdminJobsPage() {
         }
     };
 
+    const handleCancelJob = async (id: string) => {
+        if (!confirm('Are you sure you want to cancel this job? This action cannot be undone.')) return;
+
+        try {
+            await adminService.cancelJob(id, 'Cancelled by Admin');
+            // Refresh list
+            fetchJobs();
+            setActionMenuOpen(null);
+        } catch (error) {
+            console.error('Failed to cancel job:', error);
+            alert('Failed to cancel job');
+        }
+    };
+
     const filteredJobs = jobs.filter(job => {
         const matchesSearch = (job.id || '').toLowerCase().includes(search.toLowerCase()) ||
             (job.customer || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -56,65 +65,40 @@ export default function AdminJobsPage() {
     });
 
     return (
-        <div style={{ position: 'relative' }}>
-            <header style={{ marginBottom: '48px' }}>
-                <h1 className="text-gradient" style={{ fontSize: '3rem', fontWeight: 900, margin: 0, letterSpacing: '-1.5px' }}>
+        <div className="relative pb-20">
+            <header className="mb-12">
+                <h1 className="text-4xl md:text-5xl font-black m-0 tracking-tighter text-foreground italic uppercase">
                     Service Jobs
                 </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500, marginTop: '4px' }}>
+                <p className="text-muted text-sm md:text-base font-medium mt-2">
                     Manage and track platform service requests
                 </p>
             </header>
 
             {/* Controls */}
-            <div style={{ marginBottom: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                    <div className="glass-panel" style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '0 20px',
-                        borderRadius: '16px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)'
-                    }}>
-                        <Search size={20} color="var(--color-primary)" opacity={0.6} />
+            <div className="flex flex-col gap-6 mb-8">
+                <div className="flex gap-4">
+                    <div className="flex-1 flex items-center gap-3 px-5 py-4 rounded-2xl bg-white/5 border border-white/10 focus-within:bg-white/10 transition-colors">
+                        <Search size={20} className="text-primary opacity-60" />
                         <input
                             type="text"
                             placeholder="Find target job by ID, customer or technician..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            style={{
-                                flex: 1,
-                                padding: '16px 0',
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'var(--text-body)',
-                                outline: 'none',
-                                fontWeight: 500
-                            }}
+                            className="flex-1 bg-transparent border-none outline-none text-foreground font-medium placeholder:text-muted/50 w-full"
                         />
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                     {['All', 'Pending', 'In Progress', 'Completed', 'Cancelled'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status === 'In Progress' ? 'in_progress' : status)}
-                            style={{
-                                padding: '10px 20px',
-                                borderRadius: '12px',
-                                border: '1px solid',
-                                borderColor: (statusFilter === 'in_progress' && status === 'In Progress') || statusFilter === status ? 'var(--color-primary)' : 'var(--border-color)',
-                                background: (statusFilter === 'in_progress' && status === 'In Progress') || statusFilter === status ? 'var(--color-primary)' : 'rgba(255,255,255,0.03)',
-                                color: (statusFilter === 'in_progress' && status === 'In Progress') || statusFilter === status ? 'white' : 'var(--text-muted)',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                whiteSpace: 'nowrap'
-                            }}
+                            className={`px-5 py-2.5 rounded-xl border text-sm font-bold transition-all whitespace-nowrap active:scale-95 ${(statusFilter === 'in_progress' && status === 'In Progress') || statusFilter === status
+                                ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
+                                : 'bg-white/5 border-transparent text-muted hover:bg-white/10'
+                                }`}
                         >
                             {status}
                         </button>
@@ -123,74 +107,111 @@ export default function AdminJobsPage() {
             </div>
 
             {/* Jobs Data Grid */}
-            <div className="glass-panel" style={{ padding: 0, borderRadius: '24px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead style={{ background: 'rgba(255, 255, 255, 0.02)', borderBottom: '1px solid var(--border-color)' }}>
-                        <tr>
-                            <th style={thStyle}>JOB ID</th>
-                            <th style={thStyle}>STATUS</th>
-                            <th style={thStyle}>PARTIES</th>
-                            <th style={thStyle}>AMOUNT</th>
-                            <th style={thStyle}>DATE</th>
-                            <th style={thStyle}></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {isLoading ? (
+            <div className="glass-panel p-0 rounded-[24px] overflow-hidden border border-white/5">
+                <div className="overflow-x-auto" style={{ minHeight: '400px' }}>
+                    <table className="w-full text-left border-collapse min-w-[800px]">
+                        <thead className="bg-white/5 border-b border-white/5">
                             <tr>
-                                <td colSpan={6} style={{ textAlign: 'center', padding: '100px' }}>
-                                    <div className="animate-spin" style={{ width: '32px', height: '32px', border: '3px solid rgba(var(--color-primary-rgb), 0.1)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', margin: '0 auto' }}></div>
-                                </td>
+                                <th className="p-5 text-xs font-black text-muted tracking-widest uppercase border-b border-white/5">Job ID</th>
+                                <th className="p-5 text-xs font-black text-muted tracking-widest uppercase border-b border-white/5">Status</th>
+                                <th className="p-5 text-xs font-black text-muted tracking-widest uppercase border-b border-white/5">Parties</th>
+                                <th className="p-5 text-xs font-black text-muted tracking-widest uppercase border-b border-white/5">Amount</th>
+                                <th className="p-5 text-xs font-black text-muted tracking-widest uppercase border-b border-white/5">Date</th>
+                                <th className="p-5 border-b border-white/5"></th>
                             </tr>
-                        ) : filteredJobs.length > 0 ? filteredJobs.map((job: any) => (
-                            <tr key={job.id} className="row-hover" style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }}>
-                                <td style={tdStyle}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary)' }} />
-                                        <span style={{ fontWeight: 800, color: 'var(--text-body)' }}>#{job.id.slice(-8).toUpperCase()}</span>
-                                    </div>
-                                </td>
-                                <td style={tdStyle}>
-                                    <StatusPill status={job.status} />
-                                </td>
-                                <td style={tdStyle}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{job.customer}</div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500 }}>→ {job.technician}</div>
-                                    </div>
-                                </td>
-                                <td style={tdStyle}>
-                                    <div style={{ fontWeight: 900, fontSize: '1.05rem' }}>₹{job.totalAmount.toLocaleString()}</div>
-                                </td>
-                                <td style={tdStyle}>
-                                    <div style={{ fontWeight: 600 }}>{new Date(job.createdAt).toLocaleDateString()}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(job.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                </td>
-                                <td style={tdStyle}>
-                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                                        <button className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 700, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            View Details <ExternalLink size={14} />
-                                        </button>
-                                        <button style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                                            <MoreVertical size={18} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr>
-                                <td colSpan={6} style={{ textAlign: 'center', padding: '100px', color: 'var(--text-muted)' }}>
-                                    No service jobs detected matching current filters
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={6} className="p-24 text-center">
+                                        <div className="animate-spin w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full mx-auto mb-4"></div>
+                                        <p className="text-muted font-bold text-xs tracking-widest uppercase">Loading Jobs...</p>
+                                    </td>
+                                </tr>
+                            ) : filteredJobs.length > 0 ? filteredJobs.map((job: any) => (
+                                <tr key={job.id} className="group hover:bg-white/[0.02] border-b border-white/5 last:border-0 transition-colors">
+                                    <td className="p-6">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-primary" />
+                                            <span className="font-extrabold text-foreground tracking-wide text-sm">#{job.id.slice(-8).toUpperCase()}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-6">
+                                        <StatusPill status={job.status} />
+                                    </td>
+                                    <td className="p-6">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="font-bold text-sm text-foreground">{job.customer}</div>
+                                            <div className="text-muted text-xs font-medium">→ {job.technician}</div>
+                                        </div>
+                                    </td>
+                                    <td className="p-6">
+                                        <div className="font-black text-base">₹{job.totalAmount.toLocaleString()}</div>
+                                    </td>
+                                    <td className="p-6">
+                                        <div className="font-semibold text-sm">{new Date(job.createdAt).toLocaleDateString()}</div>
+                                        <div className="text-xs text-muted font-medium mt-0.5">{new Date(job.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                    </td>
+                                    <td className="p-6">
+                                        <div className="flex justify-end items-center gap-3 relative">
+                                            <Link
+                                                href={`/admin/jobs/${job.id}`}
+                                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition-colors"
+                                            >
+                                                View Details <ExternalLink size={14} />
+                                            </Link>
+
+                                            <div className="relative">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActionMenuOpen(actionMenuOpen === job.id ? null : job.id);
+                                                    }}
+                                                    className="p-2 rounded-lg text-muted hover:text-foreground transition-colors"
+                                                >
+                                                    <MoreVertical size={18} />
+                                                </button>
+
+                                                {actionMenuOpen === job.id && (
+                                                    <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                        <div className="py-1">
+                                                            <Link
+                                                                href={`/admin/jobs/${job.id}`}
+                                                                className="w-full text-left px-4 py-3 text-sm font-bold text-muted hover:text-foreground hover:bg-white/5 flex items-center gap-2"
+                                                            >
+                                                                <FileText size={14} /> View Details
+                                                            </Link>
+                                                            {job.status !== 'cancelled' && job.status !== 'completed' && (
+                                                                <button
+                                                                    onClick={() => handleCancelJob(job.id)}
+                                                                    className="w-full text-left px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-2"
+                                                                >
+                                                                    <X size={14} /> Cancel Job
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan={6} className="p-24 text-center text-muted">
+                                        No service jobs detected matching current filters
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <style jsx>{`
-                .row-hover:hover { background: rgba(255, 255, 255, 0.015); }
-            `}</style>
+            {/* Click outside listener for dropdown */}
+            {actionMenuOpen && (
+                <div className="fixed inset-0 z-40" onClick={() => setActionMenuOpen(null)} />
+            )}
         </div>
     );
 }
@@ -204,13 +225,12 @@ function StatusPill({ status }: { status: string }) {
     const isError = ['cancelled', 'bill_rejected', 'quote_rejected', 'failed'].includes(s);
     const isBlue = ['accepted', 'arrived', 'diagnosing', 'in_progress', 'parts_required', 'parts_ordered', 'quality_check', 'billing_pending'].includes(s);
 
-    let color = '#777';
-    let bg = 'rgba(120, 120, 120, 0.1)';
+    let colorClass = 'text-muted bg-white/5';
 
-    if (isSuccess) { color = '#34C759'; bg = 'rgba(52, 199, 89, 0.1)'; }
-    else if (isWarn) { color = '#FF9500'; bg = 'rgba(255, 149, 0, 0.1)'; }
-    else if (isError) { color = '#FF3B30'; bg = 'rgba(255, 59, 48, 0.1)'; }
-    else if (isBlue) { color = '#007AFF'; bg = 'rgba(0, 122, 255, 0.1)'; }
+    if (isSuccess) colorClass = 'text-green-500 bg-green-500/10';
+    else if (isWarn) colorClass = 'text-orange-500 bg-orange-500/10';
+    else if (isError) colorClass = 'text-red-500 bg-red-500/10';
+    else if (isBlue) colorClass = 'text-blue-500 bg-blue-500/10';
 
     // Format snake_case to Title Case
     const formattedStatus = s
@@ -219,30 +239,8 @@ function StatusPill({ status }: { status: string }) {
         .join(' ');
 
     return (
-        <span style={{
-            padding: '4px 12px',
-            borderRadius: '100px',
-            fontSize: '0.7rem',
-            fontWeight: 800,
-            color: color,
-            background: bg,
-            letterSpacing: '0.5px',
-            whiteSpace: 'nowrap'
-        }}>
+        <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-wide uppercase whitespace-nowrap ${colorClass}`}>
             {formattedStatus}
         </span>
     );
 }
-
-const thStyle = {
-    padding: '20px 24px',
-    fontWeight: 800,
-    fontSize: '0.7rem',
-    color: 'var(--text-muted)',
-    letterSpacing: '1px'
-};
-
-const tdStyle = {
-    padding: '24px 24px',
-    fontSize: '0.95rem'
-};

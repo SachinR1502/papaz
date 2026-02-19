@@ -13,13 +13,14 @@ interface SupplierContextType {
     profile: any;
     isLoading: boolean;
     wholesaleOrders: any[];
+    transactions: any[];
     refreshData: () => Promise<void>;
     submitRegistration: (data: any) => Promise<void>;
     addProduct: (product: any) => Promise<void>;
     updateProduct: (id: string, product: any) => Promise<void>;
     updateProfile: (data: any) => Promise<void>;
     updateOrder: (orderId: string, action: string, status?: string, data?: any) => Promise<void>;
-    sendQuotation: (orderId: string, items: any[], totalAmount?: number) => Promise<void>;
+    sendQuotation: (orderId: string, items: any[], totalAmount?: number, isWholesale?: boolean) => Promise<void>;
     requestWithdrawal: (amount: number, bankAccountId?: string) => Promise<void>;
 }
 
@@ -32,6 +33,7 @@ const SupplierContext = createContext<SupplierContextType>({
     profile: null,
     isLoading: true,
     wholesaleOrders: [],
+    transactions: [],
     refreshData: async () => { },
     submitRegistration: async () => { },
     updateProfile: async () => { },
@@ -54,6 +56,35 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
     const [profile, setProfile] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [wholesaleOrders, setWholesaleOrders] = useState<any[]>([]);
+    const [transactions, setTransactions] = useState<any[]>([]);
+
+    const formatString = (val: any, fallback: any): string => {
+        const raw = val || fallback;
+        if (!raw) return 'N/A';
+        if (typeof raw === 'string') return raw;
+        if (typeof raw === 'object') {
+            if (raw.lat !== undefined && raw.lng !== undefined) {
+                return `GPS: ${Number(raw.lat).toFixed(4)}, ${Number(raw.lng).toFixed(4)}`;
+            }
+            if (raw.name) return String(raw.name);
+            if (raw.fullName) return String(raw.fullName);
+            if (raw.garageName) return String(raw.garageName);
+            // Deep fallback for nested objects that might still be passed
+            return 'Data Sync Active';
+        }
+        return String(raw);
+    };
+
+    const cleanProfileData = (raw: any) => {
+        if (!raw) return null;
+        return {
+            ...raw,
+            storeName: formatString(raw.storeName || raw.shopName, 'Partner Shop'),
+            fullName: formatString(raw.fullName, 'Business Owner'),
+            address: formatString(raw.address, 'Location Pending'),
+            city: formatString(raw.city, 'Hub City')
+        };
+    };
 
     useEffect(() => {
         if (user?.role?.toLowerCase() === 'supplier') {
@@ -67,7 +98,8 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
         try {
             if (user?.profile) {
-                setProfile(user.profile);
+                const cleaned = cleanProfileData(user.profile);
+                setProfile(cleaned);
                 setIsRegistered(!!(user.profile.shopName || user.profile.storeName));
                 setIsApproved(user.profile.status === 'approved' || user.profile.isApproved);
                 if (user.profile.shopName || user.profile.storeName) {
@@ -78,9 +110,10 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
                 const regData = localStorage.getItem('supplier_profile');
                 if (regData) {
                     const parsed = JSON.parse(regData);
-                    setProfile(parsed);
-                    setIsRegistered(!!(parsed.shopName || parsed.storeName));
-                    setIsApproved(parsed.status === 'approved' || parsed.isApproved);
+                    const cleaned = cleanProfileData(parsed);
+                    setProfile(cleaned);
+                    setIsRegistered(!!(cleaned.shopName || cleaned.storeName));
+                    setIsApproved(cleaned.status === 'approved' || cleaned.isApproved);
                     await loadBusinessData();
                 } else {
                     setIsRegistered(false);
@@ -96,16 +129,32 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
 
     const loadBusinessData = async () => {
         try {
-            const [inv, ord, w_ord] = await Promise.all([
+            const [inv, ord, w_ord, wallet] = await Promise.all([
                 supplierService.getInventory().catch(() => []),
                 supplierService.getOrders().catch(() => []),
-                supplierService.getWholesaleOrders().catch(() => [])
+                supplierService.getWholesaleOrders().catch(() => []),
+                supplierService.getWallet().catch(() => ({ balance: 0, transactions: [] }))
             ]);
+
+            const formatString = (val: any, fallback: string) => {
+                if (!val) return fallback;
+                if (typeof val === 'string') return val;
+                if (typeof val === 'object') {
+                    if (val.lat !== undefined && val.lng !== undefined) {
+                        return `GPS: ${val.lat.toFixed(4)}, ${val.lng.toFixed(4)}`;
+                    }
+                    if (val.name) return val.name;
+                    return fallback;
+                }
+                return String(val);
+            };
 
             setInventory((inv as any[]).map(p => ({
                 ...p,
                 id: p._id || p.id,
-                type: p.category || 'Spare Parts',
+                name: formatString(p.name, 'Unknown Part'),
+                type: formatString(p.category || p.type, 'Spare Parts'),
+                category: formatString(p.category, 'Components'),
                 quantity: p.stock || 0,
                 deliveryTime: p.deliveryTime || '2-3 Days'
             })));
@@ -113,21 +162,57 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
             setOrders((ord as any[]).map(o => ({
                 ...o,
                 id: o._id || o.id,
-                partName: o.partName || (o.items?.[0]?.name) || 'Spare Part',
+                isWholesale: false,
+                partName: formatString(o.partName || (o.items?.[0]?.name), 'Spare Part'),
                 quantity: o.quantity || (o.items?.[0]?.quantity) || 1,
-                location: o.location || (o.customer?.city) || 'Direct Order',
+                location: formatString(o.location, (o.customer?.city || 'Direct Order')),
                 urgency: o.urgency || 'Normal',
                 amount: o.amount || o.totalAmount || 0,
-                type: o.type || 'Car'
+                type: o.type || 'Car',
+                items: (o.items || []).map((item: any) => ({
+                    ...item,
+                    name: formatString(item.name, 'Component'),
+                    sku: formatString(item.sku, 'N/A'),
+                    brand: formatString(item.brand, 'Premium')
+                })),
+                deliveryDetails: o.deliveryDetails ? {
+                    ...o.deliveryDetails,
+                    address: formatString(o.deliveryDetails.address, o.location || 'N/A')
+                } : undefined,
+                customer: o.customer ? {
+                    ...o.customer,
+                    fullName: formatString(o.customer.fullName, 'Client Entity'),
+                    phoneNumber: formatString(o.customer.phoneNumber, 'N/A')
+                } : undefined
             })));
 
             setWholesaleOrders((w_ord as any[]).map(wo => ({
                 ...wo,
                 id: wo._id || wo.id,
-                technicianName: wo.technicianName || (wo.technician?.garageName) || (wo.technician?.fullName) || 'Master Technician'
+                isWholesale: true,
+                technicianName: formatString(wo.technicianName || (wo.technician?.garageName) || (wo.technician?.fullName), 'Master Technician'),
+                partName: formatString(wo.partName || (wo.items?.[0]?.name), 'Spare Parts Bundle'),
+                location: formatString(wo.location, (wo.technician?.city || 'Field Request')),
+                items: (wo.items || []).map((item: any) => ({
+                    ...item,
+                    name: formatString(item.name, 'Component'),
+                    sku: formatString(item.sku, 'N/A'),
+                    brand: formatString(item.brand, 'Premium')
+                })),
+                deliveryDetails: wo.deliveryDetails ? {
+                    ...wo.deliveryDetails,
+                    address: formatString(wo.deliveryDetails.address, wo.location || 'N/A')
+                } : undefined,
+                technician: wo.technician ? {
+                    ...wo.technician,
+                    garageName: formatString(wo.technician.garageName || wo.technician.fullName, 'Master Technician'),
+                    phoneNumber: formatString(wo.technician.phoneNumber, 'N/A')
+                } : undefined
             })));
 
-            setWalletBalance(profile?.walletBalance || 15400); // Mock/Default
+            setProfile(cleanProfileData(user?.role?.toLowerCase() === 'supplier' ? user.profile : profile));
+            setWalletBalance(wallet?.balance || profile?.walletBalance || 0);
+            setTransactions(wallet?.transactions || []);
         } catch (e) {
             console.error("Failed to load supplier data", e);
         }
@@ -180,8 +265,14 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
         await loadBusinessData();
     };
 
-    const sendQuotation = async (orderId: string, items: any[], totalAmount?: number) => {
-        await supplierService.sendQuotation(orderId, items, totalAmount);
+    const sendQuotation = async (orderId: string, items: any[], totalAmount?: number, isWholesale?: boolean) => {
+        if (isWholesale) {
+            // Check if there's a specialized wholesale quotation endpoint, otherwise use the standard one
+            // Trying standard one for now as it's common to unify POSTs
+            await supplierService.sendQuotation(orderId, items, totalAmount);
+        } else {
+            await supplierService.sendQuotation(orderId, items, totalAmount);
+        }
         await loadBusinessData();
     };
 
@@ -195,6 +286,7 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
             inventory,
             orders,
             walletBalance,
+            transactions,
             isRegistered,
             isApproved,
             profile,

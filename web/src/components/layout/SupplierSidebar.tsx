@@ -2,75 +2,150 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+    LayoutDashboard,
+    ShoppingBag,
+    Package,
+    CreditCard,
+    Settings,
+    HelpCircle,
+    X,
+    ChevronRight,
+    Store
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-interface SupplierNavLinkProps {
+interface SupplierSidebarProps {
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+}
+
+interface NavItem {
     href: string;
-    icon: string;
+    icon: any;
     label: string;
-    active?: boolean;
 }
 
-function SupplierNavLink({ href, icon, label, active = false }: SupplierNavLinkProps) {
-    return (
-        <Link href={href} style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '12px 16px',
-            borderRadius: '10px',
-            textDecoration: 'none',
-            color: active ? 'white' : 'var(--text-muted)',
-            background: active ? 'var(--color-primary)' : 'transparent',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-        }}
-            onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => !active && (e.currentTarget.style.background = 'rgba(0,0,0,0.03)')}
-            onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => !active && (e.currentTarget.style.background = 'transparent')}
-        >
-            <span style={{ fontSize: '1.1rem', opacity: active ? 1 : 0.7 }}>{icon}</span>
-            <span>{label}</span>
-        </Link>
-    );
-}
+const MANAGEMENT_LINKS: NavItem[] = [
+    { href: '/supplier/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/supplier/orders', icon: ShoppingBag, label: 'Orders' },
+    { href: '/supplier/inventory', icon: Package, label: 'Inventory' },
+];
 
-export default function SupplierSidebar() {
+const FINANCIAL_LINKS: NavItem[] = [
+    { href: '/supplier/payments', icon: CreditCard, label: 'Payments' },
+    { href: '/supplier/profile', icon: Settings, label: 'Store Settings' },
+];
+
+export default function SupplierSidebar({ open, onOpenChange }: SupplierSidebarProps) {
     const pathname = usePathname();
 
     return (
-        <aside style={{
-            width: '260px',
-            borderRight: '1px solid var(--border-color)',
-            background: 'rgba(255, 255, 255, 0.01)',
-            padding: '32px 12px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '32px',
-            flexShrink: 0
-        }}>
-            <div>
-                <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', paddingLeft: '16px', marginBottom: '12px', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Management</p>
-                <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <SupplierNavLink href="/supplier/dashboard" icon="📊" label="Dashboard" active={pathname === '/supplier/dashboard'} />
-                    <SupplierNavLink href="/supplier/orders" icon="📦" label="Orders" active={pathname === '/supplier/orders'} />
-                    <SupplierNavLink href="/supplier/inventory" icon="⚙️" label="Inventory" active={pathname.includes('/supplier/inventory')} />
-                </nav>
-            </div>
+        <>
+            {/* MOBILE OVERLAY */}
+            {open && (
+                <div
+                    className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm lg:hidden transition-all duration-500"
+                    onClick={() => onOpenChange?.(false)}
+                />
+            )}
 
-            <div>
-                <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', paddingLeft: '16px', marginBottom: '12px', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Financials</p>
-                <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <SupplierNavLink href="/supplier/payments" icon="💰" label="Payments" active={pathname === '/supplier/payments'} />
-                    <SupplierNavLink href="/supplier/profile" icon="👤" label="Store Settings" active={pathname === '/supplier/profile'} />
-                </nav>
-            </div>
+            <aside className={cn(
+                "fixed inset-y-0 left-0 z-[120] w-[280px] md:w-[300px] border-r border-border bg-card/40 backdrop-blur-3xl p-8 flex flex-col transition-all duration-500 ease-in-out lg:translate-x-0 lg:sticky lg:top-20 lg:h-[calc(100vh-80px)] lg:z-10",
+                open ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+            )}>
+                {/* Mobile Close Button */}
+                <button
+                    onClick={() => onOpenChange?.(false)}
+                    className="lg:hidden absolute top-6 right-6 p-2 rounded-xl bg-card/50 text-muted transition-all active:scale-90"
+                >
+                    <X size={20} />
+                </button>
 
-            <div style={{ marginTop: 'auto', padding: '16px' }}>
-                <div className="glass-panel" style={{ padding: '12px', borderRadius: '12px', background: 'rgba(0, 122, 255, 0.05)', border: '1px solid rgba(0, 122, 255, 0.1)' }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: 700, margin: '0 0 4px', color: 'var(--color-primary)' }}>Need Help?</p>
-                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>Contact partner support at support@papaz.com</p>
+                <div className="flex flex-col gap-10">
+                    {/* Management Section */}
+                    <div className="space-y-4">
+                        <p className="px-4 text-[10px] font-black uppercase tracking-[0.25em] text-muted opacity-40">Management</p>
+                        <nav className="flex flex-col gap-2">
+                            {MANAGEMENT_LINKS.map(link => (
+                                <SidebarLink
+                                    key={link.href}
+                                    link={link}
+                                    active={pathname === link.href}
+                                    onClick={() => onOpenChange?.(false)}
+                                />
+                            ))}
+                        </nav>
+                    </div>
+
+                    {/* Financial Section */}
+                    <div className="space-y-4">
+                        <p className="px-4 text-[10px] font-black uppercase tracking-[0.25em] text-muted opacity-40">Financials</p>
+                        <nav className="flex flex-col gap-2">
+                            {FINANCIAL_LINKS.map(link => (
+                                <SidebarLink
+                                    key={link.href}
+                                    link={link}
+                                    active={pathname === link.href || pathname.startsWith(link.href)}
+                                    onClick={() => onOpenChange?.(false)}
+                                />
+                            ))}
+                        </nav>
+                    </div>
                 </div>
+
+                <div className="mt-auto">
+                    <div className="relative group">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-blue-500/20 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity" />
+                        <div className="relative p-5 rounded-2xl bg-primary/5 border border-primary/10 flex flex-col gap-3">
+                            <div className="flex items-center gap-3 text-primary">
+                                <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
+                                    <HelpCircle size={16} />
+                                </div>
+                                <span className="font-black text-xs uppercase tracking-wider italic">Need Help?</span>
+                            </div>
+                            <p className="text-[10px] text-muted font-bold leading-relaxed opacity-70">
+                                Contact our dedicated support team at <span className="text-primary">support@papaz.com</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </>
+    );
+}
+
+function SidebarLink({ link, active, onClick }: { link: NavItem, active: boolean, onClick: () => void }) {
+    const Icon = link.icon;
+
+    return (
+        <Link
+            href={link.href}
+            onClick={onClick}
+            className={cn(
+                "group flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 relative overflow-hidden",
+                active
+                    ? "bg-primary text-white shadow-xl shadow-primary/20 translate-x-1"
+                    : "text-muted hover:text-foreground hover:bg-card/50 hover:translate-x-1"
+            )}
+        >
+            <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
+                active ? "bg-white/20" : "bg-card border border-border group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5"
+            )}>
+                <Icon size={18} className={cn(active ? "text-white" : "text-muted group-hover:text-primary")} />
             </div>
-        </aside>
+            <span className="flex-1 font-black text-xs uppercase tracking-widest italic">{link.label}</span>
+            {active ? (
+                <div className="w-1.5 h-1.5 rounded-full bg-white opacity-40" />
+            ) : (
+                <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-primary" />
+            )}
+
+            {/* Shine effect on active */}
+            {active && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            )}
+        </Link>
     );
 }

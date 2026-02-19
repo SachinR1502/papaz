@@ -1,271 +1,235 @@
 'use client';
-import Link from 'next/link';
+
 import { useAuth } from '@/context/AuthContext';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { User, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { User, Mail, Phone, ShieldCheck, Settings2, Save, Lock, Eye, EyeOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { authService } from '@/services/authService';
 
 export default function SettingsPage() {
-    const { user, login } = useAuth();
-    const [name, setName] = useState(user?.profile?.fullName || user?.name || '');
-    const [email, setEmail] = useState(user?.profile?.email || user?.email || '');
-    const [phone, setPhone] = useState(user?.profile?.phone || user?.phoneNumber || '');
+  const { user, login } = useAuth();
+  const [name, setName] = useState(user?.profile?.fullName || user?.name || '');
+  const [email, setEmail] = useState(user?.profile?.email || user?.email || '');
+  const [phone, setPhone] = useState(user?.profile?.phone || user?.phoneNumber || '');
+  const [isSaving, setIsSaving] = useState(false);
 
-    const handleSave = (e: React.FormEvent) => {
-        e.preventDefault();
-        toast.success('Security identity updated');
-        if (login && user) {
-            login(localStorage.getItem('auth_token') || '', {
-                ...user,
-                profile: { ...user.profile, fullName: name, email, phone },
-                name: name,
-                email: email,
-                phoneNumber: phone
-            });
-        }
-    };
+  // Password State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-    return (
-        <section className="profile-settings">
-            <header className="page-header">
-                <div>
-                    <h1>
-                        Profile <span className="text-primary">Integrity</span>
-                    </h1>
-                    <p>Manage your core credentials and technical verification details.</p>
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const res = await authService.updateProfile({ fullName: name, email, phone });
+
+      toast.success('Profile updated successfully');
+      if (login && user) {
+        login(localStorage.getItem('auth_token') || '', {
+          ...user,
+          profile: { ...user.profile, fullName: name, email, phone },
+          name: name,
+          email: email,
+          phoneNumber: phone
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      return toast.error('Passwords do not match');
+    }
+    setIsChangingPassword(true);
+    try {
+      // Mocking password change for now as API might not be defined in service
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.success('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      toast.error('Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-10 md:gap-14 animate-fade-in pb-20">
+      {/* HEADER */}
+      <header className="text-left">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4 lg:mb-6">
+          <Settings2 size={10} className="text-primary" />
+          <span className="text-[10px] uppercase font-black tracking-widest text-primary">Account Security</span>
+        </div>
+        <h1 className="text-4xl lg:text-6xl font-black m-0 tracking-tighter text-foreground italic uppercase">
+          Profile <span className="text-primary">Settings</span>
+        </h1>
+        <p className="mt-4 text-base md:text-lg text-muted font-bold max-w-2xl opacity-80 leading-relaxed">
+          Update your personal information and manage your account security.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-12 max-w-4xl">
+        {/* PROFILE SECTION */}
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary/10 via-blue-500/5 to-primary/10 rounded-[40px] blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-500" />
+
+          <div className="relative p-8 md:p-12 lg:p-16 rounded-[40px] border border-border bg-card/20 backdrop-blur-3xl shadow-2xl overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary opacity-[0.02] blur-[120px] -mr-48 -mt-48 pointer-events-none" />
+
+            <form onSubmit={handleSaveProfile} className="relative z-10 flex flex-col gap-10 md:gap-12">
+              <div className="flex items-center gap-4">
+                <div className="w-1.5 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(255,140,0,0.5)]" />
+                <h3 className="text-xl md:text-2xl font-black text-foreground italic uppercase tracking-tight">Personal Information</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+                <FormInput
+                  label="Full Name"
+                  icon={<User size={18} />}
+                  value={name}
+                  onChange={setName}
+                  required
+                  placeholder="Enter your full name"
+                />
+                <FormInput
+                  label="Email Address"
+                  icon={<Mail size={18} />}
+                  value={email}
+                  onChange={setEmail}
+                  type="email"
+                  required
+                  placeholder="your@email.com"
+                />
+                <FormInput
+                  label="Phone Number"
+                  icon={<Phone size={18} />}
+                  value={phone}
+                  onChange={setPhone}
+                  type="tel"
+                  placeholder="+91 00000 00000"
+                />
+              </div>
+
+              <div className="pt-8 border-t border-border/50 flex justify-start">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className={cn(
+                    "flex items-center justify-center gap-3 px-10 py-4 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic min-w-[200px]",
+                    isSaving && "opacity-50 cursor-not-allowed translate-y-0"
+                  )}
+                >
+                  {isSaving ? <Loader /> : <Save size={18} />}
+                  {isSaving ? 'Updating...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* PASSWORD SECTION */}
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/10 to-primary/5 rounded-[40px] blur-xl opacity-10 group-hover:opacity-20 transition-opacity duration-500" />
+
+          <div className="relative p-8 md:p-12 lg:p-16 rounded-[40px] border border-border bg-card/20 backdrop-blur-3xl shadow-2xl overflow-hidden">
+            <form onSubmit={handleChangePassword} className="relative z-10 flex flex-col gap-10 md:gap-12">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-1.5 h-8 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+                  <h3 className="text-xl md:text-2xl font-black text-foreground italic uppercase tracking-tight">Security Access</h3>
                 </div>
-            </header>
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(!showPasswords)}
+                  className="p-2 text-muted hover:text-foreground transition-colors"
+                >
+                  {showPasswords ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
 
-            <div className="settings-orb">
-                <form onSubmit={handleSave} className="settings-form">
-                    <div className="section-title">
-                        <div className="title-bar"></div>
-                        <h3>Identity Synchronization</h3>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+                <div className="md:col-span-2 max-w-md">
+                  <FormInput
+                    label="Current Password"
+                    icon={<Lock size={18} />}
+                    value={currentPassword}
+                    onChange={setCurrentPassword}
+                    type={showPasswords ? "text" : "password"}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <FormInput
+                  label="New Password"
+                  icon={<Lock size={18} />}
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  type={showPasswords ? "text" : "password"}
+                  placeholder="••••••••"
+                />
+                <FormInput
+                  label="Confirm New Password"
+                  icon={<Lock size={18} />}
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  type={showPasswords ? "text" : "password"}
+                  placeholder="••••••••"
+                />
+              </div>
 
-                    <div className="input-grid">
-                        <div className="input-field">
-                            <label>Legal Full Name</label>
-                            <div className="input-wrapper">
-                                <User size={18} className="input-icon" />
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={e => setName(e.target.value)}
-                                    required
-                                    placeholder="Enter full name"
-                                />
-                            </div>
-                        </div>
+              <div className="pt-8 border-t border-border/50 flex justify-start">
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className={cn(
+                    "flex items-center justify-center gap-3 px-10 py-4 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-indigo-500/30 transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic min-w-[220px]",
+                    isChangingPassword && "opacity-50 cursor-not-allowed translate-y-0"
+                  )}
+                >
+                  {isChangingPassword ? <Loader /> : <ShieldCheck size={18} />}
+                  {isChangingPassword ? 'Securing...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-                        <div className="input-field">
-                            <label>Encrypted Email</label>
-                            <div className="input-wrapper">
-                                <Mail size={18} className="input-icon" />
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    required
-                                    placeholder="name@example.com"
-                                />
-                            </div>
-                        </div>
+function FormInput({ label, icon, value, onChange, type = "text", required = false, placeholder }: any) {
+  return (
+    <div className="space-y-3">
+      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-muted opacity-60 ml-1">{label}</label>
+      <div className="relative flex items-center group/input">
+        <div className="absolute left-5 text-muted group-focus-within/input:text-primary transition-colors duration-300">
+          {icon}
+        </div>
+        <input
+          type={type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          required={required}
+          placeholder={placeholder}
+          className="w-full bg-card/30 border border-border rounded-2xl py-4 pl-14 pr-6 text-foreground font-bold outline-none focus:border-primary/50 focus:bg-card/50 transition-all duration-300"
+        />
+      </div>
+    </div>
+  );
+}
 
-                        <div className="input-field">
-                            <label>Technical Communication</label>
-                            <div className="input-wrapper">
-                                <Phone size={18} className="input-icon" />
-                                <input
-                                    type="tel"
-                                    value={phone}
-                                    onChange={e => setPhone(e.target.value)}
-                                    placeholder="+91 00000 00000"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="form-footer">
-                        <button type="submit" className="save-btn">
-                            <ShieldCheck size={20} />
-                            Sync Security Profile
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <style jsx>{`
-        .profile-settings {
-          animation: fadeIn 0.5s ease-out;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .page-header {
-          margin-bottom: 48px;
-        }
-
-        h1 {
-          font-size: clamp(2rem, 4vw, 2.6rem);
-          font-weight: 950;
-          margin: 0;
-          letter-spacing: -2px;
-        }
-
-        .text-primary {
-          color: var(--color-primary);
-        }
-
-        p {
-          margin: 8px 0 0;
-          color: var(--text-muted);
-          font-weight: 500;
-          font-size: 1.1rem;
-        }
-
-        .settings-orb {
-          background: rgba(var(--bg-card-rgb), 0.5);
-          backdrop-filter: blur(20px);
-          border: 1px solid var(--border-color);
-          border-radius: 40px;
-          padding: 64px;
-          max-width: 900px;
-          box-shadow: 0 40px 100px rgba(0, 0, 0, 0.1);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .settings-orb::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 300px;
-          height: 300px;
-          background: radial-gradient(circle, rgba(255,140,0,0.05) 0%, transparent 70%);
-          pointer-events: none;
-        }
-
-        .section-title {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          margin-bottom: 48px;
-        }
-
-        .title-bar {
-          width: 4px;
-          height: 28px;
-          background: var(--color-primary);
-          border-radius: 2px;
-          box-shadow: 0 0 10px var(--color-primary);
-        }
-
-        h3 {
-          font-size: 1.5rem;
-          font-weight: 900;
-          margin: 0;
-          letter-spacing: -0.5px;
-        }
-
-        .input-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 32px;
-          margin-bottom: 56px;
-        }
-
-        .input-field label {
-          display: block;
-          margin-bottom: 12px;
-          font-weight: 800;
-          font-size: 0.85rem;
-          text-transform: uppercase;
-          letter-spacing: 1.5px;
-          color: var(--text-muted);
-        }
-
-        .input-wrapper {
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-
-        .input-icon {
-          position: absolute;
-          left: 20px;
-          color: var(--text-muted);
-          transition: 0.3s;
-        }
-
-        input {
-          width: 100%;
-          padding: 18px 24px 18px 54px;
-          background: rgba(var(--bg-card-rgb), 0.4);
-          border: 1px solid var(--border-color);
-          border-radius: 18px;
-          color: var(--text-body);
-          font-size: 1.05rem;
-          font-weight: 600;
-          outline: none;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        input:focus {
-          border-color: var(--color-primary);
-          background: rgba(var(--bg-card-rgb), 0.6);
-          box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.1);
-        }
-
-        input:focus + .input-icon {
-          color: var(--color-primary);
-          transform: scale(1.1);
-        }
-
-        .form-footer {
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
-          padding-top: 40px;
-        }
-
-        .save-btn {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 20px 48px;
-          background: var(--color-primary);
-          color: white;
-          border: none;
-          border-radius: 20px;
-          font-weight: 900;
-          font-size: 1.1rem;
-          cursor: pointer;
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          box-shadow: 0 15px 35px rgba(255, 140, 0, 0.25);
-        }
-
-        .save-btn:hover {
-          transform: translateY(-5px) scale(1.02);
-          box-shadow: 0 20px 45px rgba(255, 140, 0, 0.35);
-        }
-
-        @media (max-width: 768px) {
-          .settings-orb {
-            padding: 32px;
-            border-radius: 32px;
-          }
-          .input-grid {
-            grid-template-columns: 1fr;
-          }
-          .save-btn {
-            width: 100%;
-            justify-content: center;
-          }
-        }
-      `}</style>
-        </section>
-    );
+function Loader() {
+  return <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />;
 }

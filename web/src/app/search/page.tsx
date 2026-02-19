@@ -5,9 +5,10 @@ import { useState, useEffect, Suspense, useCallback } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import ProductCard from '@/components/ui/ProductCard';
 import { customerService } from '@/services/customerService';
-import { Filter, SlidersHorizontal, X, ArrowLeft, Search as SearchIcon, ChevronDown, ChevronRight, Trash2, Tag, Box } from 'lucide-react';
+import { Filter, SlidersHorizontal, X, ArrowLeft, Search as SearchIcon, ChevronDown, ChevronRight, Trash2, Tag, Box, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CATEGORIES, BRANDS } from '@/data/storefront';
+import { Button } from '@/components/ui/Button';
 
 interface Product {
     id: string;
@@ -80,7 +81,6 @@ function SearchContent() {
         setLoading(true);
         try {
             const params: any = {};
-            // If brand selected, we include it in search
             let searchQuery = query;
             if (selectedBrand !== 'All') {
                 searchQuery = searchQuery ? `${searchQuery} ${selectedBrand}` : selectedBrand;
@@ -96,17 +96,15 @@ function SearchContent() {
 
             let data = await customerService.getProducts(params);
 
-            // Client-side price filtering
             data = data.filter((p: Product) =>
                 p.price >= priceRange[0] && p.price <= priceRange[1]
             );
 
-            // Sorting
             const sortedData = [...data].sort((a, b) => {
                 if (sortBy === 'price-low') return a.price - b.price;
                 if (sortBy === 'price-high') return b.price - a.price;
                 if (sortBy === 'rating') return b.rating - a.rating;
-                return 0; // Default to natural/newest
+                return 0;
             });
 
             setProducts(sortedData);
@@ -159,33 +157,31 @@ function SearchContent() {
     };
 
     return (
-        <main style={{ minHeight: '100vh', background: 'var(--bg-body)', paddingBottom: '100px' }}>
+        <main className="min-h-screen bg-background pb-20">
             <Navbar />
 
-            <div style={{ paddingTop: '100px' }}>
-                <div className="container" style={{ padding: '24px', maxWidth: '1440px' }}>
-
+            <div className="pt-32">
+                <div className="container px-6">
                     {/* Header Section */}
-                    <div style={{ marginBottom: '40px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
-                            <span onClick={() => router.push('/')} style={{ cursor: 'pointer' }}>Home</span>
+                    <div className="mb-12">
+                        <div className="flex items-center gap-2 text-muted text-sm font-medium mb-6">
+                            <span onClick={() => router.push('/')} className="cursor-pointer hover:text-primary transition-colors">Home</span>
                             <span>/</span>
-                            <span style={{ color: 'var(--text-body)', fontWeight: 600 }}>Search</span>
+                            <span className="text-foreground font-bold">Search</span>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '24px' }}>
-                            <div>
-                                <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 900, marginBottom: '8px', letterSpacing: '-1.5px' }}>
-                                    {query ? `Search Results for "${query}"` : 'Premium Automotive Catalog'}
+                        <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
+                            <div className="max-w-2xl">
+                                <h1 className="text-4xl md:text-5xl font-black mb-3 tracking-tighter leading-none italic uppercase">
+                                    {query ? `Search: "${query}"` : 'Product Catalog'}
                                 </h1>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>
-                                    Found <span style={{ color: 'var(--text-body)', fontWeight: 700 }}>{products.length}</span> high-performance parts
+                                <p className="text-muted text-lg font-medium">
+                                    Found <span className="text-foreground font-bold">{products.length}</span> products.
                                 </p>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                {/* Sort Dropdown */}
-                                <div style={{ position: 'relative' }}>
+                            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                                <div className="relative group flex-1 lg:flex-none">
                                     <select
                                         value={sortBy}
                                         onChange={(e) => {
@@ -193,297 +189,215 @@ function SearchContent() {
                                             setSortBy(val);
                                             updateURL({ sort: val });
                                         }}
-                                        style={{
-                                            appearance: 'none',
-                                            background: 'var(--bg-card)',
-                                            border: '1px solid var(--border-color)',
-                                            padding: '12px 40px 12px 20px',
-                                            borderRadius: '16px',
-                                            fontWeight: 700,
-                                            fontSize: '0.95rem',
-                                            color: 'var(--text-body)',
-                                            cursor: 'pointer',
-                                            outline: 'none',
-                                            minWidth: '200px'
-                                        }}
+                                        className="appearance-none bg-card border border-border px-6 py-3.5 rounded-2xl font-black text-sm text-foreground cursor-pointer outline-none min-w-[220px] w-full focus:ring-2 focus:ring-primary/20 transition-all"
                                     >
-                                        <option value="newest">Newest Arrivals</option>
+                                        <option value="newest">Newest First</option>
                                         <option value="price-low">Price: Low to High</option>
                                         <option value="price-high">Price: High to Low</option>
-                                        <option value="rating">Highest Rated</option>
+                                        <option value="rating">Top Rated</option>
                                     </select>
-                                    <ChevronDown size={18} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }} />
+                                    <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={18} />
                                 </div>
 
-                                <button
+                                <Button
+                                    variant="outline"
                                     onClick={() => setShowFilters(true)}
-                                    className="btn"
-                                    style={{
-                                        background: 'var(--bg-card)',
-                                        border: '1px solid var(--border-color)',
-                                        padding: '12px 24px',
-                                        borderRadius: '16px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px'
-                                    }}
+                                    className="h-[52px] px-8 rounded-2xl gap-2 font-black border-border bg-card group-hover:border-primary/50 transition-all"
                                 >
-                                    <SlidersHorizontal size={18} /> Filters
-                                </button>
+                                    <SlidersHorizontal size={18} />
+                                    Filters
+                                </Button>
                             </div>
                         </div>
 
-                        {/* Active Filter Chips */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '24px' }}>
+                        {/* Filter Chips */}
+                        <div className="flex flex-wrap items-center gap-3 mt-8">
                             {getActiveFilters().map(filter => (
-                                <div key={filter.id} style={{
-                                    background: 'var(--bg-card)',
-                                    border: '1px solid var(--border-color)',
-                                    padding: '8px 16px',
-                                    borderRadius: '100px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    fontSize: '0.9rem',
-                                    fontWeight: 600,
-                                    color: 'var(--text-body)',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-                                }}>
-                                    {filter.label}
-                                    <X size={14} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => removeFilter(filter.id)} />
+                                <div key={filter.id} className="bg-card border border-border px-5 py-2.5 rounded-2xl flex items-center gap-3 text-xs font-black text-foreground shadow-sm animate-fade-in group">
+                                    <span className="opacity-60 uppercase tracking-widest">{filter.id}:</span>
+                                    <span>{filter.label.replace(/.*: /, '')}</span>
+                                    <button
+                                        onClick={() => removeFilter(filter.id)}
+                                        className="p-1 hover:bg-muted rounded-lg transition-colors text-muted hover:text-red-500"
+                                    >
+                                        <X size={14} strokeWidth={3} />
+                                    </button>
                                 </div>
                             ))}
                             {getActiveFilters().length > 0 && (
                                 <button
                                     onClick={clearAll}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: 'var(--color-primary)',
-                                        fontWeight: 700,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        padding: '8px 12px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px'
-                                    }}
+                                    className="px-4 py-2 text-primary font-black text-xs uppercase tracking-widest hover:bg-primary/5 rounded-xl transition-all flex items-center gap-2 ml-2"
                                 >
-                                    <Trash2 size={16} /> Clear All
+                                    <Trash2 size={14} /> Clear All
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    <div style={{ display: 'block' }} className="search-layout">
-
-                        {/* Main Grid Content */}
-                        <div style={{ flex: 1 }}>
-                            {loading ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px' }}>
-                                    {[1, 2, 3, 4, 5, 6].map(i => (
-                                        <div key={i} style={{ height: '450px', borderRadius: '32px', background: 'var(--bg-card)', opacity: 0.5, animation: 'pulse 1.5s infinite' }} />
-                                    ))}
+                    <div className="flex flex-col gap-8">
+                        {loading ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                                    <div key={i} className="h-[480px] rounded-[40px] bg-card border border-border p-8 animate-pulse flex flex-col gap-6">
+                                        <div className="h-60 bg-muted/50 rounded-3xl" />
+                                        <div className="h-6 bg-muted/50 rounded-full w-3/4" />
+                                        <div className="h-4 bg-muted/50 rounded-full w-1/2" />
+                                        <div className="mt-auto h-12 bg-muted/50 rounded-2xl" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : products.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                                {products.map(product => (
+                                    <div key={product.id || product._id || Math.random().toString()} className="animate-fade-in">
+                                        <ProductCard {...product} id={(product.id || product._id) as string} />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center text-center py-32 px-12 bg-card border border-border rounded-[48px] border-dashed">
+                                <div className="w-24 h-24 bg-primary/5 rounded-[32px] flex items-center justify-center text-4xl mb-8">
+                                    🔍
                                 </div>
-                            ) : products.length > 0 ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px' }}>
-                                    {products.map(product => (
-                                        <div key={product.id || product._id || Math.random().toString()} className="animate-fade-in" style={{ height: '100%' }}>
-                                            <ProductCard {...product} id={(product.id || product._id) as string} />
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div style={{
-                                    textAlign: 'center',
-                                    padding: '120px 48px',
-                                    background: 'var(--bg-card)',
-                                    borderRadius: '48px',
-                                    border: '2px dashed var(--border-color)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center'
-                                }}>
-                                    <div style={{ width: '120px', height: '120px', background: 'rgba(255, 140, 0, 0.05)', borderRadius: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '4rem', marginBottom: '32px' }}>🏙️</div>
-                                    <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '16px' }}>No matches found</h2>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem', maxWidth: '400px', lineHeight: 1.6 }}>
-                                        We couldn't find any results for your current filters. Try resetting or browsing our featured products.
-                                    </p>
-                                    <button onClick={clearAll} className="btn btn-primary" style={{ marginTop: '40px', padding: '16px 40px', borderRadius: '18px', fontSize: '1.1rem' }}>
-                                        Browse All Collection
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                                <h2 className="text-3xl font-black tracking-tighter mb-4 italic uppercase">No Products Found</h2>
+                                <p className="text-muted text-lg max-w-sm font-medium mb-12">
+                                    We couldn't find any products matching your search criteria.
+                                </p>
+                                <Button
+                                    variant="premium"
+                                    size="xl"
+                                    onClick={clearAll}
+                                    className="px-12 rounded-2xl uppercase tracking-widest text-xs"
+                                >
+                                    Clear Filters
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Mobile Filters Overlay */}
             {showFilters && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'flex-end' }}>
-                    <div style={{ width: '85%', maxWidth: '400px', background: 'var(--bg-card)', height: '100%', padding: '40px', overflowY: 'auto' }} className="animate-slide-in-right">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 900 }}>Filters</h2>
-                            <X size={24} style={{ cursor: 'pointer' }} onClick={() => setShowFilters(false)} />
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex justify-end animate-in fade-in duration-300">
+                    <div className="w-[85%] max-w-[420px] bg-card h-full p-10 overflow-y-auto shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col">
+                        <div className="flex justify-between items-center mb-12">
+                            <h2 className="text-2xl font-black italic uppercase tracking-tighter">Filters</h2>
+                            <Button variant="ghost" size="icon" onClick={() => setShowFilters(false)} className="rounded-xl">
+                                <X size={24} />
+                            </Button>
                         </div>
 
-                        {/* Categories Mobile Collapsible */}
-                        <div style={{ marginBottom: '32px', borderBottom: '1px solid var(--border-color)', paddingBottom: '24px' }}>
-                            <div
-                                onClick={() => toggleSection('categories')}
-                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: expandedSections.categories ? '20px' : '0' }}
-                            >
-                                <h4 style={{ fontWeight: 800 }}>Categories</h4>
-                                {expandedSections.categories ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                            </div>
-                            {expandedSections.categories && (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }} className="animate-fade-in">
-                                    {activeCategories.map(cat => (
-                                        <button
-                                            key={cat}
-                                            onClick={() => {
-                                                setSelectedCategory(cat);
-                                                updateURL({ category: cat });
-                                            }}
-                                            style={{
-                                                padding: '12px',
-                                                borderRadius: '12px',
-                                                background: selectedCategory === cat ? 'var(--color-primary)' : 'var(--bg-body)',
-                                                color: selectedCategory === cat ? 'white' : 'var(--text-body)',
-                                                border: 'none',
-                                                fontWeight: 700,
-                                                fontSize: '0.9rem',
-                                                textAlign: 'center'
-                                            }}
-                                        >
-                                            {cat}
-                                        </button>
-                                    ))}
+                        <div className="flex-1 space-y-12">
+                            {/* Categories */}
+                            <div className="space-y-6">
+                                <div
+                                    onClick={() => toggleSection('categories')}
+                                    className="flex justify-between items-center cursor-pointer group"
+                                >
+                                    <h4 className="font-black text-xs uppercase tracking-[0.2em] text-muted group-hover:text-foreground transition-colors">Categories</h4>
+                                    <ChevronDown className={`transition-transform duration-300 ${expandedSections.categories ? '' : '-rotate-90'}`} size={16} />
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Brands Mobile Collapsible */}
-                        <div style={{ marginBottom: '32px', borderBottom: '1px solid var(--border-color)', paddingBottom: '24px' }}>
-                            <div
-                                onClick={() => toggleSection('brands')}
-                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: expandedSections.brands ? '20px' : '0' }}
-                            >
-                                <h4 style={{ fontWeight: 800 }}>Brands</h4>
-                                {expandedSections.brands ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                                {expandedSections.categories && (
+                                    <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                                        {activeCategories.map(cat => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => {
+                                                    setSelectedCategory(cat);
+                                                    updateURL({ category: cat });
+                                                }}
+                                                className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat
+                                                    ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105'
+                                                    : 'bg-muted/50 text-muted hover:bg-muted hover:text-foreground border border-transparent'
+                                                    }`}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            {expandedSections.brands && (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }} className="animate-fade-in">
-                                    {activeBrands.map(brand => (
-                                        <button
-                                            key={brand}
-                                            onClick={() => {
-                                                setSelectedBrand(brand);
-                                                updateURL({ brand: brand });
-                                            }}
-                                            style={{
-                                                padding: '12px',
-                                                borderRadius: '12px',
-                                                background: selectedBrand === brand ? 'rgba(255, 140, 0, 0.1)' : 'var(--bg-body)',
-                                                color: selectedBrand === brand ? 'var(--color-primary)' : 'var(--text-body)',
-                                                border: selectedBrand === brand ? '1px solid var(--color-primary)' : 'none',
-                                                fontWeight: 700,
-                                                fontSize: '0.9rem',
-                                                textAlign: 'center'
-                                            }}
-                                        >
-                                            {brand}
-                                        </button>
-                                    ))}
+
+                            {/* Brands */}
+                            <div className="space-y-6">
+                                <div
+                                    onClick={() => toggleSection('brands')}
+                                    className="flex justify-between items-center cursor-pointer group"
+                                >
+                                    <h4 className="font-black text-xs uppercase tracking-[0.2em] text-muted group-hover:text-foreground transition-colors">Brands</h4>
+                                    <ChevronDown className={`transition-transform duration-300 ${expandedSections.brands ? '' : '-rotate-90'}`} size={16} />
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Price Range Mobile Collapsible */}
-                        <div style={{ marginBottom: '32px' }}>
-                            <div
-                                onClick={() => toggleSection('price')}
-                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: expandedSections.price ? '20px' : '0' }}
-                            >
-                                <h4 style={{ fontWeight: 800 }}>Price Range</h4>
-                                {expandedSections.price ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                                {expandedSections.brands && (
+                                    <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                                        {activeBrands.map(brand => (
+                                            <button
+                                                key={brand}
+                                                onClick={() => {
+                                                    setSelectedBrand(brand);
+                                                    updateURL({ brand: brand });
+                                                }}
+                                                className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedBrand === brand
+                                                    ? 'bg-primary/10 text-primary border border-primary/30 shadow-sm'
+                                                    : 'bg-muted/50 text-muted hover:bg-muted hover:text-foreground border border-transparent'
+                                                    }`}
+                                            >
+                                                {brand}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            {expandedSections.price && (
-                                <div className="animate-fade-in">
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="50000"
-                                        step="1000"
-                                        value={priceRange[1]}
-                                        onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                                        onTouchEnd={() => updateURL({ maxPrice: priceRange[1] })}
-                                        style={{ width: '100%', accentColor: 'var(--color-primary)', marginBottom: '20px' }}
-                                    />
-                                    <div style={{ display: 'flex', gap: '12px' }}>
-                                        <div style={{ flex: 1, background: 'var(--bg-body)', padding: '12px', borderRadius: '12px' }}>
-                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Min Price</label>
-                                            <div style={{ fontWeight: 800 }}>₹{priceRange[0]}</div>
-                                        </div>
-                                        <div style={{ flex: 1, background: 'var(--bg-body)', padding: '12px', borderRadius: '12px' }}>
-                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Max Price</label>
-                                            <div style={{ fontWeight: 800 }}>₹{priceRange[1]}</div>
+
+                            {/* Price */}
+                            <div className="space-y-6">
+                                <div
+                                    onClick={() => toggleSection('price')}
+                                    className="flex justify-between items-center cursor-pointer group"
+                                >
+                                    <h4 className="font-black text-xs uppercase tracking-[0.2em] text-muted group-hover:text-foreground transition-colors">Price Range</h4>
+                                    <ChevronDown className={`transition-transform duration-300 ${expandedSections.price ? '' : '-rotate-90'}`} size={16} />
+                                </div>
+                                {expandedSections.price && (
+                                    <div className="space-y-6 animate-fade-in">
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="50000"
+                                            step="1000"
+                                            value={priceRange[1]}
+                                            onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                                            onMouseUp={() => updateURL({ maxPrice: priceRange[1] })}
+                                            onTouchEnd={() => updateURL({ maxPrice: priceRange[1] })}
+                                            className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                                        />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-muted/50 p-4 rounded-2xl border border-border">
+                                                <span className="block text-[8px] font-black uppercase tracking-widest text-muted mb-1">Min</span>
+                                                <span className="font-black">₹{priceRange[0]}</span>
+                                            </div>
+                                            <div className="bg-muted/50 p-4 rounded-2xl border border-border">
+                                                <span className="block text-[8px] font-black uppercase tracking-widest text-muted mb-1">Max</span>
+                                                <span className="font-black">₹{priceRange[1]}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
 
-                        <button
+                        <Button
+                            variant="premium"
+                            size="xl"
                             onClick={() => setShowFilters(false)}
-                            className="btn btn-primary"
-                            style={{ width: '100%', marginTop: '40px', padding: '16px', borderRadius: '16px' }}
+                            className="w-full mt-12 rounded-2xl uppercase tracking-[0.2em] text-[10px]"
                         >
-                            Show Results
-                        </button>
+                            Apply Filters
+                        </Button>
                     </div>
                 </div>
             )}
-
-            <style jsx global>{`
-                @keyframes pulse {
-                    0% { opacity: 0.3; }
-                    50% { opacity: 0.6; }
-                    100% { opacity: 0.3; }
-                }
-                .animate-fade-in {
-                    animation: fadeIn 0.3s ease-out;
-                }
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(5px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-slide-in-right {
-                    animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); }
-                    to { transform: translateX(0); }
-                }
-                input[type='range']::-webkit-slider-thumb {
-                    height: 20px;
-                    width: 20px;
-                    border-radius: 50%;
-                    background: white;
-                    border: 4px solid var(--color-primary);
-                    cursor: pointer;
-                    -webkit-appearance: none;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                }
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 4px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: var(--border-color);
-                    border-radius: 10px;
-                }
-            `}</style>
         </main>
     );
 }
@@ -491,20 +405,13 @@ function SearchContent() {
 export default function SearchPage() {
     return (
         <Suspense fallback={
-            <div style={{
-                height: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'var(--bg-body)',
-                color: 'var(--color-primary)',
-                fontSize: '1.5rem',
-                fontWeight: 800
-            }}>
-                <div className="animate-pulse">Loading Collection...</div>
+            <div className="h-screen bg-background flex flex-col items-center justify-center gap-6">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                <span className="font-black text-xs uppercase tracking-[0.3em] text-muted animate-pulse">Loading Results</span>
             </div>
         }>
             <SearchContent />
         </Suspense>
     );
 }
+

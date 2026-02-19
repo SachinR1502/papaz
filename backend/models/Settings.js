@@ -8,6 +8,8 @@ const settingsSchema = new mongoose.Schema({
     currency: { type: String, default: 'INR' },
     minWithdrawal: { type: Number, default: 100 },
     maxWithdrawal: { type: Number, default: 50000 },
+    platformName: { type: String, default: 'Papaz Platform' },
+    debugMode: { type: Boolean, default: false },
     serviceZones: [{
         name: String,
         active: { type: Boolean, default: true }

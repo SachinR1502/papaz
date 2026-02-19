@@ -1,149 +1,57 @@
 'use client';
+
 import Link from 'next/link';
+import { Sparkles, Users, ArrowRight } from 'lucide-react';
 
 export default function CTA() {
     return (
-        <section style={{ padding: 'clamp(100px, 15vh, 160px) 24px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(135deg, var(--color-primary) 0%, #FF4500 100%)',
-                opacity: 0.1,
-                zIndex: 0
-            }}></div>
+        <section className="py-24 px-6 relative overflow-hidden">
+            {/* Background Base Gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/5 to-orange-600/5 z-0" />
 
-            {/* Decorative Animated Elements */}
-            <div style={{
-                position: 'absolute',
-                top: '-20%',
-                left: '-10%',
-                width: '500px',
-                height: '500px',
-                background: 'radial-gradient(circle, var(--color-primary) 0%, transparent 70%)',
-                filter: 'blur(120px)',
-                opacity: 0.15,
-                zIndex: 0,
-                animation: 'pulse 10s infinite alternate'
-            }}></div>
-            <div style={{
-                position: 'absolute',
-                bottom: '-20%',
-                right: '-10%',
-                width: '400px',
-                height: '400px',
-                background: 'radial-gradient(circle, #7E57C2 0%, transparent 70%)',
-                filter: 'blur(120px)',
-                opacity: 0.12,
-                zIndex: 0,
-                animation: 'pulse 8s infinite alternate-reverse'
-            }}></div>
+            {/* Decorative Animated Orbs */}
+            <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-[radial-gradient(circle,var(--color-primary)_0%,transparent_70%)] blur-[120px] opacity-10 z-0 animate-pulse-slow" />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] bg-[radial-gradient(circle,#7E57C2_0%,transparent_70%)] blur-[120px] opacity-10 z-0 animate-pulse-slow-reverse" />
 
-            <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '1000px' }}>
-                <div style={{
-                    background: 'var(--bg-card)',
-                    padding: 'clamp(56px, 10vw, 100px) clamp(24px, 6vw, 60px)',
-                    borderRadius: '48px',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    boxShadow: '0 40px 100px rgba(0,0,0,0.25)',
-                    backdropFilter: 'blur(32px)',
-                    position: 'relative',
-                    overflow: 'hidden'
-                }} className="cta-card glass-panel">
-                    {/* Inner Accent */}
-                    <div style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '300px',
-                        height: '4px',
-                        background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)',
-                        borderRadius: '0 0 100px 100px'
-                    }}></div>
+            <div className="container mx-auto max-w-6xl relative z-10 text-center">
+                <div className="bg-[var(--bg-card)] p-12 md:p-24 rounded-[48px] border border-white/10 shadow-2xl backdrop-blur-3xl relative overflow-hidden group">
 
-                    <h2 style={{
-                        fontSize: 'clamp(2.4rem, 6vw, 4.2rem)',
-                        fontWeight: 900,
-                        marginBottom: '24px',
-                        letterSpacing: '-2.5px',
-                        lineHeight: 1,
-                        color: 'var(--text-body)'
-                    }}>
-                        Scale Your <span style={{ color: 'var(--color-primary)' }}>Automotive</span> Vision.
-                    </h2>
-                    <p style={{
-                        fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)',
-                        color: 'var(--text-muted)',
-                        marginBottom: '56px',
-                        lineHeight: 1.7,
-                        maxWidth: '750px',
-                        margin: '0 auto 56px',
-                        fontWeight: 500
-                    }}>
-                        Integrate with India's most advanced B2B auto-network. Verified sourcing, rapid logistics, and tech-driven partner growth.
-                    </p>
+                    {/* Top Top Accent Line */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-1 bg-gradient-to-r from-transparent via-[var(--color-primary)] to-transparent rounded-full" />
 
-                    <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }} className="cta-actions">
-                        <Link href="/supplier/onboarding">
-                            <button className="btn btn-primary" style={{
-                                padding: '20px 52px',
-                                fontSize: '1.1rem',
-                                borderRadius: '18px',
-                                fontWeight: 900,
-                                boxShadow: '0 10px 30px rgba(255, 140, 0, 0.25)'
-                            }}>
-                                Join Supplier Hub
-                            </button>
-                        </Link>
-                        <Link href="/technician/register">
-                            <button style={{
-                                padding: '20px 48px',
-                                fontSize: '1.1rem',
-                                borderRadius: '18px',
-                                fontWeight: 900,
-                                background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid var(--border-color)',
-                                color: 'var(--text-body)',
-                                cursor: 'pointer',
-                                backdropFilter: 'blur(12px)',
-                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-                            }}
-                                className="cta-secondary-btn"
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }}
-                            >
-                                Partner Registration
-                            </button>
-                        </Link>
+                    {/* Content */}
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div className="w-16 h-16 bg-[var(--color-primary)]/10 rounded-2xl flex items-center justify-center mb-8 text-[var(--color-primary)] shadow-lg shadow-orange-500/5">
+                            <Sparkles size={32} />
+                        </div>
+
+                        <h2 className="text-[clamp(2.4rem,6vw,4.2rem)] font-black mb-6 tracking-tighter leading-[1.05] text-[var(--text-body)]">
+                            Scale Your <span className="text-[var(--color-primary)] italic">Automotive</span> Vision.
+                        </h2>
+                        <p className="text-[clamp(1.1rem,2.5vw,1.4rem)] text-[var(--text-muted)] mb-12 leading-relaxed max-w-3xl font-medium">
+                            Integrate with India's most advanced B2B auto-network. Verified sourcing, rapid logistics, and tech-driven partner growth.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-5 w-full justify-center">
+                            <Link href="/supplier/onboarding" className="w-full sm:w-auto">
+                                <button className="w-full bg-[var(--color-primary)] text-white px-10 py-5 rounded-2xl text-lg font-black shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-2 group/btn">
+                                    Join Supplier Hub
+                                    <ArrowRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
+                                </button>
+                            </Link>
+                            <Link href="/technician/register" className="w-full sm:w-auto">
+                                <button className="w-full px-10 py-5 rounded-2xl text-lg font-black bg-white/5 border border-[var(--border-color)] text-[var(--text-body)] backdrop-blur-md hover:bg-white/10 hover:border-white/20 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    <Users size={20} />
+                                    Partner Registration
+                                </button>
+                            </Link>
+                        </div>
                     </div>
+
+                    {/* Bottom Right Ornament */}
+                    <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[var(--color-primary)]/5 blur-[50px] rounded-full group-hover:opacity-100 transition-opacity" />
                 </div>
             </div>
-            <style jsx>{`
-                @keyframes pulse {
-                    from { transform: scale(1); opacity: 0.12; }
-                    to { transform: scale(1.15); opacity: 0.25; }
-                }
-                @media (max-width: 768px) {
-                    section {
-                        padding: 80px 16px !important;
-                    }
-                    .cta-card {
-                        border-radius: 32px !important;
-                        padding: 50px 24px !important;
-                    }
-                    .cta-actions {
-                        width: 100%;
-                    }
-                    .cta-actions a, .cta-actions button {
-                        width: 100%;
-                    }
-                }
-            `}</style>
         </section>
     );
 }

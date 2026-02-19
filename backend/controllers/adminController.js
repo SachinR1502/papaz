@@ -551,41 +551,168 @@ const updateServiceZones = async (req, res) => {
 
 // @desc    Get Reports/Analytics
 // @route   GET /api/admin/reports
+// @desc    Get Reports/Analytics
+// @route   GET /api/admin/reports
+// @desc    Get Reports/Analytics
+// @route   GET /api/admin/reports
 const getReports = async (req, res) => {
     try {
-        const { period = '7d' } = req.query;
+        const { period = 'week' } = req.query; // 'week', 'month', 'year'
 
-        // Calculate date range
         let startDate = new Date();
-        if (period === '7d') startDate.setDate(startDate.getDate() - 7);
-        else if (period === '30d') startDate.setDate(startDate.getDate() - 30);
-        else if (period === '90d') startDate.setDate(startDate.getDate() - 90);
+        let aggregationPipeline = [];
+        let dateFormat = '';
+        let fillLogic = null;
 
-        // Jobs by status
+        if (period === 'month') {
+            // Last 30 days grouped by week
+            // Actually request says: 'current all week data' for the month
+            // Let's do start of current month to now
+            startDate = new Date();
+            startDate.setDate(1); // 1st of current month
+            startDate.setHours(0, 0, 0, 0);
+
+            dateFormat = '%Y-%U'; // Year-Week
+
+            aggregationPipeline = [
+                {
+                    $match: {
+                        createdAt: { $gte: startDate },
+                        type: { $in: ['payment', 'earnings'] },
+                        amount: { $gt: 0 }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: dateFormat, date: '$createdAt' } },
+                        total: { $sum: '$amount' }
+                    }
+                },
+                { $sort: { _id: 1 } }
+            ];
+
+            fillLogic = (data) => {
+                const filled = [];
+                // Find start and end week numbers
+                const start = startDate;
+                const end = new Date();
+
+                // Helper to get week number
+                const getWeek = (d) => {
+                    const onejan = new Date(d.getFullYear(), 0, 1);
+                    return Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+                };
+
+                const startWeek = getWeek(start);
+                const endWeek = getWeek(end);
+
+                for (let w = startWeek; w <= endWeek; w++) {
+                    const id = `${start.getFullYear()}-${w.toString().padStart(2, '0')}`;
+                    const found = data.find(d => d._id === id);
+                    filled.push({
+                        _id: `Week ${w}`,
+                        total: found ? found.total : 0,
+                        rawId: id
+                    });
+                }
+                return filled;
+            };
+
+        } else if (period === 'year') {
+            // Current year grouped by month
+            startDate = new Date(new Date().getFullYear(), 0, 1); // Jan 1st of current year
+            dateFormat = '%Y-%m';
+
+            aggregationPipeline = [
+                {
+                    $match: {
+                        createdAt: { $gte: startDate },
+                        type: { $in: ['payment', 'earnings'] },
+                        amount: { $gt: 0 }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: dateFormat, date: '$createdAt' } },
+                        total: { $sum: '$amount' }
+                    }
+                },
+                { $sort: { _id: 1 } }
+            ];
+
+            fillLogic = (data) => {
+                const filled = [];
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                for (let m = 0; m < 12; m++) {
+                    const monthNum = (m + 1).toString().padStart(2, '0');
+                    const id = `${startDate.getFullYear()}-${monthNum}`;
+                    const found = data.find(d => d._id === id);
+
+                    // Only push up to current month if we want to limit future chart space, 
+                    // but usually charting libraries handle 12 months fine.
+                    // Let's show all 12 so the year view is complete
+                    filled.push({
+                        _id: months[m],
+                        total: found ? found.total : 0
+                    });
+                }
+                return filled;
+            };
+
+        } else {
+            // Default 'week' -> Last 7 days daily
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - 6); // Go back 6 days + today = 7 days
+            startDate.setHours(0, 0, 0, 0);
+
+            dateFormat = '%Y-%m-%d';
+
+            aggregationPipeline = [
+                {
+                    $match: {
+                        createdAt: { $gte: startDate },
+                        type: { $in: ['payment', 'earnings'] },
+                        amount: { $gt: 0 }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: dateFormat, date: '$createdAt' } },
+                        total: { $sum: '$amount' }
+                    }
+                },
+                { $sort: { _id: 1 } }
+            ];
+
+            fillLogic = (data) => {
+                const filled = [];
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(startDate);
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const found = data.find(d => d._id === dateStr);
+                    filled.push({
+                        _id: dateStr,
+                        total: found ? found.total : 0
+                    });
+                }
+                return filled;
+            };
+        }
+
+        // Execute Revenue Aggregation
+        const revenueData = await Transaction.aggregate(aggregationPipeline);
+        const revenueByDay = fillLogic(revenueData);
+
+        // Jobs by status (Simple count for the period)
         const jobsByStatus = await ServiceRequest.aggregate([
             { $match: { createdAt: { $gte: startDate } } },
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
-        // Revenue by day
-        const revenueByDay = await Transaction.aggregate([
-            {
-                $match: {
-                    createdAt: { $gte: startDate },
-                    type: { $in: ['payment', 'earnings'] },
-                    amount: { $gt: 0 }
-                }
-            },
-            {
-                $group: {
-                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-                    total: { $sum: '$amount' }
-                }
-            },
-            { $sort: { _id: 1 } }
-        ]);
-
-        // Top technicians
+        // Top technicians (Global or Period? Usually Global for "Top Performer" status, but let's keep it consistent)
+        // Let's keep existing logic which seems to be global stats based on approval, or we can filter by period too.
+        // For now preventing breaking changes, keeping global.
         const topTechnicians = await Technician.find({ isApproved: true })
             .sort({ totalEarnings: -1 })
             .limit(5)

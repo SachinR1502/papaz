@@ -7,216 +7,226 @@ import {
     TrendingUp,
     Clock,
     Banknote,
-    ArrowDownRight,
     Search,
     Download,
     CreditCard,
     History,
-    ShieldCheck
+    ShieldCheck,
+    ChevronRight,
+    Plus,
+    Loader2
 } from 'lucide-react';
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 export default function SupplierPaymentsPage() {
-    const { walletBalance } = useSupplier();
+    const { walletBalance, transactions, orders, isLoading } = useSupplier();
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Calculate lifetime generated from orders
+    const lifetimeGenerated = orders
+        ?.filter(o => o.status?.toLowerCase() === 'delivered' || o.status?.toLowerCase() === 'paid' || o.status?.toLowerCase() === 'completed')
+        ?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
+
+    // Calculate pending settlement (in-progress orders)
+    const pendingSettlement = orders
+        ?.filter(o => ['pending', 'preparing', 'processing', 'shipped', 'out for delivery'].includes(o.status?.toLowerCase() || ''))
+        ?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
+
+    const filteredTransactions = (transactions || []).filter(t =>
+        t.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.referenceId?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
-        <div style={{ padding: '40px', minHeight: '100vh', position: 'relative' }}>
-            {/* Ambient Background */}
-            <div style={{
-                position: 'fixed',
-                top: '5%',
-                right: '5%',
-                width: '400px',
-                height: '400px',
-                background: 'var(--color-primary)',
-                filter: 'blur(160px)',
-                opacity: 0.03,
-                zIndex: -1,
-                pointerEvents: 'none'
-            }} />
-
-            <header style={{ marginBottom: '48px' }}>
-                <h1 className="text-gradient" style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '8px', letterSpacing: '-1.5px' }}>
-                    Finance & Payouts
-                </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500 }}>
-                    Manage your revenue, tracking earnings and direct bank transfers.
-                </p>
+        <div className="flex flex-col gap-10 md:gap-14 animate-fade-in pb-20">
+            {/* Header */}
+            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
+                <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4 lg:mb-6">
+                        <Banknote size={10} className="text-primary" />
+                        <span className="text-[10px] uppercase font-black tracking-widest text-primary">Financial Center</span>
+                    </div>
+                    <h1 className="text-4xl lg:text-6xl font-black m-0 tracking-tighter text-foreground italic uppercase">
+                        Revenue & <span className="text-primary">Payouts</span>
+                    </h1>
+                    <p className="mt-4 text-base md:text-lg text-muted font-bold max-w-2xl opacity-80 leading-relaxed">
+                        Track your earnings, manage your wallet, and request bank settlements.
+                    </p>
+                </div>
             </header>
 
             {/* Financial Overview Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px', marginBottom: '48px' }}>
-                <div className="glass-panel card-hover" style={{
-                    background: 'linear-gradient(135deg, var(--color-primary), #5856D6)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '36px',
-                    borderRadius: '40px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    minHeight: '260px'
-                }}>
-                    <div style={{ position: 'absolute', top: '-20px', right: '-20px', opacity: 0.15, transform: 'rotate(-15deg)' }}>
-                        <Wallet size={200} />
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                {/* Balance Card */}
+                <div className="relative group lg:col-span-1 md:col-span-2 lg:row-span-1">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-primary to-orange-600 rounded-[40px] blur opacity-25 group-hover:opacity-40 transition-opacity" />
+                    <div className="relative h-full flex flex-col justify-between p-10 rounded-[40px] bg-gradient-to-br from-primary via-orange-600 to-primary text-white overflow-hidden min-h-[320px] shadow-2xl">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-3xl -mr-32 -mt-32 rounded-full pointer-events-none" />
+                        <Wallet size={180} className="absolute -bottom-10 -right-10 opacity-10 rotate-12 pointer-events-none" />
 
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.9, marginBottom: '8px' }}>
-                            <Wallet size={18} />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '1px' }}>AVAILABLE BALANCE</span>
-                        </div>
-                        <div style={{ fontSize: '4rem', fontWeight: 900, letterSpacing: '-2px' }}>
-                            ₹{walletBalance.toLocaleString()}
-                        </div>
-                    </div>
-
-                    <button className="btn" style={{
-                        background: 'white',
-                        color: 'var(--color-primary)',
-                        marginTop: '32px',
-                        borderRadius: '20px',
-                        padding: '16px 32px',
-                        fontWeight: 900,
-                        fontSize: '1rem',
-                        width: 'fit-content',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
-                    }}>
-                        Instant Withdrawal <ArrowUpRight size={20} />
-                    </button>
-                </div>
-
-                <div className="glass-panel" style={{ padding: '36px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                            <TrendingUp size={18} color="#34C759" />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 800, letterSpacing: '1px' }}>LIFETIME GENERATED</span>
-                        </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '4px' }}>₹4,50,000</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34C759', fontSize: '0.9rem', fontWeight: 800 }}>
-                            <ArrowUpRight size={16} /> +12% growth vs last month
-                        </div>
-                    </div>
-                    <div style={{ height: '1px', background: 'var(--border-color)', opacity: 0.5 }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Auto-settlement status</span>
-                            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary)', marginTop: '4px' }}>NEXT MONDAY</div>
+                            <div className="flex items-center gap-3 mb-4 opacity-80">
+                                <Wallet size={16} />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">Current Balance</span>
+                            </div>
+                            <div className="text-5xl md:text-6xl font-black tracking-tighter italic m-0">
+                                ₹{walletBalance.toLocaleString()}
+                            </div>
                         </div>
-                        <Clock size={24} opacity={0.3} />
+
+                        <button className="flex items-center gap-3 px-8 py-5 bg-white text-primary rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl active:scale-95 italic w-fit mt-10">
+                            Request Payout <ArrowUpRight size={20} />
+                        </button>
                     </div>
                 </div>
 
-                <div className="glass-panel" style={{ padding: '36px', borderRadius: '40px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Growth Card */}
+                <div className="p-10 rounded-[40px] border border-border bg-card/20 backdrop-blur-xl flex flex-col justify-between gap-10 group hover:border-primary/30 transition-all duration-500">
                     <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                            <Banknote size={18} color="#FF9500" />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 800, letterSpacing: '1px' }}>PENDING SETTLEMENT</span>
+                        <div className="flex items-center gap-3 mb-4 opacity-60">
+                            <TrendingUp size={16} className="text-green-500" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted">Total Revenue</span>
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '4px' }}>₹12,400</div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 500 }}>
-                            In-transit from customer payments
+                        <div className="text-4xl font-black text-foreground italic tracking-tighter">
+                            ₹{lifetimeGenerated.toLocaleString()}
                         </div>
+                        <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-green-500 flex items-center gap-1.5 opacity-80">
+                            <ArrowUpRight size={14} /> System lifetime earnings
+                        </p>
                     </div>
-                    <div style={{ height: '1px', background: 'var(--border-color)', opacity: 0.5 }} />
-                    <button className="btn btn-secondary" style={{ width: '100%', borderRadius: '18px', padding: '14px', fontWeight: 800, border: '1px solid rgba(255,255,255,0.08)' }}>
-                        View Detailed Breakdown
+                    <div className="pt-6 border-t border-border/50 flex items-center justify-between">
+                        <div>
+                            <p className="text-[9px] uppercase font-black tracking-widest text-muted opacity-40 mb-1">Next Auto-Settlement</p>
+                            <p className="text-xs font-black text-primary uppercase italic">Every Monday morning</p>
+                        </div>
+                        <Clock size={20} className="text-muted opacity-20" />
+                    </div>
+                </div>
+
+                {/* Pending Card */}
+                <div className="p-10 rounded-[40px] border border-border bg-card/20 backdrop-blur-xl flex flex-col justify-between gap-10 group hover:border-primary/30 transition-all duration-500">
+                    <div>
+                        <div className="flex items-center gap-3 mb-4 opacity-60">
+                            <Clock size={16} className="text-amber-500" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted">Awaiting Settlement</span>
+                        </div>
+                        <div className="text-4xl font-black text-foreground italic tracking-tighter">
+                            ₹{pendingSettlement.toLocaleString()}
+                        </div>
+                        <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-muted opacity-60 leading-relaxed">
+                            Captured but not yet cleared from in-transit orders.
+                        </p>
+                    </div>
+                    <button className="flex items-center justify-center gap-2 w-full py-4 bg-card border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest text-muted hover:text-primary hover:border-primary/30 transition-all active:scale-98">
+                        View Detailed Audit
                     </button>
                 </div>
             </div>
 
             {/* Transaction History Section */}
-            <section>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+            <section className="flex flex-col gap-8 mt-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
                     <div>
-                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <History size={24} color="var(--color-primary)" />
-                            Transaction & Payout History
+                        <h2 className="text-2xl font-black text-foreground italic uppercase tracking-tight flex items-center gap-3 leading-none">
+                            <History size={24} className="text-primary" />
+                            Transaction Sync
                         </h2>
-                        <p style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Detailed logs of all financial movements on your portal.</p>
+                        <p className="mt-3 text-xs text-muted font-bold opacity-60">End-to-end transparent logs of your portal payouts.</p>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 16px', borderRadius: '12px' }}>
-                            <Search size={16} opacity={0.5} />
-                            <input type="text" placeholder="Ref ID..." style={{ background: 'transparent', border: 'none', color: 'white', padding: '10px 0', outline: 'none', fontSize: '0.9rem' }} />
+                    <div className="flex items-center gap-4">
+                        <div className="relative group">
+                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted opacity-50 group-focus-within:opacity-100 transition-opacity" />
+                            <input
+                                type="text"
+                                placeholder="Ref ID..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-card/20 border border-border py-3 pl-12 pr-6 rounded-2xl text-xs font-bold w-full md:w-64 outline-none focus:border-primary/50 transition-all placeholder:text-muted/40"
+                            />
                         </div>
-                        <button className="btn btn-secondary" style={{ borderRadius: '12px', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Download size={18} /> Export
+                        <button className="flex items-center gap-2 px-6 py-3 bg-card border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest text-muted hover:text-foreground transition-all">
+                            <Download size={16} /> Export
                         </button>
                     </div>
                 </div>
 
-                <div className="glass-panel" style={{ padding: 0, borderRadius: '24px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                        <thead style={{ background: 'rgba(255, 255, 255, 0.02)', borderBottom: '1px solid var(--border-color)' }}>
-                            <tr>
-                                <th style={thStyle}>PAYOUT DATE</th>
-                                <th style={thStyle}>REFERENCE ID</th>
-                                <th style={thStyle}>BANK DESTINATION</th>
-                                <th style={thStyle}>NET AMOUNT</th>
-                                <th style={thStyle}>GATEWAY STATUS</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {[
-                                { date: 'Feb 01, 2026', ref: '#PAY-9921', bank: 'HDFC BANK **** 4321', amount: '45,000', status: 'COMPLETED' },
-                                { date: 'Jan 15, 2026', ref: '#PAY-8812', bank: 'ICICI BANK **** 9912', amount: '32,000', status: 'COMPLETED' },
-                                { date: 'Jan 01, 2026', ref: '#PAY-7761', bank: 'HDFC BANK **** 4321', amount: '58,400', status: 'COMPLETED' }
-                            ].map((row, i) => (
-                                <tr key={i} className="row-hover" style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }}>
-                                    <td style={tdStyle}>
-                                        <div style={{ fontWeight: 700 }}>{row.date}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>02:14 PM</div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ fontWeight: 800, color: 'var(--text-body)' }}>{row.ref}</div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <CreditCard size={16} color="var(--color-primary)" />
+                <div className="flex flex-col gap-4">
+                    {isLoading ? (
+                        <div className="py-24 flex flex-col items-center gap-6">
+                            <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary animate-spin">
+                                <Loader2 size={32} />
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted opacity-60">Fetching Financial Data</p>
+                        </div>
+                    ) : (transactions || []).length === 0 ? (
+                        <div className="p-20 text-center rounded-[40px] border border-border border-dashed bg-card/5 transition-all">
+                            <div className="w-20 h-20 mx-auto bg-card/20 rounded-3xl flex items-center justify-center mb-8 text-muted/30">
+                                <History size={40} />
+                            </div>
+                            <h3 className="text-2xl font-black text-foreground italic uppercase mb-2">No Transactions Yet</h3>
+                            <p className="text-muted font-black uppercase tracking-widest text-[10px] opacity-60">Financial movements will appear here after your first order fulfillment.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                            {filteredTransactions.map((tx: any, i: number) => (
+                                <div
+                                    key={tx.id || i}
+                                    className="group relative flex flex-col md:flex-row items-center justify-between p-6 md:p-8 rounded-[36px] border border-border bg-card/20 backdrop-blur-xl transition-all duration-500 hover:border-primary/50 hover:bg-card/40"
+                                >
+                                    <div className="flex items-center gap-6 w-full md:w-auto">
+                                        <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary border border-primary/10 group-hover:rotate-6 transition-transform">
+                                            <CreditCard size={24} />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-1">
+                                                <h4 className="text-lg font-black text-foreground italic uppercase tracking-tight group-hover:text-primary transition-colors leading-none">
+                                                    Payout Request
+                                                </h4>
+                                                <span className="px-2.5 py-1 rounded-lg bg-green-500/10 text-green-500 border border-green-500/20 text-[8px] font-black uppercase tracking-widest">
+                                                    Settled
+                                                </span>
                                             </div>
-                                            <div style={{ fontWeight: 600 }}>{row.bank}</div>
+                                            <div className="flex items-center gap-4 text-[9px] text-muted font-black uppercase tracking-widest opacity-60">
+                                                <span className="flex items-center gap-1.5"><Clock size={12} /> {tx.date || 'Today'}</span>
+                                                <span className="w-1 h-1 rounded-full bg-border" />
+                                                <span className="flex items-center gap-1.5"><ShieldCheck size={12} className="text-green-500" /> Ref: {tx.referenceId || tx.id?.slice(-8).toUpperCase()}</span>
+                                            </div>
                                         </div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>₹{row.amount}</div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#34C759', fontWeight: 800, fontSize: '0.8rem' }}>
-                                            <ShieldCheck size={16} /> {row.status}
+                                    </div>
+
+                                    <div className="flex items-center justify-between md:justify-end gap-12 w-full md:w-auto mt-8 md:mt-0 pt-6 md:pt-0 border-t md:border-0 border-border/50">
+                                        <div className="flex flex-col gap-3">
+                                            <p className="text-[9px] uppercase font-black tracking-widest text-muted opacity-40 leading-none">Destination</p>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 rounded-lg bg-card border border-border flex items-center justify-center">
+                                                    <Plus size={12} className="text-muted" />
+                                                </div>
+                                                <span className="text-xs font-black text-foreground uppercase tracking-tight">HDFC Bank **** 4321</span>
+                                            </div>
                                         </div>
-                                    </td>
-                                </tr>
+
+                                        <div className="text-left md:text-right">
+                                            <p className="text-[9px] uppercase font-black tracking-widest text-muted opacity-40 mb-1">Net Payout</p>
+                                            <p className="text-2xl font-black text-foreground tracking-tighter italic leading-none">
+                                                ₹{tx.amount?.toLocaleString() || '0'}
+                                            </p>
+                                        </div>
+
+                                        <div className="hidden lg:flex items-center justify-center w-12 h-12 rounded-xl bg-card border border-border text-muted group-hover:text-primary group-hover:border-primary/30 transition-all">
+                                            <ChevronRight size={20} />
+                                        </div>
+                                    </div>
+
+                                    {/* Ambient effect */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/2 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
                             ))}
-                        </tbody>
-                    </table>
+                        </div>
+                    )}
                 </div>
             </section>
-
-            <style jsx>{`
-                .row-hover:hover {
-                    background: rgba(255, 255, 255, 0.015);
-                }
-            `}</style>
         </div>
     );
 }
-
-const thStyle = {
-    padding: '24px',
-    fontWeight: 800,
-    fontSize: '0.75rem',
-    color: 'var(--text-muted)',
-    letterSpacing: '1.5px'
-};
-
-const tdStyle = {
-    padding: '28px 24px',
-    fontSize: '0.95rem'
-};

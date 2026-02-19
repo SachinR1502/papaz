@@ -1,4 +1,5 @@
 'use client';
+
 import { useRouter } from 'next/navigation';
 import { BRANDS } from '@/data/storefront';
 
@@ -10,103 +11,43 @@ export default function Brands() {
     };
 
     return (
-        <section style={{ padding: '80px 24px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)' }}>
-            <div className="container">
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '48px' }}>
-                    <h2 style={{ fontSize: 'clamp(2rem, 5vw, 2.8rem)', fontWeight: 900, marginBottom: '12px', letterSpacing: '-1.5px', lineHeight: 1.1 }}>
-                        Verified <span style={{ color: 'var(--color-primary)' }}>Manufacturer</span> Network
+        <section className="py-24 px-6 bg-zinc-950 border-b border-white/5">
+            <div className="container mx-auto max-w-7xl">
+                {/* Section Header */}
+                <div className="flex flex-col items-center text-center mb-16">
+                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-6 tracking-tighter leading-none text-white">
+                        Verified <span className="text-orange-500">Manufacturer</span> Network
                     </h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 'clamp(1rem, 2vw, 1.2rem)', maxWidth: '700px', fontWeight: 500 }}>
+                    <p className="text-zinc-400 text-lg max-w-2xl font-medium leading-relaxed">
                         Sourced directly from global industry leaders to ensure uncompromising quality and precision engineering.
                     </p>
                 </div>
 
+                {/* Brands Scroll Container */}
                 <div
+                    className="flex gap-6 overflow-x-auto py-10 hide-scrollbar scroll-smooth relative"
                     style={{
-                        display: 'flex',
-                        gap: '20px',
-                        overflowX: 'auto',
-                        padding: '30px 0',
-                        scrollbarWidth: 'none',
-                        maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
-                        WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)'
+                        maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)',
+                        WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)'
                     }}
-                    className="hide-scrollbar brands-scroll"
                 >
                     {BRANDS.map((brand) => (
                         <div
                             key={brand.id}
                             onClick={() => handleBrandClick(brand.name)}
-                            style={{
-                                minWidth: '180px',
-                                padding: '32px 24px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                borderRadius: '28px',
-                                background: 'var(--bg-body)',
-                                border: '1px solid var(--border-color)',
-                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                                flexShrink: 0,
-                                boxShadow: '0 4px 15px rgba(0,0,0,0.02)'
-                            }}
-                            className="brand-card shadow-hover"
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-10px)';
-                                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                e.currentTarget.style.boxShadow = '0 15px 35px rgba(255, 140, 0, 0.1)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.borderColor = 'var(--border-color)';
-                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.02)';
-                            }}
+                            className="group flex-shrink-0 w-44 sm:w-56 p-10 flex flex-col items-center justify-center cursor-pointer rounded-[40px] bg-zinc-900/40 border border-white/5 hover:border-orange-500/50 hover:-translate-y-3 hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-500"
                         >
-                            <div style={{
-                                width: '64px',
-                                height: '64px',
-                                background: 'white',
-                                borderRadius: '18px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                marginBottom: '16px',
-                                fontSize: '1.8rem',
-                                fontWeight: 900,
-                                color: '#111',
-                                boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
-                                transition: 'all 0.3s ease'
-                            }} className="brand-logo-container">
+                            {/* Brand Logo Placeholder */}
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-zinc-800 rounded-3xl flex items-center justify-center mb-6 text-3xl sm:text-4xl font-black text-white shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 border border-white/5">
                                 {brand.logo}
                             </div>
-                            <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-body)', letterSpacing: '-0.5px' }}>{brand.name}</span>
+                            <span className="text-sm font-bold text-zinc-400 tracking-widest uppercase group-hover:text-orange-500 transition-colors">
+                                {brand.name}
+                            </span>
                         </div>
                     ))}
                 </div>
             </div>
-            <style jsx>{`
-                .brand-card:active {
-                    transform: scale(0.96) translateY(0);
-                }
-                .brand-card:hover .brand-logo-container {
-                    transform: scale(1.1) rotate(5deg);
-                }
-                @media (max-width: 768px) {
-                    section {
-                        padding: 80px 16px !important;
-                    }
-                    .brands-scroll {
-                        gap: 12px !important;
-                        padding: 20px 0 !important;
-                    }
-                    .brand-card {
-                        minWidth: 150px !important;
-                        padding: 24px 16px !important;
-                    }
-                }
-            `}</style>
         </section>
     );
 }

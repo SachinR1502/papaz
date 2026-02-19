@@ -1,66 +1,41 @@
 'use client';
+
 import Link from 'next/link';
+import Image from 'next/image';
+import { Facebook, Twitter, Instagram, Linkedin, Send, Mail } from 'lucide-react';
 
 export default function Footer() {
     return (
-        <footer style={{
-            marginTop: 'auto',
-            background: 'var(--bg-card)',
-            padding: 'clamp(60px, 10vh, 120px) 24px clamp(30px, 5vh, 60px)',
-            borderTop: '1px solid var(--border-color)',
-            zIndex: 10,
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
-            {/* Background Accent */}
-            <div style={{
-                position: 'absolute',
-                bottom: '-10%',
-                right: '-5%',
-                width: '400px',
-                height: '400px',
-                background: 'radial-gradient(circle, var(--color-primary) 0%, transparent 70%)',
-                filter: 'blur(120px)',
-                opacity: 0.03,
-                zIndex: 0
-            }}></div>
+        <footer className="mt-auto bg-card pt-24 pb-12 px-6 border-t border-border relative overflow-hidden z-10">
+            {/* Background Decor */}
+            <div className="absolute bottom-[-10%] right-[-5%] w-[400px] h-[400px] bg-[radial-gradient(circle,var(--color-primary)_0%,transparent_70%)] blur-[120px] opacity-10 pointer-events-none" />
 
-            <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1.5fr repeat(3, 1fr)',
-                    gap: 'clamp(40px, 5vw, 80px)',
-                    marginBottom: '80px'
-                }} className="footer-grid">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                background: 'var(--color-primary)',
-                                borderRadius: '14px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '1.4rem',
-                                boxShadow: '0 8px 20px rgba(255, 140, 0, 0.2)'
-                            }}>🏎️</div>
-                            <span style={{ fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-1.5px', color: 'var(--text-body)' }}>PAPAZ</span>
-                        </div>
-                        <p style={{ color: 'var(--text-muted)', lineHeight: 1.8, fontSize: '1.05rem', maxWidth: '340px', fontWeight: 500 }}>
+            <div className="container mx-auto max-w-7xl relative z-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-16 mb-20">
+
+                    {/* Brand Column */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <Link href="/" className="flex items-center gap-4 group">
+                            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-6 transition-transform duration-300">
+                                <span className="text-white font-black text-2xl">P</span>
+                            </div>
+                            <span className="text-3xl font-black tracking-tighter text-foreground uppercase italic">PAPAZ</span>
+                        </Link>
+                        <p className="text-muted text-base font-medium leading-relaxed max-w-sm">
                             India's premier integrated automotive ecosystem. Engineering the future of vehicle lifecycle management through technology.
                         </p>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <SocialIcon icon="FB" />
-                            <SocialIcon icon="TW" />
-                            <SocialIcon icon="IG" />
-                            <SocialIcon icon="LN" />
+                        <div className="flex gap-4">
+                            <SocialIcon icon={Facebook} href="#" />
+                            <SocialIcon icon={Twitter} href="#" />
+                            <SocialIcon icon={Instagram} href="#" />
+                            <SocialIcon icon={Linkedin} href="#" />
                         </div>
                     </div>
 
-                    <div>
-                        <h4 style={{ fontWeight: 900, marginBottom: '32px', fontSize: '0.9rem', color: 'var(--text-body)', textTransform: 'uppercase', letterSpacing: '2px' }}>Catalogue</h4>
-                        <ul style={{ listStyle: 'none', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '18px', padding: 0, fontSize: '1rem' }}>
+                    {/* Catalog Column */}
+                    <div className="space-y-8">
+                        <h4 className="text-[10px] font-black text-muted uppercase tracking-[2.5px] opacity-70">Catalogue</h4>
+                        <ul className="space-y-5 text-sm font-bold text-foreground">
                             <FooterLink href="#">Engine Systems</FooterLink>
                             <FooterLink href="#">Dynamic Braking</FooterLink>
                             <FooterLink href="#">Performance Tyres</FooterLink>
@@ -68,9 +43,10 @@ export default function Footer() {
                         </ul>
                     </div>
 
-                    <div>
-                        <h4 style={{ fontWeight: 900, marginBottom: '32px', fontSize: '0.9rem', color: 'var(--text-body)', textTransform: 'uppercase', letterSpacing: '2px' }}>Enterprise</h4>
-                        <ul style={{ listStyle: 'none', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '18px', padding: 0, fontSize: '1rem' }}>
+                    {/* Enterprise Column */}
+                    <div className="space-y-8">
+                        <h4 className="text-[10px] font-black text-muted uppercase tracking-[2.5px] opacity-70">Enterprise</h4>
+                        <ul className="space-y-5 text-sm font-bold text-foreground">
                             <FooterLink href="#">Our Methodology</FooterLink>
                             <FooterLink href="/supplier/onboarding">Supplier Network</FooterLink>
                             <FooterLink href="/technician/register">Service Partners</FooterLink>
@@ -78,83 +54,45 @@ export default function Footer() {
                         </ul>
                     </div>
 
-                    <div>
-                        <h4 style={{ fontWeight: 900, marginBottom: '32px', fontSize: '0.9rem', color: 'var(--text-body)', textTransform: 'uppercase', letterSpacing: '2px' }}>Intelligence</h4>
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.6, fontWeight: 500 }}>Receive technical insights and market updates.</p>
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '12px'
-                        }}>
-                            <div style={{
-                                display: 'flex',
-                                gap: '8px',
-                                background: 'var(--bg-body)',
-                                padding: '8px',
-                                borderRadius: '18px',
-                                border: '1px solid var(--border-color)',
-                                transition: 'border-color 0.3s'
-                            }} className="newsletter-input-container">
-                                <input type="email" placeholder="Email address" style={{
-                                    flex: 1, padding: '10px 16px', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-body)', fontSize: '0.95rem', fontWeight: 500
-                                }} />
-                                <button className="btn btn-primary" style={{ padding: '10px 24px', borderRadius: '14px', fontWeight: 800 }}>Join</button>
-                            </div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', paddingLeft: '12px' }}>Refined updates. No spam.</span>
+                    {/* Newsletter Column */}
+                    <div className="space-y-8">
+                        <h4 className="text-[10px] font-black text-muted uppercase tracking-[2.5px] opacity-70">Intelligence</h4>
+                        <div>
+                            <p className="text-sm font-medium text-muted mb-5 leading-relaxed">
+                                Receive technical insights and market updates.
+                            </p>
+                            <form className="relative flex items-center bg-background p-1.5 rounded-2xl border border-border focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
+                                <Mail size={16} className="absolute left-4 text-muted opacity-50" />
+                                <input
+                                    type="email"
+                                    placeholder="Technical Email"
+                                    className="w-full bg-transparent pl-11 pr-4 py-2.5 outline-none text-sm font-black text-foreground placeholder:text-muted/30"
+                                />
+                                <button type="button" className="bg-primary text-white p-2.5 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95">
+                                    <Send size={16} />
+                                </button>
+                            </form>
+                            <p className="text-[10px] font-bold text-muted mt-4 px-2 tracking-wide opacity-50 uppercase tracking-widest leading-none">Secured Data Transmission</p>
                         </div>
                     </div>
                 </div>
 
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '24px',
-                    paddingTop: '60px',
-                    borderTop: '1px solid var(--border-color)',
-                    color: 'var(--text-muted)',
-                    fontSize: '0.9rem',
-                    fontWeight: 600
-                }}>
-                    <p style={{ letterSpacing: '0.5px' }}>&copy; {new Date().getFullYear()} Papaz LLP. Innovation in every rotation.</p>
-                    <div style={{ display: 'flex', gap: '32px', fontSize: '0.85rem' }}>
-                        <Link href="/legal/privacy-policy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
-                        <Link href="/legal/terms-conditions" style={{ color: 'inherit', textDecoration: 'none' }}>Terms of Service</Link>
-                        <Link href="/legal/shipping-policy" style={{ color: 'inherit', textDecoration: 'none' }}>Shipping Policy</Link>
-                        <Link href="/legal/refund-policy" style={{ color: 'inherit', textDecoration: 'none' }}>Refund Policy</Link>
+                {/* Bottom Bar */}
+                <div className="pt-12 border-t border-border flex flex-col items-center gap-8">
+                    <div className="flex flex-wrap justify-center gap-x-10 gap-y-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted">
+                        <Link href="/legal/privacy-policy" className="hover:text-primary transition-colors">Privacy Protocol</Link>
+                        <Link href="/legal/terms-conditions" className="hover:text-primary transition-colors">System Terms</Link>
+                        <Link href="/legal/shipping-policy" className="hover:text-primary transition-colors">Logistics Policy</Link>
+                        <Link href="/legal/refund-policy" className="hover:text-primary transition-colors">Capital Reclaim</Link>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                        <p className="text-[11px] font-black text-muted opacity-30 uppercase tracking-[0.3em] text-center">
+                            &copy; {new Date().getFullYear()} Papaz LLP. All Infrastructure Secured.
+                        </p>
+                        <p className="text-[8px] font-black text-primary uppercase tracking-[0.5em] opacity-40">Innovation in every rotation</p>
                     </div>
                 </div>
             </div>
-            <style jsx>{`
-                .newsletter-input-container:focus-within {
-                    border-color: var(--color-primary) !important;
-                }
-                @media (max-width: 1100px) {
-                    .footer-grid {
-                        grid-template-columns: 1fr 1fr !important;
-                        gap: 48px !important;
-                    }
-                }
-                @media (max-width: 768px) {
-                    footer {
-                        padding: 80px 16px 40px !important;
-                    }
-                    .footer-grid {
-                        grid-template-columns: 1fr !important;
-                        gap: 56px !important;
-                        text-align: center;
-                    }
-                    .footer-grid > div {
-                        align-items: center !important;
-                    }
-                    .footer-grid ul {
-                        align-items: center !important;
-                    }
-                    .newsletter-input-container {
-                        width: 100% !important;
-                    }
-                }
-            `}</style>
         </footer>
     );
 }
@@ -162,20 +100,9 @@ export default function Footer() {
 function FooterLink({ href, children }: { href: string, children: React.ReactNode }) {
     return (
         <li>
-            <Link href={href} style={{
-                color: 'var(--text-muted)',
-                textDecoration: 'none',
-                transition: 'all 0.2s ease',
-                display: 'inline-block'
-            }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.color = 'var(--color-primary)';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.color = 'var(--text-muted)';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                }}
+            <Link
+                href={href}
+                className="text-muted hover:text-primary hover:translate-x-1.5 inline-block transition-all duration-300 transform-gpu"
             >
                 {children}
             </Link>
@@ -183,34 +110,14 @@ function FooterLink({ href, children }: { href: string, children: React.ReactNod
     );
 }
 
-function SocialIcon({ icon }: { icon: string }) {
+function SocialIcon({ icon: Icon, href }: { icon: any, href: string }) {
     return (
-        <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '10px',
-            background: 'var(--bg-body)',
-            border: '1px solid var(--border-color)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.8rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-        }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                e.currentTarget.style.color = 'var(--color-primary)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-                e.currentTarget.style.color = 'var(--text-muted)';
-                e.currentTarget.style.transform = 'translateY(0)';
-            }}
+        <Link
+            href={href}
+            className="w-10 h-10 bg-background border border-border rounded-xl flex items-center justify-center text-muted hover:border-primary/50 hover:text-primary hover:-translate-y-1 transition-all duration-300"
         >
-            {icon}
-        </div>
+            <Icon size={18} />
+        </Link>
     );
 }
+

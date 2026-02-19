@@ -5,15 +5,37 @@ import Footer from '@/components/layout/Footer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useRazorpay } from 'react-razorpay';
+
 import { toast } from 'sonner';
+
+declare global {
+    interface Window {
+        Razorpay: any;
+    }
+}
+
+const loadRazorpay = () => {
+    return new Promise((resolve) => {
+        if (document.getElementById('razorpay-script')) {
+            resolve(true);
+            return;
+        }
+        const script = document.createElement("script");
+        script.id = 'razorpay-script';
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+};
 
 export default function CheckoutPage() {
     const { cart, totalPrice, clearCart } = useCart();
     const { user, token } = useAuth();
     const router = useRouter();
-    const { Razorpay } = useRazorpay();
+    // removed useRazorpay hook
     const [step, setStep] = useState(1);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'cod' | 'wallet'>('upi');
 
@@ -133,6 +155,7 @@ export default function CheckoutPage() {
             return;
         }
 
+        setIsProcessing(true);
         const deliveryAddress = savedAddresses.find(addr => addr._id === selectedAddressId);
 
         try {
@@ -147,7 +170,7 @@ export default function CheckoutPage() {
                     supplierId: item.supplierId
                 })),
                 totalAmount: totalPrice,
-                paymentMethod: paymentMethod === 'cod' ? 'cash' : (paymentMethod === 'upi' ? 'razorpay' : paymentMethod),
+                paymentMethod: paymentMethod === 'cod' ? 'cash' : (paymentMethod === 'wallet' ? 'wallet' : 'razorpay'),
                 deliveryType: 'address',
                 deliveryAddressId: selectedAddressId,
                 deliveryFee: 0
@@ -184,16 +207,26 @@ export default function CheckoutPage() {
                     toast.error('Wallet balance insufficient');
                 }
             } else {
+                // Razorpay Flow
                 await handleRazorpayPayment(orderData._id, orderData.orderId, totalPrice, deliveryAddress);
             }
 
         } catch (error) {
             console.error(error);
             toast.error('Order sequence failed');
+            setIsProcessing(false);
         }
     };
 
     const handleRazorpayPayment = async (mongoOrderId: string, orderNumber: string, amount: number, address: any) => {
+        // Load Script Manually
+        const isLoaded = await loadRazorpay();
+        if (!isLoaded) {
+            toast.error('Razorpay SDK failed to load. Check your internet connection.');
+            setIsProcessing(false);
+            return;
+        }
+
         try {
             const paymentRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/orders/${mongoOrderId}/pay`, {
                 method: 'POST',
@@ -207,12 +240,25 @@ export default function CheckoutPage() {
 
             const paymentData = await paymentRes.json();
 
+            console.log("Razorpay Init Data:", {
+                key: paymentData.keyId,
+                order_id: paymentData.orderId,
+                amount: paymentData.amount
+            });
+
+            if (!paymentData.keyId || !paymentData.orderId) {
+                toast.error('Invalid payment configuration');
+                setIsProcessing(false);
+                return;
+            }
+
             const options: any = {
                 key: paymentData.keyId,
                 amount: paymentData.amount,
                 currency: "INR",
-                name: "Papaz",
+                name: "Papaz Platform",
                 description: `Order Payment #${orderNumber}`,
+                image: typeof window !== 'undefined' ? `${window.location.origin}/icon.png` : undefined,
                 order_id: paymentData.orderId,
                 handler: async (response: any) => {
                     try {
@@ -233,27 +279,59 @@ export default function CheckoutPage() {
                             clearCart();
                             router.push(`/order-success?id=${orderNumber}`);
                         } else {
-                            toast.error('Integrity check failed');
+                            toast.error('Payment verification failed');
+                            setIsProcessing(false);
                         }
                     } catch (err) {
                         toast.error('Verification timeout');
+                        setIsProcessing(false);
                     }
                 },
                 prefill: {
                     name: address?.fullName || user?.profile?.fullName || '',
-                    contact: address?.phone || user?.phoneNumber || '',
-                    email: user?.email || ''
+                    contact: (address?.phone || user?.phoneNumber || '').replace(/^\+91/, '') ? `+91${(address?.phone || user?.phoneNumber || '').replace(/^\+91/, '')}` : '',
+                    email: user?.email || '',
+                    // method: paymentMethod === 'upi' ? 'upi' : (paymentMethod === 'card' ? 'card' : undefined)
+                    method: {
+                        upi: true,
+                        card: true,
+                        netbanking: true,
+                        wallet: true,
+                        emi: true
+                    }
+                },
+                notes: {
+                    address: address?.address || ''
                 },
                 theme: {
                     color: "#FF8C00"
+                },
+                modal: {
+                    ondismiss: function () {
+                        setIsProcessing(false);
+                        toast('Payment cancelled');
+                    }
                 }
             };
 
-            const rzp = new (Razorpay as any)(options);
+            if (!window.Razorpay) {
+                toast.error("Payment gateway not ready");
+                setIsProcessing(false);
+                return;
+            }
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                console.error("Payment Failed:", response);
+                setIsProcessing(false);
+                toast.error(response.error.description || 'Payment Failed');
+            });
             rzp.open();
 
         } catch (error: any) {
+            console.error(error);
             toast.error(error.message || 'Payment gateway unreachable');
+            setIsProcessing(false);
         }
     };
 
@@ -266,10 +344,10 @@ export default function CheckoutPage() {
                     <div style={{ marginBottom: '48px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '20px' }}>
                         <div>
                             <h1 style={{ fontSize: 'clamp(2.4rem, 6vw, 3.8rem)', fontWeight: 900, letterSpacing: '-2px', margin: 0, lineHeight: 1 }}>
-                                Final <span style={{ color: 'var(--color-primary)' }}>Execution</span>
+                                Secure <span style={{ color: 'var(--color-primary)' }}>Checkout</span>
                             </h1>
                             <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem', marginTop: '12px', fontWeight: 500 }}>
-                                Finalize your high-performance procurement sequence.
+                                Complete your order securely.
                             </p>
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
@@ -302,7 +380,7 @@ export default function CheckoutPage() {
                                 opacity: step === 1 ? 1 : 0.6
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-                                    <h2 style={{ fontSize: '1.8rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>1. Logistics Destination</h2>
+                                    <h2 style={{ fontSize: '1.8rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>1. Shipping Address</h2>
                                     {step > 1 && (
                                         <button onClick={() => setStep(1)} style={{
                                             background: 'rgba(255,140,0,0.1)',
@@ -312,7 +390,7 @@ export default function CheckoutPage() {
                                             borderRadius: '12px',
                                             fontWeight: 800,
                                             cursor: 'pointer'
-                                        }}>Modify</button>
+                                        }}>Edit</button>
                                     )}
                                 </div>
 
@@ -354,10 +432,10 @@ export default function CheckoutPage() {
                                                     cursor: 'pointer',
                                                     transition: 'all 0.2s',
                                                     fontSize: '1rem'
-                                                }}>+ Add New Coordinates</button>
+                                                }}>+ Add New Address</button>
 
                                                 <button className="btn btn-primary" onClick={() => setStep(2)} style={{ padding: '20px', borderRadius: '18px', fontWeight: 900, marginTop: '16px', fontSize: '1.1rem' }}>
-                                                    Set Destination
+                                                    Continue to Payment
                                                 </button>
                                             </div>
                                         ) : (
@@ -406,7 +484,7 @@ export default function CheckoutPage() {
                                                 </div>
 
                                                 <div style={{ display: 'flex', gap: '16px' }}>
-                                                    <button className="btn btn-primary" onClick={handleAddAddress} style={{ flex: 1, padding: '18px', borderRadius: '16px', fontWeight: 900 }}>Initialize Destination</button>
+                                                    <button className="btn btn-primary" onClick={handleAddAddress} style={{ flex: 1, padding: '18px', borderRadius: '16px', fontWeight: 900 }}>Save Address</button>
                                                     {savedAddresses.length > 0 && <button onClick={() => setIsAddingAddress(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>}
                                                 </div>
                                             </div>
@@ -423,15 +501,15 @@ export default function CheckoutPage() {
                                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                                 opacity: step === 2 ? 1 : 0.6
                             }}>
-                                <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '32px', letterSpacing: '-0.5px' }}>2. Payment Protocol</h2>
+                                <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '32px', letterSpacing: '-0.5px' }}>2. Payment Method</h2>
 
                                 {step === 2 && (
                                     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                         {[
-                                            { id: 'upi', label: 'Universal Interface (UPI)', icon: '📱' },
-                                            { id: 'card', label: 'Asset Cards (Bank)', icon: '💳' },
-                                            { id: 'wallet', label: 'PAPAZ Secure Wallet', icon: '👛' },
-                                            { id: 'cod', label: 'Liquidity on Delivery', icon: '💵' }
+                                            { id: 'upi', label: 'UPI', icon: '📱' },
+                                            { id: 'card', label: 'Credit / Debit Card', icon: '💳' },
+                                            { id: 'wallet', label: 'Wallet', icon: '👛' },
+                                            { id: 'cod', label: 'Cash on Delivery', icon: '💵' }
                                         ].map(method => (
                                             <div
                                                 key={method.id}
@@ -455,8 +533,22 @@ export default function CheckoutPage() {
                                             </div>
                                         ))}
 
-                                        <button className="btn btn-primary" style={{ marginTop: '24px', padding: '24px', borderRadius: '20px', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 10px 30px rgba(255,140,0,0.2)' }} onClick={handlePlaceOrder}>
-                                            Authorize ₹{totalPrice.toLocaleString()}
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{
+                                                marginTop: '24px',
+                                                padding: '24px',
+                                                borderRadius: '20px',
+                                                fontWeight: 900,
+                                                fontSize: '1.2rem',
+                                                boxShadow: '0 10px 30px rgba(255,140,0,0.2)',
+                                                opacity: isProcessing ? 0.7 : 1,
+                                                cursor: isProcessing ? 'not-allowed' : 'pointer'
+                                            }}
+                                            onClick={handlePlaceOrder}
+                                            disabled={isProcessing}
+                                        >
+                                            {isProcessing ? 'Processing Payment...' : (paymentMethod === 'cod' ? 'Place Order' : `Pay ₹${totalPrice.toLocaleString()}`)}
                                         </button>
                                     </div>
                                 )}
@@ -473,7 +565,7 @@ export default function CheckoutPage() {
                                 borderRadius: '40px',
                                 boxShadow: '0 40px 100px rgba(0,0,0,0.1)'
                             }}>
-                                <h3 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '32px', letterSpacing: '-1px' }}>Protocol Summary</h3>
+                                <h3 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '32px', letterSpacing: '-1px' }}>Order Summary</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                     {cart.map((item: any) => (
                                         <div key={item.id} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -489,11 +581,11 @@ export default function CheckoutPage() {
                                     ))}
                                     <div style={{ height: '1px', background: 'var(--border-color)', margin: '12px 0' }} />
                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontWeight: 700 }}>
-                                        <span>Logistics</span>
+                                        <span>Shipping</span>
                                         <span style={{ color: 'var(--status-success)' }}>FREE</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.8rem', fontWeight: 900, marginTop: '20px' }}>
-                                        <span>To Pay</span>
+                                        <span>Total</span>
                                         <span style={{ color: 'var(--color-primary)' }}>₹{totalPrice.toLocaleString()}</span>
                                     </div>
                                 </div>

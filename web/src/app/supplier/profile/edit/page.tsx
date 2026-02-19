@@ -14,12 +14,19 @@ import {
     FileText,
     Save,
     Loader2,
-    CheckCircle2
+    CheckCircle2,
+    Shield,
+    BadgeCheck,
+    Globe,
+    Building2
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function SupplierEditProfilePage() {
     const { updateProfile, profile, isLoading } = useSupplier();
     const router = useRouter();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [form, setForm] = useState({
         storeName: '',
@@ -47,364 +54,177 @@ export default function SupplierEditProfilePage() {
         e.preventDefault();
 
         if (!form.storeName || !form.fullName || !form.phoneNumber || !form.address || !form.city) {
-            alert('Please fill all required fields to proceed.');
+            toast.error('Required Fields Missing', {
+                description: 'Please ensure all business identity and contact details are provided.'
+            });
             return;
         }
 
+        setIsSubmitting(true);
         try {
             await updateProfile(form);
+            toast.success('Profile Refined', {
+                description: 'Your business identity has been updated successfully.'
+            });
             router.push('/supplier/profile');
         } catch (e) {
-            alert("Something went wrong. Please try again.");
+            toast.error('Update Failed', {
+                description: 'We encountered an error while synchronizing your profile.'
+            });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     return (
-        <div style={{
-            maxWidth: '900px',
-            margin: '0 auto',
-            padding: '48px 24px',
-            position: 'relative',
-            minHeight: 'calc(100vh - 72px)'
-        }}>
-            {/* Ambient Background Element */}
-            <div style={{
-                position: 'fixed',
-                top: '10%',
-                right: '5%',
-                width: '300px',
-                height: '300px',
-                background: 'var(--color-primary)',
-                filter: 'blur(150px)',
-                opacity: 0.05,
-                zIndex: -1,
-                borderRadius: '50%'
-            }} />
-
-            {/* Header Area */}
-            <header style={{
-                marginBottom: '48px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '24px',
-                position: 'relative'
-            }}>
-                <button
-                    onClick={() => router.back()}
-                    style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid var(--border-color)',
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: 'var(--text-body)',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                        e.currentTarget.style.transform = 'translateX(-4px)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                    }}
-                >
-                    <ArrowLeft size={22} />
-                </button>
-
-                <div>
-                    <h1 className="text-gradient" style={{
-                        fontSize: '2.75rem',
-                        fontWeight: 900,
-                        margin: '0 0 4px',
-                        letterSpacing: '-1.5px'
-                    }}>
-                        Edit Profile
-                    </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500 }}>
-                        Refine your business identity on the PAPAZ network
-                    </p>
+        <div className="max-w-4xl mx-auto flex flex-col gap-10 md:gap-14 animate-fade-in pb-20">
+            {/* Header */}
+            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
+                <div className="flex items-center gap-6">
+                    <button
+                        onClick={() => router.back()}
+                        className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center text-muted hover:text-primary hover:border-primary/30 transition-all active:scale-90 shadow-sm"
+                    >
+                        <ArrowLeft size={24} />
+                    </button>
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
+                            <Pencil size={10} className="text-primary" />
+                            <span className="text-[10px] uppercase font-black tracking-widest text-primary">Identity Modification</span>
+                        </div>
+                        <h1 className="text-4xl lg:text-5xl font-black m-0 tracking-tighter text-foreground italic uppercase">
+                            Refine <span className="text-primary">Profile</span>
+                        </h1>
+                        <p className="mt-2 text-sm md:text-base text-muted font-bold opacity-80 leading-relaxed italic uppercase tracking-tight">
+                            Update your business credentials and operational parameters.
+                        </p>
+                    </div>
                 </div>
 
-                <div style={{
-                    marginLeft: 'auto',
-                    padding: '8px 16px',
-                    borderRadius: '100px',
-                    background: 'rgba(52, 199, 89, 0.1)',
-                    color: '#34C759',
-                    fontSize: '0.85rem',
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    letterSpacing: '0.5px'
-                }}>
+                <div className="hidden sm:flex items-center gap-3 px-6 py-3 bg-green-500/10 text-green-500 rounded-2xl border border-green-500/20 text-[10px] font-black uppercase tracking-widest italic animate-in fade-in duration-1000">
                     <CheckCircle2 size={16} />
-                    ACCOUNT ACTIVE
+                    Verified Enterprise Status
                 </div>
             </header>
 
-            <form onSubmit={handleSubmit} style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr',
-                gap: '32px'
-            }}>
-                {/* Main Content Card */}
-                <div className="glass-panel" style={{
-                    padding: '40px',
-                    borderRadius: '32px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '40px'
-                }}>
-                    {/* Section: Basic Identity */}
-                    <section>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '24px',
-                            color: 'var(--color-primary)'
-                        }}>
-                            <div style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '8px',
-                                background: 'rgba(var(--color-primary-rgb), 0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Store size={18} />
-                            </div>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-body)' }}>Identity Details</h2>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-10">
+                {/* Identity Section */}
+                <section className="p-10 rounded-[40px] border border-border bg-card/20 backdrop-blur-xl group relative overflow-hidden">
+                    <div className="flex items-center gap-4 mb-10">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                            <Store size={20} />
                         </div>
+                        <h3 className="text-xl font-black text-foreground italic uppercase tracking-tight">Business Identity</h3>
+                    </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                            <InputGroup
-                                label="Business Name"
-                                required
-                                placeholder="Enter your shop name"
-                                icon={<Store size={18} />}
-                                value={form.storeName}
-                                onChange={(v) => setForm({ ...form, storeName: v })}
-                            />
-                            <InputGroup
-                                label="Owner / Manager Name"
-                                required
-                                placeholder="Full name of person-in-charge"
-                                icon={<User size={18} />}
-                                value={form.fullName}
-                                onChange={(v) => setForm({ ...form, fullName: v })}
-                            />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <FormInput
+                            label="Store / Business Name"
+                            required
+                            placeholder="Enter your registered shop name"
+                            value={form.storeName}
+                            onChange={(v: string) => setForm({ ...form, storeName: v })}
+                            icon={<Store size={18} />}
+                        />
+                        <FormInput
+                            label="Designated Representative"
+                            required
+                            placeholder="Full name of the owner/manager"
+                            value={form.fullName}
+                            onChange={(v: string) => setForm({ ...form, fullName: v })}
+                            icon={<User size={18} />}
+                        />
+                    </div>
+                </section>
+
+                {/* Logistics Section */}
+                <section className="p-10 rounded-[40px] border border-border bg-card/20 backdrop-blur-xl group relative overflow-hidden">
+                    <div className="flex items-center gap-4 mb-10">
+                        <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 border border-orange-500/20">
+                            <Locate size={20} />
                         </div>
-                    </section>
+                        <h3 className="text-xl font-black text-foreground italic uppercase tracking-tight">Operational Access</h3>
+                    </div>
 
-                    {/* Section: Contact & Reach */}
-                    <section>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '24px',
-                            color: 'var(--color-primary)'
-                        }}>
-                            <div style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '8px',
-                                background: 'rgba(var(--color-primary-rgb), 0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Phone size={18} />
-                            </div>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-body)' }}>Contact & Coverage</h2>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-                            <InputGroup
-                                label="Primary Phone"
+                    <div className="flex flex-col gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <FormInput
+                                label="Primary Contact"
                                 required
                                 placeholder="+91 00000 00000"
-                                icon={<Phone size={18} />}
                                 value={form.phoneNumber}
-                                onChange={(v) => setForm({ ...form, phoneNumber: v })}
+                                onChange={(v: string) => setForm({ ...form, phoneNumber: v })}
+                                icon={<Phone size={18} />}
                             />
-                            <InputGroup
-                                label="Operational City"
+                            <FormInput
+                                label="HQ Jurisdiction"
                                 required
-                                placeholder="e.g. Bangalore"
-                                icon={<Locate size={18} />}
+                                placeholder="Operational city hub"
                                 value={form.city}
-                                onChange={(v) => setForm({ ...form, city: v })}
+                                onChange={(v: string) => setForm({ ...form, city: v })}
+                                icon={<Globe size={18} />}
                             />
                         </div>
 
-                        <div style={{ marginBottom: '8px' }}>
-                            <label style={{
-                                display: 'block',
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                color: 'var(--text-muted)',
-                                marginBottom: '10px',
-                                marginLeft: '4px',
-                                letterSpacing: '1px'
-                            }}>
-                                BUSINESS ADDRESS <span style={{ color: '#ff3b30' }}>*</span>
+                        <div className="space-y-3 group">
+                            <label className="px-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted opacity-60">
+                                Full Logistic Address <span className="text-red-500">*</span>
                             </label>
-                            <div style={{ position: 'relative' }}>
-                                <div style={{
-                                    position: 'absolute',
-                                    left: '18px',
-                                    top: '18px',
-                                    color: 'var(--color-primary)',
-                                    opacity: 0.6
-                                }}>
+                            <div className="relative">
+                                <div className="absolute left-6 top-6 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity">
                                     <MapPin size={20} />
                                 </div>
                                 <textarea
                                     value={form.address}
                                     onChange={(e) => setForm({ ...form, address: e.target.value })}
-                                    placeholder="Enter full physical address of the store..."
-                                    style={{
-                                        width: '100%',
-                                        padding: '18px 18px 18px 52px',
-                                        borderRadius: '20px',
-                                        border: '1px solid var(--border-color)',
-                                        background: 'rgba(255, 255, 255, 0.03)',
-                                        color: 'var(--text-body)',
-                                        fontSize: '1rem',
-                                        minHeight: '140px',
-                                        resize: 'none',
-                                        outline: 'none',
-                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                        fontWeight: 500,
-                                        lineHeight: '1.6'
-                                    }}
-                                    onFocus={(e) => {
-                                        e.target.style.borderColor = 'var(--color-primary)';
-                                        e.target.style.boxShadow = '0 0 0 4px rgba(var(--color-primary-rgb), 0.1)';
-                                        e.target.style.background = 'rgba(255, 255, 255, 0.05)';
-                                    }}
-                                    onBlur={(e) => {
-                                        e.target.style.borderColor = 'var(--border-color)';
-                                        e.target.style.boxShadow = 'none';
-                                        e.target.style.background = 'rgba(255, 255, 255, 0.03)';
-                                    }}
+                                    placeholder="Enter complete physical address for order mapping..."
+                                    className="w-full min-h-[140px] bg-card/40 border border-border rounded-[28px] py-6 pl-16 pr-8 text-sm font-bold outline-none focus:border-primary/50 transition-all placeholder:text-muted/40 placeholder:italic resize-none leading-relaxed italic"
                                 />
                             </div>
                         </div>
-                    </section>
+                    </div>
+                </section>
 
-                    {/* Section: Compliance */}
-                    <section>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '24px',
-                            color: 'var(--color-primary)'
-                        }}>
-                            <div style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '8px',
-                                background: 'rgba(var(--color-primary-rgb), 0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <FileText size={18} />
-                            </div>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-body)' }}>Tax & Compliance</h2>
+                {/* Compliance Section */}
+                <section className="p-10 rounded-[40px] border border-border bg-card/20 backdrop-blur-xl group relative overflow-hidden">
+                    <div className="flex items-center gap-4 mb-10">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 border border-indigo-500/20">
+                            <Shield size={20} />
                         </div>
+                        <h3 className="text-xl font-black text-foreground italic uppercase tracking-tight">Legal & Compliance</h3>
+                    </div>
 
-                        <div style={{ maxWidth: '400px' }}>
-                            <InputGroup
-                                label="GST Identification Number"
-                                placeholder="Enter valid GSTIN"
-                                icon={<FileText size={18} />}
-                                value={form.gst}
-                                onChange={(v) => setForm({ ...form, gst: v.toUpperCase() })}
-                            />
-                        </div>
-                    </section>
-                </div>
+                    <div className="max-w-md">
+                        <FormInput
+                            label="GST Identification"
+                            placeholder="Valid GSTIN number"
+                            value={form.gst}
+                            onChange={(v: string) => setForm({ ...form, gst: v.toUpperCase() })}
+                            icon={<Building2 size={18} />}
+                        />
+                    </div>
+                </section>
 
-                {/* Fixed Footer Action Bar or Large Buttons */}
-                <div style={{
-                    display: 'flex',
-                    gap: '20px',
-                    marginTop: '8px'
-                }}>
+                {/* Control Bar */}
+                <div className="flex flex-col sm:flex-row items-center gap-6">
                     <button
                         type="button"
                         onClick={() => router.back()}
-                        style={{
-                            flex: 1,
-                            height: '64px',
-                            borderRadius: '20px',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid var(--border-color)',
-                            color: 'var(--text-body)',
-                            fontWeight: 700,
-                            fontSize: '1.1rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                        }}
+                        className="w-full sm:w-1/3 py-5 bg-card border border-border rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-muted hover:text-foreground hover:bg-card/60 transition-all active:scale-95 italic text-center"
                     >
-                        Discard Changes
+                        Abort Modification
                     </button>
                     <button
                         type="submit"
-                        disabled={isLoading}
-                        style={{
-                            flex: 2,
-                            height: '64px',
-                            borderRadius: '20px',
-                            background: 'var(--color-primary)',
-                            border: 'none',
-                            color: 'white',
-                            fontWeight: 900,
-                            fontSize: '1.2rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '12px',
-                            boxShadow: '0 20px 40px rgba(var(--color-primary-rgb), 0.2)',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-4px)';
-                            e.currentTarget.style.boxShadow = '0 25px 50px rgba(var(--color-primary-rgb), 0.3)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 20px 40px rgba(var(--color-primary-rgb), 0.2)';
-                        }}
+                        disabled={isSubmitting || isLoading}
+                        className="w-full sm:w-2/3 py-5 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic flex items-center justify-center gap-4"
                     >
-                        {isLoading ? (
-                            <Loader2 size={28} className="animate-spin" />
+                        {isSubmitting || isLoading ? (
+                            <Loader2 size={24} className="animate-spin text-white" />
                         ) : (
                             <>
-                                <Save size={24} />
-                                Synchronize Profile
+                                <Save size={20} />
+                                Synchronize Identity
                             </>
                         )}
                     </button>
@@ -414,65 +234,22 @@ export default function SupplierEditProfilePage() {
     );
 }
 
-function InputGroup({ label, placeholder, value, onChange, icon, required = false }: {
-    label: string,
-    placeholder?: string,
-    value: string,
-    onChange: (v: string) => void,
-    icon: React.ReactNode,
-    required?: boolean
-}) {
+function FormInput({ label, placeholder, value, onChange, icon, required = false, type = "text" }: any) {
     return (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{
-                display: 'block',
-                fontSize: '0.75rem',
-                fontWeight: 800,
-                color: 'var(--text-muted)',
-                marginLeft: '4px',
-                letterSpacing: '1px'
-            }}>
-                {label.toUpperCase()} {required && <span style={{ color: '#ff3b30' }}>*</span>}
+        <div className="space-y-3 flex-1 group">
+            <label className="px-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted opacity-60">
+                {label} {required && <span className="text-red-500">*</span>}
             </label>
-            <div style={{ position: 'relative' }}>
-                <div style={{
-                    position: 'absolute',
-                    left: '18px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--color-primary)',
-                    opacity: 0.6,
-                    pointerEvents: 'none'
-                }}>
+            <div className="relative">
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity">
                     {icon}
                 </div>
                 <input
-                    type="text"
+                    type={type}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
-                    style={{
-                        width: '100%',
-                        padding: '16px 16px 16px 52px',
-                        borderRadius: '18px',
-                        border: '1px solid var(--border-color)',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        color: 'var(--text-body)',
-                        fontSize: '1rem',
-                        outline: 'none',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        fontWeight: 600
-                    }}
-                    onFocus={(e) => {
-                        e.target.style.borderColor = 'var(--color-primary)';
-                        e.target.style.boxShadow = '0 0 0 4px rgba(var(--color-primary-rgb), 0.1)';
-                        e.target.style.background = 'rgba(255, 255, 255, 0.05)';
-                    }}
-                    onBlur={(e) => {
-                        e.target.style.borderColor = 'var(--border-color)';
-                        e.target.style.boxShadow = 'none';
-                        e.target.style.background = 'rgba(255, 255, 255, 0.03)';
-                    }}
+                    className="w-full bg-card/40 border border-border rounded-2xl py-4.5 pl-14 pr-6 text-sm font-black outline-none focus:border-primary/50 transition-all placeholder:text-muted/30 placeholder:italic italic"
                 />
             </div>
         </div>

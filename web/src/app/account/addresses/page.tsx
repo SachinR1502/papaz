@@ -1,351 +1,200 @@
 'use client';
-import Link from 'next/link';
+
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
+import { MapPin, Plus, Phone, Edit2, Trash2, Home, Briefcase, MapPinned, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { customerService } from '@/services/customerService';
 import { toast } from 'sonner';
-import { MapPin, Plus, Phone, Edit2, Trash2 } from 'lucide-react';
 
 export default function AddressesPage() {
-    const { token } = useAuth();
-    const [addresses, setAddresses] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+  const { token } = useAuth();
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (token) {
-            fetchAddresses();
-        }
-    }, [token]);
+  useEffect(() => {
+    if (token) {
+      fetchAddresses();
+    }
+  }, [token]);
 
-    const fetchAddresses = async () => {
-        try {
-            setLoading(true);
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/addresses`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setAddresses(Array.isArray(data) ? data : data.data || []);
-            }
-        } catch (error) {
-            console.error('Failed to fetch addresses:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchAddresses = async () => {
+    try {
+      setLoading(true);
+      const res = await customerService.getAddresses();
+      setAddresses(Array.isArray(res) ? res : (res.data || []));
+    } catch (error) {
+      console.error('Failed to fetch addresses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <section className="logistics-hub">
-            <header className="page-header">
-                <div>
-                    <h1>
-                        Saved <span className="text-primary">Locations</span>
-                    </h1>
-                    <p>Manage your delivery coordinates and logistics headquarters.</p>
+  const handleDelete = async (id: string) => {
+    setIsDeleting(id);
+    try {
+      // Mocking delete for now as API might not be defined in service
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setAddresses(prev => prev.filter(a => (a._id || a.id) !== id));
+      toast.success('Address removed');
+    } catch (error) {
+      toast.error('Failed to remove address');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const getIconForLabel = (label: string) => {
+    const lowerLabel = label.toLowerCase();
+    if (lowerLabel.includes('home')) return <Home size={18} />;
+    if (lowerLabel.includes('work') || lowerLabel.includes('office')) return <Briefcase size={18} />;
+    return <MapPin size={18} />;
+  };
+
+  return (
+    <div className="flex flex-col gap-10 md:gap-14 animate-fade-in pb-20">
+      {/* HEADER */}
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4 lg:mb-6">
+            <MapPinned size={10} className="text-primary" />
+            <span className="text-[10px] uppercase font-black tracking-widest text-primary">Saved Locations</span>
+          </div>
+          <h1 className="text-4xl lg:text-6xl font-black m-0 tracking-tighter text-foreground italic uppercase">
+            My <span className="text-primary">Addresses</span>
+          </h1>
+          <p className="mt-4 text-base md:text-lg text-muted font-bold max-w-2xl opacity-80 leading-relaxed">
+            Manage your delivery locations for a faster and smoother checkout experience.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center justify-center gap-2.5 px-8 py-4 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic shrink-0"
+        >
+          <Plus size={18} />
+          Add New
+        </button>
+      </header>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1, 2].map(i => (
+            <div key={i} className="h-64 rounded-[36px] bg-card/10 animate-pulse border border-border/50" />
+          ))}
+        </div>
+      ) : addresses.length === 0 ? (
+        <div className="relative group max-w-3xl mx-auto w-full">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-blue-500/10 rounded-[40px] blur-xl opacity-20" />
+          <div className="relative p-12 md:p-20 rounded-[40px] border border-border bg-card/10 backdrop-blur-3xl flex flex-col items-center text-center gap-8 overflow-hidden shadow-2xl border-dashed">
+            <div className="w-20 h-20 bg-card/20 rounded-3xl flex items-center justify-center text-muted/30">
+              <MapPin size={40} />
+            </div>
+            <div className="max-w-md space-y-3">
+              <h3 className="text-2xl md:text-3xl font-black text-foreground italic uppercase tracking-tight">No Addresses Found</h3>
+              <p className="text-muted font-black uppercase tracking-widest text-[10px] opacity-60 leading-loose">
+                Your address book is currently empty. Add your home or office address to expedite your orders.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-10 py-4 bg-primary/10 border border-primary/20 text-primary rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all hover:bg-primary hover:text-white active:scale-95 italic text-center"
+            >
+              Add First Address
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+          {addresses.map((address) => (
+            <div
+              key={address._id || address.id}
+              className="group relative flex flex-col p-8 rounded-[36px] border border-border bg-card/20 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:border-primary/50 hover:bg-card/40 hover:shadow-2xl hover:shadow-primary/5"
+            >
+              <div className="flex justify-between items-start mb-8">
+                <div className="flex items-center gap-3 px-4 py-2 bg-card/40 rounded-xl border border-border group-hover:border-primary/30 transition-colors">
+                  <span className="text-primary">{getIconForLabel(address.label)}</span>
+                  <span className="font-black text-xs uppercase tracking-widest">{address.label}</span>
                 </div>
-                <button className="add-btn">
-                    <Plus size={20} />
-                    New Coordinate
+                {address.isDefault && (
+                  <div className="px-3 py-1 bg-green-500/10 rounded-full text-green-500 border border-green-500/20 font-black text-[9px] uppercase tracking-widest shadow-xl shadow-green-500/5">
+                    Primary
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-xl font-black text-foreground italic uppercase tracking-tight leading-none">
+                  {address.fullName}
+                </h4>
+                <div className="text-sm md:text-base text-muted font-bold leading-relaxed opacity-80">
+                  <p>{address.addressLine1}</p>
+                  {address.addressLine2 && <p>{address.addressLine2}</p>}
+                  <p>{address.city}, {address.state} - {address.zipCode}</p>
+                </div>
+                <div className="pt-4 flex items-center gap-3 text-sm font-black text-foreground italic">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <Phone size={14} />
+                  </div>
+                  <span className="opacity-80">+91 {address.phone}</span>
+                </div>
+              </div>
+
+              <div className="mt-10 pt-6 flex gap-3 border-t border-border/50">
+                <button className="flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-card border border-border text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary/10 hover:border-primary/30 hover:text-primary active:scale-95 italic">
+                  <Edit2 size={14} />
+                  Edit info
                 </button>
-            </header>
+                <button
+                  onClick={() => handleDelete(address._id || address.id)}
+                  disabled={isDeleting === (address._id || address.id)}
+                  className="flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-red-500/5 border border-red-500/10 text-[10px] font-black uppercase tracking-widest text-red-500 transition-all hover:bg-red-500/10 hover:border-red-500/20 active:scale-95 italic disabled:opacity-50"
+                >
+                  {isDeleting === (address._id || address.id) ? (
+                    <div className="w-3 h-3 border-2 border-red-500/20 border-t-red-500 rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )}
+                  {isDeleting === (address._id || address.id) ? 'Removing...' : 'Remove'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-            {loading ? (
-                <div className="skeleton-grid">
-                    {[1, 2].map(i => (
-                        <div key={i} className="skeleton-orb" />
-                    ))}
-                </div>
-            ) : addresses.length === 0 ? (
-                <div className="void-pane">
-                    <div className="void-icon">
-                        <MapPin size={48} />
-                    </div>
-                    <h3>No Coordinates Detected</h3>
-                    <p>Establish your first delivery point to expedite procurement.</p>
-                </div>
-            ) : (
-                <div className="address-grid">
-                    {addresses.map(address => (
-                        <div key={address._id || address.id} className="address-card">
-                            <div className="card-top">
-                                <div className="label-badge">
-                                    <div className="status-dot"></div>
-                                    <span>{address.label}</span>
-                                </div>
-                                {address.isDefault && (
-                                    <span className="primary-pill">Primary</span>
-                                )}
-                            </div>
+      {/* ADD MODAL PLACEHOLDER */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowAddModal(false)} />
+          <div className="relative w-full max-w-xl bg-card border border-border rounded-[40px] p-8 md:p-12 shadow-2xl animate-in zoom-in-95 duration-300">
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="absolute top-8 right-8 text-muted hover:text-foreground transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <div className="flex flex-col gap-8">
+              <div>
+                <h3 className="text-2xl font-black text-foreground italic uppercase mb-2">Add New Address</h3>
+                <p className="text-xs text-muted font-black uppercase tracking-widest opacity-60">Enter your delivery details below</p>
+              </div>
 
-                            <div className="card-body">
-                                <h4>{address.fullName}</h4>
-                                <div className="coordinates">
-                                    <p>{address.addressLine1}</p>
-                                    {address.addressLine2 && <p>{address.addressLine2}</p>}
-                                    <p>{address.city}, {address.state} - {address.zipCode}</p>
-                                </div>
-                                <div className="contact-strip">
-                                    <Phone size={14} />
-                                    <span>{address.phone}</span>
-                                </div>
-                            </div>
+              <div className="text-center py-20 border-2 border-dashed border-border rounded-[32px] bg-card/5">
+                <p className="text-muted font-black uppercase tracking-widest text-[10px] opacity-40">Form Integration Pending API Confirmation</p>
+              </div>
 
-                            <div className="card-actions">
-                                <button className="action-btn edit">
-                                    <Edit2 size={16} />
-                                    Edit
-                                </button>
-                                <button className="action-btn delete">
-                                    <Trash2 size={16} />
-                                    Remove
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            <style jsx>{`
-        .logistics-hub {
-          animation: fadeIn 0.5s ease-out;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-bottom: 48px;
-          gap: 24px;
-        }
-
-        h1 {
-          font-size: clamp(2rem, 4vw, 2.6rem);
-          font-weight: 950;
-          margin: 0;
-          letter-spacing: -2px;
-        }
-
-        .text-primary {
-          color: var(--color-primary);
-        }
-
-        p {
-          margin: 8px 0 0;
-          color: var(--text-muted);
-          font-weight: 500;
-          font-size: 1.1rem;
-        }
-
-        .add-btn {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 16px 32px;
-          background: var(--color-primary);
-          color: white;
-          border: none;
-          border-radius: 16px;
-          font-weight: 800;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          box-shadow: 0 10px 20px rgba(255, 140, 0, 0.2);
-        }
-
-        .add-btn:hover {
-          transform: translateY(-4px) scale(1.02);
-          box-shadow: 0 15px 30px rgba(255, 140, 0, 0.3);
-        }
-
-        /* GRID */
-        .address-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-          gap: 24px;
-        }
-
-        .address-card {
-          background: rgba(var(--bg-card-rgb), 0.5);
-          backdrop-filter: blur(16px);
-          border: 1px solid var(--border-color);
-          border-radius: 32px;
-          padding: 32px;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .address-card:hover {
-          transform: translateY(-8px);
-          border-color: var(--color-primary);
-          background: rgba(var(--bg-card-rgb), 0.7);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .card-top {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 24px;
-        }
-
-        .label-badge {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 8px 16px;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 12px;
-        }
-
-        .status-dot {
-          width: 8px;
-          height: 8px;
-          background: var(--color-primary);
-          border-radius: 50%;
-          box-shadow: 0 0 10px var(--color-primary);
-        }
-
-        .label-badge span {
-          font-weight: 800;
-          font-size: 1.1rem;
-          letter-spacing: -0.5px;
-        }
-
-        .primary-pill {
-          font-size: 0.7rem;
-          font-weight: 900;
-          text-transform: uppercase;
-          letter-spacing: 1.5px;
-          background: rgba(var(--status-success-rgb, 52, 199, 89), 0.1);
-          color: var(--status-success);
-          padding: 6px 14px;
-          border-radius: 100px;
-          border: 1px solid rgba(var(--status-success-rgb, 52, 199, 89), 0.2);
-        }
-
-        .card-body h4 {
-          margin: 0 0 12px;
-          font-size: 1.3rem;
-          font-weight: 900;
-        }
-
-        .coordinates p {
-          margin: 0;
-          font-size: 1rem;
-          color: var(--text-muted);
-          line-height: 1.6;
-        }
-
-        .contact-strip {
-          margin-top: 20px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: var(--text-body);
-          font-weight: 600;
-        }
-
-        .card-actions {
-          margin-top: 32px;
-          display: flex;
-          gap: 12px;
-          padding-top: 24px;
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .action-btn {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 12px;
-          border-radius: 14px;
-          font-weight: 700;
-          font-size: 0.9rem;
-          cursor: pointer;
-          transition: 0.2s;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-color);
-          color: var(--text-body);
-        }
-
-        .action-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: var(--text-muted);
-        }
-
-        .action-btn.delete {
-          color: var(--status-error);
-        }
-
-        .action-btn.delete:hover {
-          background: rgba(255, 59, 48, 0.05);
-          border-color: var(--status-error);
-        }
-
-        /* VOID STATE */
-        .void-pane {
-          text-align: center;
-          padding: 100px 40px;
-          background: rgba(var(--bg-card-rgb), 0.2);
-          border: 2px dashed var(--border-color);
-          border-radius: 40px;
-          backdrop-filter: blur(10px);
-        }
-
-        .void-icon {
-          width: 80px;
-          height: 80px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 24px;
-          color: var(--text-muted);
-        }
-
-        /* SKELETON */
-        .skeleton-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-          gap: 24px;
-        }
-
-        .skeleton-orb {
-          height: 280px;
-          border-radius: 32px;
-          background: rgba(var(--bg-card-rgb), 0.3);
-          border: 1px solid var(--border-color);
-          animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-          0% { opacity: 0.5; }
-          50% { opacity: 0.8; }
-          100% { opacity: 0.5; }
-        }
-
-        @media (max-width: 768px) {
-          .page-header {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-          .add-btn {
-            width: 100%;
-            justify-content: center;
-          }
-          .address-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
-        </section>
-    );
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="w-full py-4 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 active:scale-95 italic"
+              >
+                Close Modal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

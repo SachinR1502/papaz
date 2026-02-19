@@ -1,8 +1,10 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { customerService } from '@/services/customerService';
 import ProductCard from '@/components/ui/ProductCard';
+import { Package, RefreshCw } from 'lucide-react';
 
 export default function FeaturedProducts() {
     const searchParams = useSearchParams();
@@ -39,162 +41,105 @@ export default function FeaturedProducts() {
             setProducts(data);
         } catch (err: any) {
             console.error('Error fetching products:', err);
-            setError('Failed to load products. Please try again later.');
+            setError('Failed to load products. Please check your connection.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <section id="products" style={{ padding: 'clamp(80px, 12vh, 120px) 24px', background: 'var(--bg-body)', position: 'relative', overflow: 'hidden' }}>
-            {/* Background Decorative Element */}
-            <div style={{
-                position: 'absolute',
-                top: '-10%',
-                left: '-10%',
-                width: '600px',
-                height: '600px',
-                background: 'radial-gradient(circle, rgba(255, 140, 0, 0.03) 0%, transparent 70%)',
-                filter: 'blur(100px)',
-                zIndex: 0
-            }}></div>
+        <section id="products" className="py-24 px-6 bg-[var(--bg-body)] relative overflow-hidden">
+            {/* Background Decor */}
+            <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(255,140,0,0.03)_0%,transparent_70%)] blur-[100px] z-0" />
 
-            <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '64px' }}>
-                    <div className="hero-badge" style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        background: 'rgba(255, 140, 0, 0.1)',
-                        padding: '8px 20px',
-                        borderRadius: '100px',
-                        marginBottom: '24px',
-                        border: '1px solid rgba(255, 140, 0, 0.2)'
-                    }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '2px' }}>Pick of the Week</span>
+            <div className="container mx-auto max-w-7xl relative z-10">
+                {/* Header Section */}
+                <div className="flex flex-col items-center text-center mb-16">
+                    <div className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-5 py-2 rounded-full mb-6">
+                        <span className="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-[2px]">
+                            Pick of the Week
+                        </span>
                     </div>
 
-                    <h2 style={{ fontSize: 'clamp(2.4rem, 6vw, 3.8rem)', fontWeight: 900, marginBottom: '20px', letterSpacing: '-2px', lineHeight: 1.1 }}>
-                        Premium <span style={{ color: 'var(--color-primary)' }}>Hardware</span> & Parts
+                    <h2 className="text-[clamp(2.4rem,6vw,3.8rem)] font-black mb-6 tracking-tighter leading-tight text-[var(--text-body)]">
+                        Premium <span className="text-[var(--color-primary)] italic">Hardware</span> & Parts
                     </h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 'clamp(1rem, 2.5vw, 1.3rem)', maxWidth: '700px', fontWeight: 500, lineHeight: 1.6 }}>
+                    <p className="text-[var(--text-muted)] text-[clamp(1rem,2.5vw,1.2rem)] max-w-2xl font-medium leading-relaxed">
                         Precision-engineered components sourced from elite global manufacturers for professional performance.
                     </p>
 
-                    <div style={{
-                        display: 'flex',
-                        gap: '10px',
-                        background: 'var(--bg-card)',
-                        padding: '8px',
-                        borderRadius: '24px',
-                        marginTop: '48px',
-                        border: '1px solid var(--border-color)',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.08)',
-                        overflowX: 'auto',
-                        maxWidth: '100%',
-                        scrollbarWidth: 'none',
-                        backdropFilter: 'blur(20px)'
-                    }} className="hide-scrollbar category-selector">
-                        {categories.map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => setActiveCategory(cat)}
-                                style={{
-                                    padding: '12px 32px',
-                                    borderRadius: '18px',
-                                    background: activeCategory === cat ? 'var(--color-primary)' : 'transparent',
-                                    color: activeCategory === cat ? 'white' : 'var(--text-muted)',
-                                    border: 'none',
-                                    fontWeight: 800,
-                                    cursor: 'pointer',
-                                    fontSize: '0.95rem',
-                                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    whiteSpace: 'nowrap',
-                                    boxShadow: activeCategory === cat ? '0 8px 20px rgba(255, 140, 0, 0.3)' : 'none'
-                                }}
-                            >
-                                {cat}
-                            </button>
-                        ))}
+                    {/* Filter Tabs */}
+                    <div className="w-full max-w-4xl mx-auto mt-12 overflow-x-auto hide-scrollbar">
+                        <div className="inline-flex bg-[var(--bg-card)] p-2 rounded-2xl border border-[var(--border-color)] backdrop-blur-xl shadow-lg relative overflow-hidden">
+                            {categories.map((cat) => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setActiveCategory(cat)}
+                                    className={`
+                                        px-8 py-3 rounded-xl text-sm font-black tracking-tight transition-all duration-300 whitespace-nowrap
+                                        ${activeCategory === cat
+                                            ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-orange-500/30 translate-y-[-1px]'
+                                            : 'text-[var(--text-muted)] hover:text-[var(--text-body)] hover:bg-[var(--bg-body)]'
+                                        }
+                                    `}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
+                {/* State Handling */}
                 {loading ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '32px', minHeight: '400px' }}>
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className="skeleton-card" style={{
-                                height: '420px',
-                                borderRadius: '32px',
-                                background: 'linear-gradient(90deg, var(--bg-card) 25%, var(--border-color) 50%, var(--bg-card) 75%)',
-                                backgroundSize: '200% 100%',
-                                animation: 'shimmer 2s infinite linear'
-                            }} />
-                        ))}
-                    </div>
-                ) : error ? (
-                    <div style={{ textAlign: 'center', padding: '80px', background: 'var(--bg-card)', borderRadius: '32px', border: '1px solid var(--border-color)' }}>
-                        <p style={{ color: 'var(--status-error)', fontSize: '1.2rem', fontWeight: 600, marginBottom: '24px' }}>{error}</p>
-                        <button onClick={fetchProducts} className="btn btn-primary" style={{ padding: '16px 40px', borderRadius: '14px' }}>Try Again</button>
-                    </div>
-                ) : (
-                    <div className="product-grid" style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                        gap: '32px',
-                        minHeight: '400px'
-                    }}>
-                        {products.map((product) => (
-                            <div key={product.id || product._id} className="animate-fade-in" style={{ height: '100%' }}>
-                                <ProductCard {...product} id={product.id || product._id} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 min-h-[400px]">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                            <div key={i} className="h-[450px] rounded-[32px] bg-[var(--bg-card)] border border-[var(--border-color)] overflow-hidden">
+                                <div className="h-60 bg-white/5 animate-pulse" />
+                                <div className="p-6 space-y-4">
+                                    <div className="h-6 bg-white/5 rounded-full animate-pulse w-3/4" />
+                                    <div className="h-4 bg-white/5 rounded-full animate-pulse w-1/2" />
+                                    <div className="pt-4 flex justify-between items-center">
+                                        <div className="h-8 bg-white/5 rounded-full animate-pulse w-1/4" />
+                                        <div className="h-10 bg-white/5 rounded-xl animate-pulse w-1/3" />
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>
-                )}
-
-                {!loading && !error && products.length === 0 && (
-                    <div style={{
-                        textAlign: 'center',
-                        padding: '100px 24px',
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '40px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '20px'
-                    }}>
-                        <div style={{ fontSize: '4rem', filter: 'grayscale(1)' }}>📦</div>
-                        <div>
-                            <h3 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '8px', letterSpacing: '-0.5px' }}>Stock currently unavailable</h3>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '500px' }}>Our suppliers are updating their inventories. Try selecting a different category or browsing our global catalog.</p>
+                ) : error ? (
+                    <div className="text-center py-20 px-8 glass-panel border border-red-500/20 bg-red-500/5 rounded-[40px] max-w-2xl mx-auto">
+                        <p className="text-red-500 text-lg font-black mb-6 uppercase tracking-widest">{error}</p>
+                        <button
+                            onClick={fetchProducts}
+                            className="bg-red-500 text-white px-10 py-4 rounded-2xl text-sm font-black shadow-lg shadow-red-500/20 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 mx-auto"
+                        >
+                            <RefreshCw size={18} />
+                            Try Again
+                        </button>
+                    </div>
+                ) : products.length === 0 ? (
+                    <div className="text-center py-24 px-8 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[48px] max-w-3xl mx-auto flex flex-col items-center gap-6">
+                        <div className="w-24 h-24 bg-[var(--bg-body)] rounded-3xl flex items-center justify-center mb-2">
+                            <Package size={48} className="text-[var(--text-muted)] opacity-30" />
                         </div>
+                        <div>
+                            <h3 className="text-2xl font-black text-[var(--text-body)] tracking-tighter mb-2">Inventory Updating</h3>
+                            <p className="text-[var(--text-muted)] font-medium max-w-md mx-auto">Our suppliers are restocking. Check back in a few minutes or explore our other collections.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12">
+                        {products.map((product) => (
+                            <ProductCard
+                                key={product.id || product._id}
+                                {...product}
+                                id={product.id || product._id}
+                            />
+                        ))}
                     </div>
                 )}
             </div>
-            <style jsx>{`
-                @keyframes shimmer {
-                    0% { background-position: 200% 0; }
-                    100% { background-position: -200% 0; }
-                }
-                @media (max-width: 768px) {
-                    section {
-                        padding: 80px 16px !important;
-                    }
-                    .category-selector {
-                        padding: 6px !important;
-                        margin-top: 32px !important;
-                        border-radius: 20px !important;
-                    }
-                    .category-selector button {
-                        padding: 10px 24px !important;
-                        border-radius: 14px !important;
-                    }
-                    .product-grid {
-                        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important;
-                        gap: 20px !important;
-                    }
-                }
-            `}</style>
         </section>
     );
 }

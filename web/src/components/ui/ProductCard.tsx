@@ -1,6 +1,10 @@
+'use client';
+
 import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import Link from 'next/link';
+import { Star, ShoppingCart, Check, Activity } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
     id: string | number;
@@ -22,110 +26,67 @@ export default function ProductCard({ id, name, price, rating, image, category }
     };
 
     return (
-        <div className="glass-panel" style={{
-            overflow: 'hidden',
-            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            padding: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-            borderRadius: '24px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
-            cursor: 'default'
-        }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-8px)';
-                e.currentTarget.style.borderColor = 'rgba(255, 140, 0, 0.3)';
-                e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.1)';
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-                e.currentTarget.style.boxShadow = 'none';
-            }}
-        >
-            <div style={{
-                height: '240px',
-                backgroundImage: `url(${image})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                position: 'relative',
-                overflow: 'hidden'
-            }}>
-                <div style={{
-                    position: 'absolute',
-                    top: '16px',
-                    left: '16px',
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(8px)',
-                    color: 'white',
-                    padding: '6px 12px',
-                    borderRadius: '10px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                }}>
-                    {category}
+        <div className="group bg-card border border-border rounded-[40px] overflow-hidden flex flex-col h-full transition-all duration-500 hover:border-primary/40 hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+            {/* Image Section */}
+            <div className="relative h-64 overflow-hidden p-3">
+                <div className="w-full h-full rounded-[32px] overflow-hidden relative">
+                    <img
+                        src={image}
+                        alt={name}
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                </div>
+
+                {/* Badges */}
+                <div className="absolute top-6 left-6 flex flex-col gap-2">
+                    <div className="bg-black/60 backdrop-blur-xl text-white text-[9px] font-black uppercase tracking-[0.2em] px-3.5 py-1.5 rounded-full border border-white/10 shadow-lg w-fit">
+                        {category}
+                    </div>
+                </div>
+
+                <div className="absolute top-6 right-6 bg-orange-500/10 backdrop-blur-xl text-primary flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary/20 shadow-lg">
+                    <Star size={10} className="fill-primary" />
+                    <span className="text-[10px] font-black">{rating}</span>
                 </div>
             </div>
 
-            <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <Link href={`/product/${id}`} style={{ flex: 1 }}>
-                        <h3 style={{
-                            fontWeight: 700,
-                            fontSize: '1.2rem',
-                            margin: 0,
-                            lineHeight: 1.3,
-                            color: 'var(--text-body)',
-                            transition: 'color 0.2s'
-                        }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-body)'}
-                        >
-                            {name}
-                        </h3>
-                    </Link>
-                    <div style={{
-                        background: 'rgba(241, 196, 15, 0.1)',
-                        padding: '4px 8px',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        color: '#F1C40F',
-                        fontSize: '0.9rem',
-                        fontWeight: 700
-                    }}>
-                        <span>★</span> {rating}
-                    </div>
-                </div>
+            {/* Content Section */}
+            <div className="p-7 pt-2 flex flex-col flex-1">
+                <Link href={`/product/${id}`} className="block mb-5">
+                    <h3 className="text-lg font-black text-foreground leading-[1.2] tracking-tight group-hover:text-primary transition-colors line-clamp-2 italic uppercase">
+                        {name}
+                    </h3>
+                </Link>
 
-                <div style={{ marginTop: 'auto', paddingTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Price</span>
-                        <span style={{ fontSize: '1.4rem', fontWeight: 900 }}>₹{price.toLocaleString()}</span>
+                <div className="mt-auto pt-6 flex items-center justify-between gap-4 border-t border-border/50">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em] mb-1">Price / Unit</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-black text-foreground tracking-tighter italic">₹{price.toLocaleString()}</span>
+                        </div>
                     </div>
 
                     <button
-                        className="btn btn-primary"
                         onClick={handleAddToCart}
-                        style={{
-                            padding: '12px 24px',
-                            borderRadius: '14px',
-                            fontSize: '0.95rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            background: isAdded ? 'var(--status-success)' : 'var(--color-primary)'
-                        }}
+                        disabled={isAdded}
+                        className={cn(
+                            "h-12 w-12 sm:w-auto sm:px-6 rounded-2xl flex items-center justify-center gap-2.5 text-xs font-black uppercase tracking-widest transition-all duration-500 transition-all",
+                            isAdded
+                                ? "bg-green-500 text-white shadow-xl shadow-green-500/20 w-32"
+                                : "bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/40 active:scale-95 group-hover:scale-105"
+                        )}
                     >
                         {isAdded ? (
-                            <><span>✓</span> Added</>
+                            <div className="flex items-center gap-2 animate-fade-in">
+                                <Check size={16} strokeWidth={3} />
+                                <span className="hidden sm:inline">Stored</span>
+                            </div>
                         ) : (
-                            <><span>+</span> Add to Cart</>
+                            <>
+                                <ShoppingCart size={16} strokeWidth={3} className="group-hover:-translate-y-0.5 transition-transform" />
+                                <span className="hidden sm:inline">Add</span>
+                            </>
                         )}
                     </button>
                 </div>
@@ -133,3 +94,4 @@ export default function ProductCard({ id, name, price, rating, image, category }
         </div>
     );
 }
+

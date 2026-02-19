@@ -8,14 +8,10 @@ import {
     Wrench,
     TrendingUp,
     Banknote,
-    Clock,
-    ChevronRight,
-    ArrowUpRight,
-    Search,
-    Filter,
     MoreVertical,
     Target
 } from 'lucide-react';
+import { RevenueBarChart } from '@/components/admin/charts/RevenueBarChart';
 
 interface DashboardStats {
     totalCustomers: number;
@@ -27,21 +23,22 @@ interface DashboardStats {
     pendingApprovals: number;
     totalRevenue: number;
     platformCommission: number;
-    revenueHistory: any[];
+    revenueHistory: { date: string; amount: number }[];
 }
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [recentJobs, setRecentJobs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [period, setPeriod] = useState('week');
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [period]);
 
     const fetchData = async () => {
         try {
-            const data = await adminService.getDashboard();
+            const data = await adminService.getDashboard(period);
             setStats(data.stats);
             setRecentJobs(data.recentJobs);
         } catch (error) {
@@ -53,273 +50,307 @@ export default function AdminDashboard() {
 
     if (isLoading) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '20px' }}>
-                <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid rgba(var(--color-primary-rgb), 0.1)', borderTopColor: 'var(--color-primary)', borderRadius: '50%' }}></div>
-                <p style={{ color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '1px' }}>INITIALIZING DASHBOARD...</p>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+                <div className="animate-spin w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full"></div>
+                <p className="text-muted font-bold tracking-widest text-xs">INITIALIZING DASHBOARD...</p>
             </div>
         );
     }
 
     return (
-        <div style={{ position: 'relative' }}>
+        <div className="relative pb-20">
             {/* Background Ambient Glow */}
-            <div style={{
-                position: 'fixed',
-                bottom: '10%',
-                right: '10%',
-                width: '400px',
-                height: '400px',
-                background: 'var(--color-primary)',
-                filter: 'blur(180px)',
-                opacity: 0.04,
-                zIndex: -1,
-                pointerEvents: 'none'
-            }} />
+            <div className="fixed bottom-[10%] right-[10%] w-[400px] h-[400px] bg-primary blur-[180px] opacity-[0.04] -z-10 pointer-events-none" />
 
-            <header style={{ marginBottom: '48px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 md:mb-12">
                 <div>
-                    <h1 className="text-gradient" style={{ fontSize: '3rem', fontWeight: 900, margin: 0, letterSpacing: '-1.5px' }}>
+                    <h1 className="text-4xl md:text-5xl font-black m-0 tracking-tighter text-foreground italic uppercase">
                         Dashboard
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500, marginTop: '4px' }}>
+                    <p className="text-muted text-sm md:text-base font-medium mt-2">
                         Platform governance & real-time operational overview
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="btn btn-secondary" style={{ borderRadius: '14px', padding: '12px 20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="flex gap-3">
+                    <button className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 transition-all active:scale-95">
                         <TrendingUp size={18} /> Analytics Suite
                     </button>
                 </div>
             </header>
 
             {/* Core Stats Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '24px',
-                marginBottom: '48px'
-            }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <StatCard
                     title="Platform Revenue"
                     value={`₹${stats?.totalRevenue.toLocaleString()}`}
                     subtitle="Gross Transaction Value"
                     icon={<TrendingUp size={24} />}
-                    color="#34c759"
+                    color="text-green-500"
+                    bg="bg-green-500/10"
+                    borderColor="border-green-500/20"
                 />
                 <StatCard
                     title="System Commission"
                     value={`₹${stats?.platformCommission.toLocaleString()}`}
                     subtitle="Operational Revenue"
                     icon={<Banknote size={24} />}
-                    color="#5856d6"
+                    color="text-indigo-500"
+                    bg="bg-indigo-500/10"
+                    borderColor="border-indigo-500/20"
                 />
                 <StatCard
                     title="Workforce"
                     value={stats?.totalTechnicians.toString() || '0'}
                     subtitle={`${stats?.pendingApprovals} Pending Verification`}
                     icon={<Users size={24} />}
-                    color="var(--color-primary)"
+                    color="text-primary"
+                    bg="bg-primary/10"
+                    borderColor="border-primary/20"
                 />
                 <StatCard
                     title="Active Traffic"
                     value={stats?.activeJobs.toString() || '0'}
                     subtitle="Jobs currently in transit"
                     icon={<Activity size={24} />}
-                    color="#ff3b30"
+                    color="text-red-500"
+                    bg="bg-red-500/10"
+                    borderColor="border-red-500/20"
                 />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 1fr', gap: '32px' }}>
-                {/* Live Activity Stream */}
-                <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(var(--color-primary-rgb), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
-                                <Wrench size={20} />
-                            </div>
-                            <div>
-                                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Recent Jobs</h2>
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Live transactional activity</p>
-                            </div>
+            {/* Revenue Bar Chart Section */}
+            <div className="mb-8">
+                <div className="glass-panel p-8 rounded-[32px] border border-white/5 relative overflow-hidden">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <div>
+                            <h3 className="text-lg font-black flex items-center gap-2">
+                                <TrendingUp size={20} className="text-primary" /> Revenue Trend
+                            </h3>
+                            <p className="text-sm text-muted">
+                                {period === 'week' ? 'Last 7 Days (Daily)' : period === 'month' ? 'Current Month (Weekly)' : 'Current Year (Monthly)'} transaction volume
+                            </p>
                         </div>
-                        <button className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: '0.85rem', fontWeight: 700, borderRadius: '12px' }}>View Ledger</button>
-                    </div>
-
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                <tr>
-                                    <th style={thStyle}>TRACE ID</th>
-                                    <th style={thStyle}>STAKEHOLDERS</th>
-                                    <th style={thStyle}>STATUS</th>
-                                    <th style={thStyle}>VALUATION</th>
-                                    <th style={thStyle}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {recentJobs.length > 0 ? recentJobs.map(job => (
-                                    <tr key={job.id} className="row-hover" style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }}>
-                                        <td style={tdStyle}>
-                                            <span style={{ fontWeight: 800, color: 'var(--text-body)', letterSpacing: '0.5px' }}>#{job.id.slice(-8).toUpperCase()}</span>
-                                        </td>
-                                        <td style={tdStyle}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{job.customer}</div>
-                                                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500 }}>→ {job.technician}</div>
-                                            </div>
-                                        </td>
-                                        <td style={tdStyle}>
-                                            <StatusPill status={job.status} />
-                                        </td>
-                                        <td style={tdStyle}>
-                                            <div style={{ fontWeight: 900, fontSize: '1rem' }}>₹{job.totalAmount.toLocaleString()}</div>
-                                        </td>
-                                        <td style={{ ...tdStyle, textAlign: 'right' }}>
-                                            <MoreVertical size={16} opacity={0.3} cursor="pointer" />
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={5} style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                            <Target size={40} opacity={0.2} style={{ marginBottom: '16px' }} />
-                                            <div style={{ fontWeight: 600 }}>No live jobs detected</div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* User Distribution */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    <div className="glass-panel" style={{ padding: '32px', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <Users size={20} color="var(--color-primary)" />
-                            User Distribution
-                        </h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                            <DistributionRow label="Direct Customers" value={stats?.totalCustomers || 0} total={stats ? stats.totalCustomers + stats.totalTechnicians + stats.totalSuppliers : 1} color="#007aff" />
-                            <DistributionRow label="Service Experts" value={stats?.totalTechnicians || 0} total={stats ? stats.totalCustomers + stats.totalTechnicians + stats.totalSuppliers : 1} color="var(--color-primary)" />
-                            <DistributionRow label="Parts Suppliers" value={stats?.totalSuppliers || 0} total={stats ? stats.totalCustomers + stats.totalTechnicians + stats.totalSuppliers : 1} color="#ff3b30" />
-                        </div>
-
-                        <div style={{ marginTop: '32px', padding: '20px', borderRadius: '20px', background: 'rgba(var(--color-primary-rgb), 0.05)', border: '1px solid rgba(var(--color-primary-rgb), 0.1)' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: '4px' }}>PLATFORM HEALTH</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34c759' }} />
-                                <span style={{ fontWeight: 900, color: '#34c759', fontSize: '1rem' }}>OPTIMAL</span>
+                        <div className="flex gap-2">
+                            <div className="glass-panel flex p-1 rounded-xl bg-white/5 border border-white/10 h-fit">
+                                {[
+                                    { label: 'Week', value: 'week' },
+                                    { label: 'Month', value: 'month' },
+                                    { label: 'Year', value: 'year' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setPeriod(opt.value)}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all ${period === opt.value
+                                            ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                            : 'text-muted hover:text-foreground hover:bg-white/5'
+                                            }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '32px', borderRadius: '32px', background: 'linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.1), transparent)' }}>
-                        <div style={{ marginBottom: '16px', color: 'var(--color-primary)' }}><Clock size={24} /></div>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '8px' }}>System Integrity</h3>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', fontWeight: 500 }}>
-                            Daily automated audit of technician certifications and supplier listings is scheduled for 02:00 UTC.
-                        </p>
+                    <div className="h-[250px] w-full">
+                        <RevenueBarChart data={stats?.revenueHistory || []} period={period} />
                     </div>
                 </div>
             </div>
 
-            <style jsx>{`
-                .row-hover:hover { background: rgba(255, 255, 255, 0.015); }
-            `}</style>
+            <div className="grid grid-cols-1 xl:grid-cols-[2.2fr_1fr] gap-8 animate-slide-up-fade">
+                {/* Live Activity Stream */}
+                <div className="glass-panel p-0 overflow-hidden border border-white/5 rounded-[32px] flex flex-col">
+                    <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner border border-primary/5">
+                                <Wrench size={24} />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black m-0 tracking-tight">Recent Jobs</h2>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                    <p className="m-0 text-[10px] font-bold text-muted uppercase tracking-widest">Live Feed</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button className="px-5 py-2.5 text-xs font-bold bg-white/5 hover:bg-white/10 rounded-xl transition-all hover:scale-105 active:scale-95 border border-white/5">
+                            View All Jobs
+                        </button>
+                    </div>
+
+                    <div className="flex flex-col">
+                        {recentJobs.length > 0 ? recentJobs.map((job, i) => (
+                            <div key={job.id} className="group p-6 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center font-black text-xs text-muted group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                                        {i + 1}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-black text-sm tracking-wide">#{job.id.slice(-6).toUpperCase()}</span>
+                                            <span className="text-[10px] font-bold text-muted px-2 py-0.5 rounded bg-white/5">
+                                                {new Date(job.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs font-bold text-muted">
+                                            <span className="text-foreground">{job.customer}</span>
+                                            <span className="text-white/20">→</span>
+                                            <span className="text-primary">{job.technician}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto pl-14 md:pl-0">
+                                    <StatusPill status={job.status} />
+                                    <div className="text-right min-w-[80px]">
+                                        <div className="text-sm font-black text-foreground">₹{job.totalAmount.toLocaleString()}</div>
+                                        <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Valuation</div>
+                                    </div>
+                                    <button className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100">
+                                        <MoreVertical size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="p-20 text-center text-muted flex flex-col items-center justify-center gap-4 min-h-[300px]">
+                                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-2">
+                                    <Target size={40} className="opacity-20" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg text-foreground">No Live Activity</h4>
+                                    <p className="text-sm opacity-60">Operations are currently quiet</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Vertical Bar Chart for Job Status */}
+                <div className="flex flex-col gap-8">
+                    <div className="glass-panel p-8 rounded-[32px] border border-white/5">
+                        <h2 className="text-xl font-extrabold mb-6 flex items-center gap-3">
+                            <Activity size={20} className="text-primary" />
+                            Job Overview
+                        </h2>
+
+                        {/* Job Status Bar Chart */}
+                        <div className="flex flex-col gap-6 h-[200px] justify-end">
+                            <JobStatusBarChart
+                                active={stats?.activeJobs || 0}
+                                completed={stats?.completedJobs || 0}
+                                pending={stats?.pendingApprovals || 0} // Using pending approvals as proxy for 'Pending' jobs for demo visual
+                            />
+                        </div>
+
+                        <div className="mt-8 pt-6 border-t border-white/5 flex flex-col gap-4">
+                            <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded bg-primary"></div>
+                                    <span className="font-bold">Active Jobs</span>
+                                </div>
+                                <span className="font-mono">{stats?.activeJobs || 0}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded bg-green-500"></div>
+                                    <span className="font-bold">Completed</span>
+                                </div>
+                                <span className="font-mono">{stats?.completedJobs || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+
+function JobStatusBarChart({ active, completed, pending }: { active: number, completed: number, pending: number }) {
+    const total = active + completed + pending || 1;
+    const maxVal = Math.max(active, completed, pending);
+
+    return (
+        <div className="w-full h-full flex items-end justify-around gap-4 px-4">
+            {/* Active Bar */}
+            <div className="flex flex-col items-center gap-2 w-1/3 h-full justify-end group">
+                <div
+                    className="w-full max-w-[40px] rounded-t-lg bg-primary transition-all duration-500 hover:brightness-110 relative"
+                    style={{ height: `${(active / maxVal) * 100}%`, minHeight: '4px' }}
+                >
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold text-primary">
+                        {active}
+                    </div>
+                </div>
+                <span className="text-[10px] font-bold text-muted uppercase">Active</span>
+            </div>
+
+            {/* Completed Bar */}
+            <div className="flex flex-col items-center gap-2 w-1/3 h-full justify-end group">
+                <div
+                    className="w-full max-w-[40px] rounded-t-lg bg-green-500 transition-all duration-500 hover:brightness-110 relative"
+                    style={{ height: `${(completed / maxVal) * 100}%`, minHeight: '4px' }}
+                >
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold text-green-500">
+                        {completed}
+                    </div>
+                </div>
+                <span className="text-[10px] font-bold text-muted uppercase">Done</span>
+            </div>
+
+            {/* Pending Bar */}
+            <div className="flex flex-col items-center gap-2 w-1/3 h-full justify-end group">
+                <div
+                    className="w-full max-w-[40px] rounded-t-lg bg-white/20 transition-all duration-500 hover:brightness-125 relative"
+                    style={{ height: `${(pending / maxVal) * 100}%`, minHeight: '4px' }}
+                >
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold text-muted">
+                        {pending}
+                    </div>
+                </div>
+                <span className="text-[10px] font-bold text-muted uppercase">Pend</span>
+            </div>
         </div>
     );
 }
 
 function StatusPill({ status }: { status: string }) {
-    const isSuccess = status.toLowerCase() === 'completed' || status.toLowerCase() === 'active';
-    const isWarn = status.toLowerCase() === 'preparing' || status.toLowerCase() === 'pending';
+    const isSuccess = status.toLowerCase() === 'completed' || status.toLowerCase() === 'active' || status.toLowerCase() === 'vehicle_delivered';
+    const isWarn = status.toLowerCase() === 'preparing' || status.toLowerCase() === 'pending' || status.toLowerCase() === 'diagnosing';
+
+    // Additional status mapping
+    let colorClass = 'bg-white/5 text-muted';
+    if (isSuccess) colorClass = 'bg-green-500/10 text-green-500';
+    else if (isWarn) colorClass = 'bg-orange-500/10 text-orange-500';
+    else if (['cancelled', 'failed'].includes(status.toLowerCase())) colorClass = 'bg-red-500/10 text-red-500';
+
+    const formatted = status.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
     return (
-        <span style={{
-            padding: '4px 12px',
-            borderRadius: '100px',
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            background: isSuccess ? 'rgba(52, 199, 89, 0.1)' : isWarn ? 'rgba(255, 149, 0, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-            color: isSuccess ? '#34c759' : isWarn ? '#ff9500' : 'var(--text-muted)',
-            letterSpacing: '0.5px'
-        }}>
-            {status.toUpperCase()}
+        <span className={`px-3 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase ${colorClass}`}>
+            {formatted}
         </span>
     );
 }
 
-function StatCard({ title, value, subtitle, icon, color }: { title: string, value: string, subtitle: string, icon: React.ReactNode, color: string }) {
+function StatCard({ title, value, subtitle, icon, color, bg, borderColor }: { title: string, value: string, subtitle: string, icon: React.ReactNode, color: string, bg: string, borderColor: string }) {
     return (
-        <div className="glass-panel" style={{
-            padding: '28px',
-            borderRadius: '32px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
+        <div className={`glass-panel p-7 rounded-[32px] border ${borderColor} relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300`}>
             {/* Decorative element */}
-            <div style={{
-                position: 'absolute',
-                top: '-20px',
-                right: '-10px',
-                width: '80px',
-                height: '80px',
-                background: color,
-                filter: 'blur(50px)',
-                opacity: 0.1,
-                zIndex: 0
-            }} />
+            <div className={`absolute -top-5 -right-2 w-20 h-20 ${bg} blur-[50px] opacity-50 z-0`} />
 
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '20px',
-                    background: `${color}15`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: color,
-                    boxShadow: `inset 0 0 20px ${color}10`
-                }}>
+            <div className="relative z-10 flex items-center gap-5">
+                <div className={`w-16 h-16 rounded-2xl ${bg} flex items-center justify-center ${color} shadow-inner`}>
                     {icon}
                 </div>
                 <div>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.5px', margin: '0 0 4px' }}>{title.toUpperCase()}</p>
-                    <h3 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '0 0 2px', letterSpacing: '-0.5px' }}>{value}</h3>
-                    <p style={{ color: color, fontSize: '0.75rem', fontWeight: 800, margin: 0, opacity: 0.8 }}>{subtitle}</p>
+                    <p className="text-xs font-extrabold text-muted tracking-wide uppercase mb-1">{title}</p>
+                    <h3 className="text-3xl font-black tracking-tight leading-none mb-1">{value}</h3>
+                    <p className={`text-xs font-bold ${color} opacity-80`}>{subtitle}</p>
                 </div>
             </div>
         </div>
     );
 }
-
-function DistributionRow({ label, value, total, color }: { label: string, value: number, total: number, color: string }) {
-    const percentage = Math.round((value / total) * 100);
-    return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
-                <span style={{ fontWeight: 800, color: 'var(--text-body)' }}>{label}</span>
-                <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>{value} users</span>
-            </div>
-            <div style={{ height: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: '100px', overflow: 'hidden' }}>
-                <div style={{ width: `${percentage}%`, height: '100%', background: color, borderRadius: '100px', boxShadow: `0 0 10px ${color}40` }} />
-            </div>
-        </div>
-    );
-}
-
-const thStyle = {
-    padding: '16px 32px',
-    textAlign: 'left' as const,
-    fontSize: '0.7rem',
-    color: 'var(--text-muted)',
-    fontWeight: 800,
-    letterSpacing: '1px'
-};
-
-const tdStyle = {
-    padding: '24px 32px',
-    fontSize: '0.95rem'
-};

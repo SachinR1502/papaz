@@ -9,324 +9,248 @@ import {
     TrendingUp,
     Clock,
     ArrowUpRight,
-    Users,
-    Zap
+    Zap,
+    ChevronRight,
+    AlertCircle,
+    CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function SupplierDashboard() {
-    const { profile, orders, inventory, walletBalance } = useSupplier();
+    const { profile, orders, inventory, walletBalance, isLoading } = useSupplier();
 
-    const pendingOrdersCount = orders?.filter(o => o.status === 'pending' || o.status.toLowerCase() === 'new').length || 0;
+    const pendingOrdersCount = orders?.filter(o => o.status?.toLowerCase() === 'pending' || o.status?.toLowerCase() === 'new').length || 0;
     const totalSales = orders?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
 
     return (
-        <div style={{ padding: '40px', position: 'relative' }}>
-            {/* Ambient background accent */}
-            <div style={{
-                position: 'fixed',
-                top: '0',
-                right: '0',
-                width: '40vw',
-                height: '40vh',
-                background: 'var(--color-primary)',
-                filter: 'blur(160px)',
-                opacity: 0.03,
-                zIndex: -1,
-                pointerEvents: 'none'
-            }} />
-
-            <header style={{ marginBottom: '48px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                    <div style={{
-                        padding: '6px 12px',
-                        borderRadius: '20px',
-                        background: 'rgba(var(--color-primary-rgb), 0.1)',
-                        color: 'var(--color-primary)',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        letterSpacing: '1px'
-                    }}>
-                        SUPPLIER PORTAL v2.0
+        <div className="flex flex-col gap-10 md:gap-14 animate-fade-in">
+            {/* HEADER */}
+            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
+                <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4 lg:mb-6">
+                        <Zap size={10} className="text-primary fill-primary" />
+                        <span className="text-[10px] uppercase font-black tracking-widest text-primary">Live Performance</span>
+                    </div>
+                    <h1 className="text-4xl lg:text-6xl font-black m-0 tracking-tighter text-foreground italic uppercase">
+                        Supplier <span className="text-primary">Dashboard</span>
+                    </h1>
+                    <p className="mt-4 text-base md:text-lg text-muted font-bold max-w-2xl opacity-80 leading-relaxed">
+                        Welcome back, <span className="text-foreground">{profile?.storeName || 'Partner'}</span>. Your business overview and latest activity.
+                    </p>
+                </div>
+                <div className="flex items-center gap-6 p-6 rounded-[28px] border border-border bg-card/20 backdrop-blur-xl shrink-0">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                        <Star size={24} className="fill-amber-500" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted opacity-60 m-0">Store Rating</p>
+                        <p className="text-2xl font-black text-foreground italic m-0">{profile?.rating || '4.9'}/5.0</p>
                     </div>
                 </div>
-                <h1 className="text-gradient" style={{ fontSize: '3rem', fontWeight: 900, margin: 0, letterSpacing: '-1.5px' }}>
-                    Partner Overview
-                </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500 }}>
-                    Welcome back, <span style={{ color: 'var(--text-body)', fontWeight: 700 }}>{profile?.storeName || 'Partner'}</span>. Here's your business performance.
-                </p>
             </header>
 
-            {/* Stats Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                gap: '24px',
-                marginBottom: '48px'
-            }}>
+            {/* STATS GRID */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
-                    title="Total Revenue"
+                    title="Total Sales"
                     value={`₹${totalSales.toLocaleString()}`}
                     subtitle="Lifetime generated"
                     icon={<TrendingUp size={24} />}
-                    color="#007AFF"
+                    color="text-blue-500"
+                    bg="bg-blue-500/10"
                 />
                 <StatCard
-                    title="Wallet Balance"
+                    title="Wallet"
                     value={`₹${walletBalance.toLocaleString()}`}
                     subtitle="Available for payout"
                     icon={<Wallet size={24} />}
-                    color="#5856D6"
+                    color="text-indigo-500"
+                    bg="bg-indigo-500/10"
                 />
                 <StatCard
-                    title="Active Tasks"
+                    title="New Orders"
                     value={pendingOrdersCount.toString()}
-                    subtitle="Orders to fulfill"
+                    subtitle="To be fulfilled"
                     icon={<ShoppingBag size={24} />}
-                    color="#FF9500"
+                    color="text-amber-500"
+                    bg="bg-amber-500/10"
                 />
                 <StatCard
-                    title="Catalog Size"
+                    title="Products"
                     value={(inventory?.length || 0).toString()}
                     subtitle="Active listings"
                     icon={<Package size={24} />}
-                    color="#34C759"
+                    color="text-green-500"
+                    bg="bg-green-500/10"
                 />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
-                {/* Orders Section */}
-                <div className="glass-panel" style={{ padding: '0', borderRadius: '32px', overflow: 'hidden' }}>
-                    <div style={{
-                        padding: '32px',
-                        borderBottom: '1px solid var(--border-color)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        background: 'rgba(255, 255, 255, 0.02)'
-                    }}>
-                        <div>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Recent Orders</h2>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '4px 0 0' }}>Latest transactions and requests</p>
-                        </div>
-                        <Link href="/supplier/orders">
-                            <button className="btn btn-secondary" style={{ padding: '10px 20px', borderRadius: '14px', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                View All <ArrowUpRight size={16} />
-                            </button>
+            <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-10">
+                {/* RECENT ACTIVITY */}
+                <section>
+                    <div className="flex justify-between items-center mb-8 px-1">
+                        <h2 className="text-2xl font-black text-foreground italic uppercase tracking-tight flex items-center gap-3">
+                            Recent Activity
+                        </h2>
+                        <Link href="/supplier/orders" className="flex items-center gap-1.5 text-primary font-black text-xs uppercase tracking-widest group bg-primary/5 px-4 py-2 rounded-xl transition-all hover:bg-primary/10">
+                            View All <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                         </Link>
                     </div>
 
-                    <div style={{ padding: '8px' }}>
+                    <div className="flex flex-col gap-5">
                         {!orders || orders.length === 0 ? (
-                            <div style={{ padding: '80px 40px', textAlign: 'center' }}>
-                                <div style={{
-                                    width: '80px',
-                                    height: '80px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    margin: '0 auto 24px',
-                                    color: 'var(--text-muted)'
-                                }}>
-                                    <Clock size={40} opacity={0.3} />
+                            <div className="p-16 md:p-24 text-center rounded-[40px] border border-border border-dashed bg-card/5 transition-all hover:bg-card/10">
+                                <div className="w-20 h-20 mx-auto bg-card/20 rounded-3xl flex items-center justify-center mb-8 text-muted/30">
+                                    <Clock size={40} />
                                 </div>
-                                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 8px' }}>No orders yet</h3>
-                                <p style={{ color: 'var(--text-muted)', margin: 0 }}>Your sales and incoming requests will appear here.</p>
+                                <h3 className="text-2xl font-black text-foreground italic uppercase mb-2">No orders yet</h3>
+                                <p className="text-muted font-black uppercase tracking-widest text-[10px] mb-8 max-w-xs mx-auto opacity-60">Your sales and incoming requests will appear here once customers start ordering.</p>
                             </div>
                         ) : (
-                            <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px', padding: '0 24px 24px' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={thStyle}>ORDER ID</th>
-                                            <th style={thStyle}>DETAILS</th>
-                                            <th style={thStyle}>VALUATION</th>
-                                            <th style={thStyle}>STATUS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {orders?.slice(0, 8).map(order => (
-                                            <tr key={order.id} className="table-row-hover" style={{ cursor: 'pointer' }}>
-                                                <td style={tdStyle}>
-                                                    <div style={{ fontWeight: 800, color: 'var(--text-body)' }}>
-                                                        #{order.id.slice(-6).toUpperCase()}
-                                                    </div>
-                                                </td>
-                                                <td style={tdStyle}>
-                                                    <div style={{ fontWeight: 700, color: 'var(--text-body)' }}>{order.partName || 'Spare Part'}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Qty: {order.quantity}</div>
-                                                </td>
-                                                <td style={tdStyle}>
-                                                    <div style={{ fontWeight: 800 }}>₹{order.amount?.toLocaleString()}</div>
-                                                </td>
-                                                <td style={tdStyle}>
-                                                    <StatusBadge status={order.status} />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="flex flex-col gap-4">
+                                {orders.slice(0, 5).map(order => (
+                                    <Link
+                                        key={order.id}
+                                        href={`/supplier/orders/${order.id}`}
+                                        className="flex flex-col sm:flex-row justify-between items-center p-6 md:p-8 rounded-[32px] border border-border bg-card/20 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:border-primary/50 hover:bg-card/40 group"
+                                    >
+                                        <div className="flex items-center gap-6 w-full sm:w-auto">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-transparent rounded-2xl flex items-center justify-center font-black text-primary shrink-0 border border-primary/10 group-hover:rotate-3 transition-transform duration-500 italic">
+                                                #{order.id.slice(-4).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="m-0 font-black text-lg text-foreground italic uppercase leading-tight mb-2 group-hover:text-primary transition-colors">
+                                                    {order.partName || 'Spare Part'}
+                                                </p>
+                                                <div className="flex items-center gap-4 text-[10px] text-muted font-black uppercase tracking-widest opacity-60">
+                                                    <span className="flex items-center gap-1.5"><Package size={12} /> Qty: {order.quantity}</span>
+                                                    <span className="w-1 h-1 rounded-full bg-border" />
+                                                    <span className="flex items-center gap-1.5"><Clock size={12} /> {new Date(order.createdAt).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-right w-full sm:w-auto flex flex-row sm:flex-col justify-between items-center sm:items-end mt-6 sm:mt-0 pt-6 sm:pt-0 border-t sm:border-0 border-border/50">
+                                            <p className="m-0 font-black text-2xl text-foreground tracking-tighter">
+                                                ₹{order.amount?.toLocaleString()}
+                                            </p>
+                                            <StatusBadge status={order.status} />
+                                        </div>
+                                    </Link>
+                                ))}
                             </div>
                         )}
                     </div>
-                </div>
+                </section>
 
-                {/* Sidebar Cards */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    {/* Performance Card */}
-                    <div className="glass-panel" style={{ padding: '32px', borderRadius: '32px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: '-10px', right: '-10px', opacity: 0.1, color: 'var(--color-primary)' }}>
-                            <Zap size={120} />
-                        </div>
-                        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '24px', position: 'relative' }}>Service Metrics</h2>
+                {/* SIDEBAR CARDS */}
+                <div className="flex flex-col gap-10">
+                    {/* PERFORMANCE CARD */}
+                    <div className="p-10 rounded-[40px] border border-border bg-card/20 backdrop-blur-3xl relative overflow-hidden flex flex-col gap-10 group">
+                        <div className="absolute top-0 right-0 w-80 h-80 bg-primary opacity-[0.03] blur-[100px] -mr-40 -mt-40 pointer-events-none group-hover:opacity-10 transition-opacity" />
 
-                        <div style={{ textAlign: 'center', padding: '12px 0 32px' }}>
-                            <div style={{ fontSize: '4rem', fontWeight: 900, color: 'var(--color-primary)', lineHeight: 1 }}>
-                                {profile?.rating || '4.9'}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', margin: '16px 0 8px', color: '#FFCC00' }}>
-                                <Star fill="#FFCC00" size={18} />
-                                <Star fill="#FFCC00" size={18} />
-                                <Star fill="#FFCC00" size={18} />
-                                <Star fill="#FFCC00" size={18} />
-                                <Star fill="#FFCC00" size={18} />
-                            </div>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>Trust Score & Partner Rating</p>
+                        <div className="relative z-10">
+                            <h3 className="m-0 text-2xl font-black tracking-tight text-foreground italic uppercase flex items-center gap-3">
+                                <span className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_10px_rgba(255,140,0,0.5)]"></span>
+                                Store Metrics
+                            </h3>
+                            <p className="mt-2 text-[10px] text-muted font-black uppercase tracking-[0.2em] opacity-60">System health and trust score</p>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <MetricRow label="Pickup Velocity" value="Top 3%" trend="+2.4%" />
-                            <MetricRow label="Quote Acceptance" value="92%" trend="+5.1%" />
-                            <MetricRow label="Inventory Latency" value="0.1s" trend="Optimal" />
+                        <div className="relative z-10 flex flex-col gap-8">
+                            <MetricRow label="Pickup Velocity" value="Top 3%" icon={<TrendingUp size={16} className="text-green-500" />} />
+                            <MetricRow label="Acceptance Rate" value="92%" icon={<CheckCircle2 size={16} className="text-blue-500" />} />
+                            <MetricRow label="Inventory Latency" value="0.1s" icon={<Clock size={16} className="text-indigo-500" />} />
+                        </div>
+
+                        <div className="mt-auto pt-8 border-t border-border/50 relative z-10 flex items-center justify-between">
+                            <span className="text-[10px] uppercase font-black tracking-[0.3em] text-muted opacity-40">System Status</span>
+                            <span className="text-green-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                Optimal
+                            </span>
                         </div>
                     </div>
 
-                    {/* Quick Access Card */}
-                    <div className="glass-panel" style={{
-                        padding: '32px',
-                        borderRadius: '32px',
-                        background: 'linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.1), rgba(var(--color-primary-rgb), 0.05))',
-                        border: '1px solid rgba(var(--color-primary-rgb), 0.2)'
-                    }}>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '16px' }}>Need assistance?</h3>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: '1.5' }}>
-                            Access dedicated partner support or view the knowledge base for portal features.
+                    {/* QUICK ACTION CARD */}
+                    <div className="p-10 rounded-[40px] border border-primary/20 bg-primary/5 backdrop-blur-3xl relative overflow-hidden flex flex-col gap-6">
+                        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-primary opacity-[0.05] blur-[80px] pointer-events-none" />
+                        <h3 className="text-xl font-black text-foreground italic uppercase tracking-tight">Expand Catalog?</h3>
+                        <p className="text-xs text-muted font-bold leading-relaxed opacity-70">
+                            Add specialized vehicle components to reach more master technicians in your city.
                         </p>
-                        <button className="btn btn-primary" style={{ width: '100%', borderRadius: '16px', fontWeight: 800 }}>
-                            Partner Support
-                        </button>
+                        <Link
+                            href="/supplier/inventory"
+                            className="flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic text-center mt-2"
+                        >
+                            Add New Products
+                        </Link>
                     </div>
                 </div>
             </div>
-
-            <style jsx>{`
-                .table-row-hover:hover td {
-                    background: rgba(255, 255, 255, 0.03);
-                }
-                .table-row-hover td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
-                .table-row-hover td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
-            `}</style>
         </div>
     );
 }
 
-function StatCard({ title, value, subtitle, icon, color }: { title: string, value: string, subtitle: string, icon: React.ReactNode, color: string }) {
+function StatCard({ title, value, subtitle, icon, color, bg }: { title: string, value: string, subtitle: string, icon: React.ReactNode, color: string, bg: string }) {
     return (
-        <div className="glass-panel card-hover" style={{
-            padding: '28px',
-            borderRadius: '28px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px'
-        }}>
-            <div style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '16px',
-                background: `${color}15`,
-                color: color,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 8px 16px ${color}10`
-            }}>
+        <div className="group p-8 rounded-[36px] border border-border bg-card/10 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 flex flex-col gap-8">
+            <div className={cn(
+                "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg shrink-0",
+                bg, color
+            )}>
                 {icon}
             </div>
             <div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, margin: '0 0 6px', letterSpacing: '0.5px' }}>
-                    {title.toUpperCase()}
-                </p>
-                <h3 style={{ fontSize: '1.85rem', fontWeight: 900, margin: '0 0 6px', letterSpacing: '-0.5px' }}>{value}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500, margin: 0, opacity: 0.8 }}>{subtitle}</p>
+                <p className="m-0 text-[10px] text-muted uppercase font-black tracking-[0.2em] opacity-60 mb-2 group-hover:text-primary transition-colors">{title}</p>
+                <h3 className="text-3xl md:text-4xl font-black text-foreground italic tracking-tighter m-0">{value}</h3>
+                <p className="mt-2 m-0 text-[9px] font-black uppercase tracking-widest text-muted opacity-40">{subtitle}</p>
             </div>
         </div>
     );
 }
 
-function MetricRow({ label, value, trend }: { label: string, value: string, trend: string }) {
+function MetricRow({ label, value, icon }: { label: string, value: string, icon: React.ReactNode }) {
     return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-card/30 border border-border/50 group/row hover:border-primary/30 transition-all">
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center text-muted group-hover/row:border-primary/20">
+                    {icon}
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted group-hover/row:text-foreground transition-colors">{label}</span>
             </div>
-            <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1rem', fontWeight: 800 }}>{value}</div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#34C759' }}>{trend}</div>
-            </div>
+            <span className="text-base font-black text-foreground italic tracking-tight">{value}</span>
         </div>
     );
 }
 
 function StatusBadge({ status }: { status: string }) {
-    const isPending = status.toLowerCase() === 'pending' || status.toLowerCase() === 'new';
-    const isCompleted = status.toLowerCase() === 'delivered' || status.toLowerCase() === 'paid';
+    const s = status?.toLowerCase() || '';
+    const isPending = s === 'pending' || s === 'new' || s === 'processing';
+    const isCompleted = s === 'delivered' || s === 'paid' || s === 'completed';
+    const isCancelled = s === 'cancelled' || s === 'rejected';
 
-    let styles = {
-        background: 'rgba(255, 149, 0, 0.1)',
-        color: '#FF9500'
+    let config = {
+        bg: 'bg-amber-500/10',
+        text: 'text-amber-500',
+        border: 'border-amber-500/20'
     };
 
     if (isCompleted) {
-        styles = {
-            background: 'rgba(52, 199, 89, 0.1)',
-            color: '#34C759'
-        };
-    } else if (status.toLowerCase() === 'cancelled') {
-        styles = {
-            background: 'rgba(255, 59, 48, 0.1)',
-            color: '#FF3B30'
-        };
+        config = { bg: 'bg-green-500/10', text: 'text-green-500', border: 'border-green-500/20' };
+    } else if (isCancelled) {
+        config = { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/20' };
+    } else if (s === 'shipped' || s === 'out_for_delivery') {
+        config = { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/20' };
     }
 
     return (
-        <span style={{
-            padding: '6px 12px',
-            borderRadius: '10px',
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            letterSpacing: '0.5px',
-            ...styles
-        }}>
-            {status.toUpperCase()}
+        <span className={cn(
+            "px-3 py-1 rounded-lg text-[10px] uppercase font-black tracking-widest mt-2 border",
+            config.bg, config.text, config.border
+        )}>
+            {s.replace('_', ' ')}
         </span>
     );
 }
-
-const thStyle = {
-    padding: '12px 24px',
-    textAlign: 'left' as const,
-    fontSize: '0.75rem',
-    color: 'var(--text-muted)',
-    fontWeight: 800,
-    letterSpacing: '1px'
-};
-
-const tdStyle = {
-    padding: '20px 24px',
-    fontSize: '0.95rem',
-    background: 'transparent',
-    transition: 'background 0.2s'
-};

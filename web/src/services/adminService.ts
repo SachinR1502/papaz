@@ -1,8 +1,8 @@
 import apiClient from './apiClient';
 
 export const adminService = {
-    getDashboard: async () => {
-        const response = await apiClient.get('/admin/dashboard');
+    getDashboard: async (period: string = 'week') => {
+        const response = await apiClient.get(`/admin/dashboard?period=${period}`);
         return response.data;
     },
 
@@ -36,8 +36,28 @@ export const adminService = {
         return response.data;
     },
 
+    getJobDetails: async (id: string) => {
+        const response = await apiClient.get(`/admin/jobs/${id}`);
+        return response.data;
+    },
+
+    cancelJob: async (id: string, reason: string) => {
+        const response = await apiClient.post(`/admin/jobs/${id}/cancel`, { reason });
+        return response.data;
+    },
+
     getAllTransactions: async (params?: any) => {
         const response = await apiClient.get('/admin/transactions', { params });
+        return response.data;
+    },
+
+    getSettings: async () => {
+        const response = await apiClient.get('/admin/settings');
+        return response.data;
+    },
+
+    updateSettings: async (settings: any) => {
+        const response = await apiClient.put('/admin/settings', settings);
         return response.data;
     }
 };

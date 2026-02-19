@@ -3,137 +3,81 @@
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import {
-    Bell,
     Search,
-    Globe,
-    Zap,
     ChevronDown,
-    ShieldCheck
+    Command,
+    Loader2,
+    Menu
 } from 'lucide-react';
 import { useState } from 'react';
 
-export default function AdminNavbar() {
-    const { user, logout } = useAuth();
+export default function AdminNavbar({ onMenuClick }: { onMenuClick?: () => void }) {
+    const { user } = useAuth();
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
     return (
-        <nav style={{
-            height: '80px',
-            background: 'rgba(255, 255, 255, 0.01)',
-            backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid var(--border-color)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 40px',
-            position: 'sticky',
-            top: 0,
-            zIndex: 100
-        }}>
+        <nav className="h-20 bg-card/10 backdrop-blur-3xl border-b border-border flex items-center justify-between px-4 md:px-10 sticky top-0 z-[100]">
             {/* Left: Branding/Context */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-                <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                            width: '36px',
-                            height: '36px',
-                            background: 'var(--color-primary)',
-                            borderRadius: '10px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '1.2rem'
-                        }}>
+            <div className="flex items-center gap-2 md:gap-8">
+                {/* Mobile Menu Toggle */}
+                <button
+                    onClick={onMenuClick}
+                    className="lg:hidden p-2 rounded-xl hover:bg-card/50 text-muted transition-all active:scale-90"
+                >
+                    <Menu size={20} />
+                </button>
+
+                <Link href="/" className="hover:opacity-80 transition-opacity">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20">
                             P
                         </div>
-                        <span style={{ fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.5px' }}>PAPAZ</span>
+                        <span className="font-black text-xl tracking-tighter italic uppercase hidden xs:block">PAPAZ</span>
                     </div>
                 </Link>
 
-                <div style={{ height: '24px', width: '1px', background: 'var(--border-color)' }} />
+                <div className="hidden sm:block h-6 w-px bg-border" />
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#34C759', fontSize: '0.85rem', fontWeight: 700 }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34C759', boxShadow: '0 0 10px #34C759' }} />
-                    SYSTEM LIVE
+                <div className="hidden sm:flex items-center gap-2 text-green-500 text-[10px] font-black uppercase tracking-[0.2em]">
+                    <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.6)] animate-pulse" />
+                    Online
                 </div>
             </div>
 
-            {/* Center: Global Search (Optional for Admin) */}
-            <div style={{
-                flex: 1,
-                maxWidth: '500px',
-                position: 'relative',
-                transition: 'all 0.3s'
-            }}>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '0 20px',
-                    background: isSearchFocused ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-                    borderRadius: '14px',
-                    border: '1px solid',
-                    borderColor: isSearchFocused ? 'var(--color-primary)' : 'var(--border-color)',
-                    transition: 'all 0.2s'
-                }}>
-                    <Search size={18} color="var(--text-muted)" />
+            {/* Center: Global Search - Hidden on Mobile */}
+            <div className="hidden lg:flex flex-1 max-w-md mx-8 relative">
+                <div className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl border transition-all duration-300 w-full ${isSearchFocused
+                    ? 'bg-card border-primary ring-4 ring-primary/10 shadow-lg'
+                    : 'bg-card/50 border-border'
+                    }`}>
+                    <Search className={`transition-colors ${isSearchFocused ? 'text-primary' : 'text-muted'}`} size={16} />
                     <input
                         type="text"
-                        placeholder="Global search..."
+                        placeholder="Search products, orders..."
                         onFocus={() => setIsSearchFocused(true)}
                         onBlur={() => setIsSearchFocused(false)}
-                        style={{
-                            flex: 1,
-                            padding: '12px 0',
-                            background: 'transparent',
-                            border: 'none',
-                            outline: 'none',
-                            color: 'var(--text-body)',
-                            fontSize: '0.9rem',
-                            fontWeight: 500
-                        }}
+                        className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-bold placeholder:text-muted/50"
                     />
-                    <div style={{
-                        fontSize: '0.65rem',
-                        fontWeight: 800,
-                        color: 'var(--text-muted)',
-                        background: 'rgba(255,255,255,0.05)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        border: '1px solid var(--border-color)'
-                    }}>⌘ K</div>
+                    <div className="flex items-center gap-1 text-[10px] font-black text-muted/40 bg-muted/20 px-2 py-1 rounded-lg border border-border">
+                        <Command size={10} /> K
+                    </div>
                 </div>
             </div>
 
             {/* Right: Actions & Profile */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                {/* <div style={{ display: 'flex', gap: '8px' }}>
-                    <NavIconButton icon={<Bell size={20} />} count={3} />
-                    <NavIconButton icon={<Globe size={20} />} />
-                    <NavIconButton icon={<Zap size={20} />} active />
-                </div> */}
+            <div className="flex items-center gap-4 md:gap-6">
+                <div className="hidden sm:block h-8 w-px bg-border" />
 
-                <div style={{ height: '32px', width: '1px', background: 'var(--border-color)' }} />
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}>
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>{user?.profile?.fullName || 'Super Admin'}</div>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '0.5px' }}>ADMINISTRATOR</div>
+                <div className="flex items-center gap-3.5 group cursor-pointer pl-0 md:pl-2">
+                    <div className="text-right hidden sm:block">
+                        <div className="text-sm font-black tracking-tight leading-none group-hover:text-primary transition-colors">
+                            {user?.profile?.fullName || 'Super Admin'}
+                        </div>
+                        <div className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mt-1.5 opacity-60">
+                            Admin
+                        </div>
                     </div>
-                    <div style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '12px',
-                        background: 'linear-gradient(135deg, var(--color-primary), #5856D6)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: 900,
-                        border: '2px solid rgba(255,255,255,0.1)'
-                    }}>
+                    <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center text-white font-black border-2 border-white/10 shadow-xl shadow-primary/20 group-hover:scale-105 group-hover:-rotate-3 transition-all duration-300">
                         {user?.profile?.fullName?.[0] || 'A'}
                     </div>
                 </div>
@@ -142,42 +86,3 @@ export default function AdminNavbar() {
     );
 }
 
-function NavIconButton({ icon, count, active = false }: { icon: React.ReactNode, count?: number, active?: boolean }) {
-    return (
-        <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: active ? 'var(--color-primary)' : 'var(--text-muted)',
-            background: active ? 'rgba(var(--color-primary-rgb), 0.1)' : 'transparent',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            position: 'relative'
-        }}>
-            {icon}
-            {count && (
-                <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    width: '14px',
-                    height: '14px',
-                    background: '#FF3B30',
-                    borderRadius: '50%',
-                    border: '2px solid var(--bg-body)',
-                    fontSize: '0.5rem',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold'
-                }}>
-                    {count}
-                </div>
-            )}
-        </div>
-    );
-}

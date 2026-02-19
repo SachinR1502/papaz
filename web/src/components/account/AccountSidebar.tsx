@@ -1,7 +1,9 @@
 'use client';
+
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import {
     LayoutDashboard,
     Package,
@@ -9,290 +11,194 @@ import {
     MapPin,
     Settings,
     LogOut,
-    User
+    ChevronRight,
 } from 'lucide-react';
 
-export default function AccountSidebar() {
+const LINKS = [
+    { name: 'Home', href: '/account', icon: LayoutDashboard },
+    { name: 'Orders', href: '/account/orders', icon: Package },
+    { name: 'Favorites', href: '/account/wishlist', icon: Heart },
+    { name: 'Address', href: '/account/addresses', icon: MapPin },
+    { name: 'Settings', href: '/account/settings', icon: Settings },
+];
+
+export default function AccountSidebar({ collapsed = false }: { collapsed?: boolean }) {
     const { user, logout } = useAuth();
     const pathname = usePathname();
 
-    const links = [
-        { name: 'Dashboard', href: '/account', icon: <LayoutDashboard size={20} /> },
-        { name: 'My Orders', href: '/account/orders', icon: <Package size={20} /> },
-        { name: 'Wishlist', href: '/account/wishlist', icon: <Heart size={20} /> },
-        { name: 'Addresses', href: '/account/addresses', icon: <MapPin size={20} /> },
-        { name: 'Settings', href: '/account/settings', icon: <Settings size={20} /> }
-    ];
+    const isRouteActive = (href: string) => {
+        if (href === '/account') {
+            return pathname === href;
+        }
+        return pathname.startsWith(href);
+    };
 
     return (
-        <aside className="account-sidebar">
+        <div className="w-full h-full flex flex-col">
 
-            {/* --- MOBILE: TOP STRIP (Visible < 992px) --- */}
-            <div className="mobile-header">
-                <div className="mobile-user">
-                    <div className="avatar-small">
-                        {user?.profile?.fullName?.[0] || 'U'}
+            {/* ================= MOBILE TOP BAR ================= */}
+            <header className="md:hidden flex items-center justify-between bg-card/80 backdrop-blur-2xl border-b border-border px-5 py-4">
+                <Link href="/" className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                        <Image src="/icon.png" alt="PAPAZ" width={22} height={22} priority />
                     </div>
-                    <span className="mobile-username">
-                        {user?.profile?.fullName?.split(' ')[0] || 'My Account'}
+                    <span className="font-black text-lg tracking-tighter text-foreground italic uppercase">
+                        PAPAZ
                     </span>
-                </div>
-                <button onClick={logout} className="mobile-logout">
-                    <LogOut size={18} />
-                </button>
-            </div>
+                </Link>
 
-            {/* --- DESKTOP: MAIN PANEL --- */}
-            <div className="sidebar-container">
-
-                {/* Profile Section (Desktop Only) */}
-                <div className="desktop-profile">
-                    <div className="avatar-large">
-                        <User size={24} />
+                <div className="flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="text-xs font-black text-foreground leading-none mb-1">
+                            {user?.profile?.fullName?.split(' ')[0] || 'User'}
+                        </p>
+                        <p className="text-[10px] text-green-500 font-black uppercase tracking-widest opacity-80">
+                            Online
+                        </p>
                     </div>
-                    <div className="profile-text">
-                        <h3 className="user-name">{user?.profile?.fullName || 'Welcome'}</h3>
-                        <p className="user-email">{user?.email || 'Manage your account'}</p>
-                    </div>
+
+                    <div className="w-px h-6 bg-border" />
+
+                    <button
+                        onClick={logout}
+                        className="text-red-500 p-2 rounded-xl hover:bg-red-500/10 active:scale-95 transition-all"
+                        aria-label="Logout"
+                    >
+                        <LogOut size={18} />
+                    </button>
                 </div>
+            </header>
 
-                <div className="divider desktop-only"></div>
+            {/* ================= DESKTOP SIDEBAR ================= */}
+            <aside className="hidden md:flex flex-col flex-1 overflow-y-auto scrollbar-hide bg-card/40 backdrop-blur-3xl relative transition-all duration-300 border-r border-border/50">
 
-                {/* Navigation Links */}
-                <nav className="nav-menu">
-                    {links.map((link) => {
-                        const isActive = pathname === link.href;
-                        return (
-                            <Link
-                                key={link.name}
-                                href={link.href}
-                                className={`nav-item ${isActive ? 'active' : ''}`}
-                            >
-                                <span className={`nav-icon ${isActive ? 'icon-active' : ''}`}>
-                                    {link.icon}
+                {/* Top gradient line */}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
+                <div className={`relative flex flex-col flex-1 ${collapsed ? 'py-8 items-center' : 'p-8'}`}>
+
+                    {/* ===== Branding ===== */}
+                    <Link
+                        href="/"
+                        className={`flex items-center group mb-12 ${collapsed ? 'justify-center' : 'gap-4 px-1'}`}
+                    >
+                        <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20 transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 flex-shrink-0 border border-white/10">
+                            <Image src="/icon.png" alt="PAPAZ" width={28} height={28} />
+                        </div>
+
+                        {!collapsed && (
+                            <div className="animate-fade-in flex flex-col">
+                                <span className="text-2xl font-black tracking-tighter text-foreground italic uppercase leading-none">
+                                    PAPAZ
                                 </span>
-                                <span className="nav-label">{link.name}</span>
-                                {isActive && <div className="active-dot" />}
-                            </Link>
-                        );
-                    })}
-                </nav>
+                                <span className="text-[10px] text-muted font-black uppercase tracking-[0.2em] mt-1.5 opacity-60">
+                                    Dashboard
+                                </span>
+                            </div>
+                        )}
+                    </Link>
 
-                <div className="divider desktop-only"></div>
+                    {/* ===== Navigation ===== */}
+                    <nav className={`flex-1 space-y-2 ${collapsed ? 'w-full px-2' : ''}`}>
+                        {!collapsed && (
+                            <p className="text-[10px] font-black text-muted mb-6 px-4 tracking-[0.3em] uppercase opacity-40 animate-fade-in">
+                                Main Menu
+                            </p>
+                        )}
 
-                {/* Logout (Desktop Only) */}
-                <button onClick={logout} className="logout-btn desktop-only">
-                    <LogOut size={20} />
-                    <span>Sign Out</span>
-                </button>
-            </div>
+                        {LINKS.map(({ name, href, icon: Icon }) => {
+                            const isActive = isRouteActive(href);
 
-            <style jsx>{`
-                /* --- CSS VARIABLES (LOCALLY SCOPED FALLBACKS) --- */
-                .account-sidebar {
-                    --c-bg: var(--bg-card, #ffffff);
-                    --c-border: var(--border-color, #e5e7eb);
-                    --c-text: var(--text-body, #111827);
-                    --c-muted: var(--text-muted, #6b7280);
-                    --c-primary: var(--color-primary, #f97316); /* Orange default */
-                    --c-danger: #ef4444;
-                    
-                    width: 280px;
-                    flex-shrink: 0;
-                    z-index: 40;
-                }
+                            return (
+                                <Link
+                                    key={name}
+                                    href={href}
+                                    title={collapsed ? name : ''}
+                                    className={`
+                                        relative group flex items-center
+                                        ${collapsed ? 'justify-center p-3.5' : 'gap-4 px-5 py-4'}
+                                        rounded-2xl text-sm font-black uppercase tracking-widest transition-all duration-500 border
+                                        ${isActive
+                                            ? `bg-primary text-white border-primary/20 shadow-xl shadow-primary/20`
+                                            : `text-muted border-transparent hover:bg-foreground/5 hover:border-foreground/10 hover:text-foreground ${!collapsed && 'hover:translate-x-1'}`
+                                        }
+                                    `}
+                                >
+                                    {/* Icon wrapper */}
+                                    <div
+                                        className={`
+                                            flex items-center justify-center rounded-xl transition-all duration-500
+                                            ${collapsed ? 'w-8 h-8' : 'w-10 h-10'}
+                                            ${isActive ? 'bg-white/20 shadow-inner' : 'bg-foreground/5 group-hover:bg-foreground/10'}
+                                        `}
+                                    >
+                                        <Icon
+                                            size={collapsed ? 24 : 18}
+                                            strokeWidth={isActive ? 3 : 2.5}
+                                            className="transition-all duration-500 group-hover:scale-110"
+                                        />
+                                    </div>
 
-                /* --- DESKTOP LAYOUT --- */
-                .sidebar-container {
-                    background: var(--c-bg);
-                    border: 1px solid var(--c-border);
-                    border-radius: 24px;
-                    padding: 24px;
-                    position: sticky;
-                    top: 120px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
-                }
+                                    {!collapsed && (
+                                        <>
+                                            <span className="animate-fade-in whitespace-nowrap italic">{name}</span>
+                                            <ChevronRight
+                                                size={16}
+                                                className="ml-auto opacity-0 translate-x-4 group-hover:opacity-40 group-hover:translate-x-0 transition-all duration-500"
+                                            />
+                                        </>
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </nav>
 
-                /* Profile */
-                .desktop-profile {
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                    padding-bottom: 8px;
-                }
+                    {/* ===== Logout ===== */}
+                    <div className={`mt-8 pt-8 border-t border-border/50 ${collapsed ? 'w-full flex justify-center' : ''}`}>
+                        <button
+                            onClick={logout}
+                            title={collapsed ? 'Logout' : ''}
+                            className={`
+                                flex items-center rounded-2xl font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/10 transition-all duration-500 group
+                                ${collapsed ? 'justify-center p-4 w-full' : 'w-full gap-4 px-5 py-4 text-[13px]'}
+                            `}
+                        >
+                            <div className={`
+                                bg-red-500/15 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-300 shadow-inner
+                                ${collapsed ? 'w-12 h-12' : 'w-10 h-10'}
+                            `}>
+                                <LogOut size={collapsed ? 24 : 18} />
+                            </div>
+                            {!collapsed && <span className="animate-fade-in whitespace-nowrap italic">Logout</span>}
+                        </button>
+                    </div>
+                </div>
+            </aside>
 
-                .avatar-large {
-                    width: 48px;
-                    height: 48px;
-                    background: rgba(249, 115, 22, 0.1);
-                    color: var(--c-primary);
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
+            {/* ================= MOBILE BOTTOM DOCK ================= */}
+            <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-sm bg-card/90 backdrop-blur-3xl border border-border rounded-[32px] p-2 shadow-2xl shadow-black/40 flex items-center justify-around z-50">
+                {LINKS.map(({ name, href, icon: Icon }) => {
+                    const isActive = isRouteActive(href);
 
-                .profile-text .user-name {
-                    margin: 0;
-                    font-size: 1rem;
-                    font-weight: 700;
-                    color: var(--c-text);
-                }
-                .profile-text .user-email {
-                    margin: 2px 0 0;
-                    font-size: 0.8rem;
-                    color: var(--c-muted);
-                    max-width: 160px;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-
-                /* Nav Menu */
-                .nav-menu {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                }
-
-                .nav-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 14px;
-                    padding: 14px 16px;
-                    border-radius: 12px;
-                    text-decoration: none;
-                    color: var(--c-muted);
-                    font-weight: 600;
-                    transition: all 0.2s ease;
-                    position: relative;
-                }
-
-                .nav-item:hover {
-                    background: rgba(0,0,0,0.03);
-                    color: var(--c-text);
-                }
-
-                .nav-item.active {
-                    background: var(--c-primary);
-                    color: white;
-                    box-shadow: 0 8px 16px rgba(249, 115, 22, 0.25);
-                }
-                
-                .nav-item.active .nav-icon { color: white; }
-
-                /* Utils */
-                .divider { height: 1px; background: var(--c-border); margin: 8px 0; }
-
-                .logout-btn {
-                    display: flex; align-items: center; gap: 14px;
-                    padding: 14px 16px;
-                    background: transparent;
-                    border: none;
-                    color: var(--c-danger);
-                    font-weight: 600;
-                    cursor: pointer;
-                    width: 100%;
-                    border-radius: 12px;
-                    transition: 0.2s;
-                    text-align: left;
-                    font-size: 1rem;
-                }
-                .logout-btn:hover { background: rgba(239, 68, 68, 0.1); }
-
-                /* Mobile Header (Hidden by default) */
-                .mobile-header { display: none; }
-
-                /* ========================================= */
-                /* RESPONSIVE DESIGN (TABLET & MOBILE)       */
-                /* ========================================= */
-                @media (max-width: 992px) {
-                    .account-sidebar {
-                        width: 100%;
-                        margin-bottom: 32px;
-                        position: relative;
-                        z-index: 100;
-                    }
-
-                    .sidebar-container {
-                        padding: 0;
-                        background: transparent;
-                        border: none;
-                        box-shadow: none;
-                        position: relative;
-                        top: 0;
-                        gap: 0;
-                    }
-
-                    /* HIDE Desktop Elements */
-                    .desktop-profile, .desktop-only { display: none !important; }
-
-                    /* SHOW Mobile Elements */
-                    .mobile-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        background: var(--c-bg);
-                        border: 1px solid var(--c-border);
-                        padding: 16px;
-                        border-radius: 16px;
-                        margin-bottom: 16px;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-                    }
-
-                    .mobile-user { display: flex; align-items: center; gap: 12px; }
-                    .avatar-small {
-                        width: 36px; height: 36px;
-                        background: var(--c-primary);
-                        color: white;
-                        border-radius: 50%;
-                        display: flex; align-items: center; justify-content: center;
-                        font-weight: 700; font-size: 0.9rem;
-                    }
-                    .mobile-username { font-weight: 700; color: var(--c-text); }
-                    
-                    .mobile-logout {
-                        width: 40px; height: 40px;
-                        display: flex; align-items: center; justify-content: center;
-                        border-radius: 10px;
-                        border: 1px solid var(--c-border);
-                        background: transparent;
-                        color: var(--c-danger);
-                    }
-
-                    /* TRANSFORM Nav to Horizontal Scroll */
-                    .nav-menu {
-                        flex-direction: row;
-                        overflow-x: auto;
-                        gap: 12px;
-                        padding-bottom: 4px;
-                        /* Hide Scrollbar */
-                        scrollbar-width: none;
-                        -ms-overflow-style: none;
-                    }
-                    .nav-menu::-webkit-scrollbar { display: none; }
-
-                    .nav-item {
-                        flex-direction: column;
-                        justify-content: center;
-                        gap: 8px;
-                        min-width: 90px;
-                        padding: 12px;
-                        background: var(--c-bg);
-                        border: 1px solid var(--c-border);
-                        font-size: 0.8rem;
-                        text-align: center;
-                        white-space: nowrap;
-                    }
-
-                    .nav-item.active {
-                        transform: translateY(-2px);
-                    }
-                }
-            `}</style>
-        </aside>
+                    return (
+                        <Link
+                            key={name}
+                            href={href}
+                            aria-label={name}
+                            className={`
+                                relative flex items-center justify-center w-14 h-14 rounded-2xl
+                                transition-all duration-500
+                                ${isActive
+                                    ? 'bg-primary text-white shadow-xl shadow-primary/30 scale-110 -translate-y-2'
+                                    : 'text-muted hover:text-foreground hover:scale-105'
+                                }
+                            `}
+                        >
+                            <Icon size={22} strokeWidth={isActive ? 3 : 2} />
+                        </Link>
+                    );
+                })}
+            </nav>
+        </div>
     );
 }

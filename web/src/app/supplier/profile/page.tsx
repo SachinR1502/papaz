@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useSupplier } from '@/context/SupplierContext';
 import { useRouter } from 'next/navigation';
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Camera,
     Phone,
@@ -12,7 +12,6 @@ import {
     Bell,
     Globe,
     CreditCard,
-    HelpCircle,
     BadgeCheck,
     LogOut,
     ChevronRight,
@@ -20,14 +19,19 @@ import {
     User,
     Lock,
     Settings,
-    Shield
+    Shield,
+    Package,
+    Star,
+    Store,
+    ArrowRight
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function SupplierProfilePage() {
     const { logout } = useAuth();
     const { profile, inventory, orders } = useSupplier();
     const router = useRouter();
-    const [currentLang, setCurrentLang] = React.useState('en');
+    const [currentLang, setCurrentLang] = useState('en');
 
     const getLanguageLabel = (lang: string) => {
         const labels: Record<string, string> = {
@@ -44,237 +48,165 @@ export default function SupplierProfilePage() {
     };
 
     const stats = [
-        { label: 'LISTINGS', value: inventory?.length || 0, icon: <Package size={18} /> },
-        { label: 'VOLUME', value: orders?.length || 0, icon: <CircleDollarSign size={18} /> },
-        { label: 'RATING', value: profile?.rating || '4.8', icon: <Star size={18} /> },
+        { label: 'Listings', value: inventory?.length || 0, icon: <Package size={18} /> },
+        { label: 'Total Orders', value: orders?.length || 0, icon: <CircleDollarSign size={18} /> },
+        { label: 'Store Rating', value: profile?.rating || '4.8', icon: <Star size={18} /> },
     ];
 
     return (
-        <div style={{ padding: '48px', position: 'relative', minHeight: '100vh' }}>
-            {/* Ambient background blur */}
-            <div style={{
-                position: 'fixed',
-                top: '-10%',
-                right: '-5%',
-                width: '500px',
-                height: '500px',
-                background: 'var(--color-primary)',
-                filter: 'blur(200px)',
-                opacity: 0.04,
-                zIndex: -1,
-                pointerEvents: 'none'
-            }} />
-
-            <header style={{ marginBottom: '56px' }}>
-                <h1 className="text-gradient" style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '8px', letterSpacing: '-1.5px' }}>
-                    Portal Settings
+        <div className="flex flex-col gap-10 md:gap-14 animate-fade-in pb-20">
+            {/* Header */}
+            <header className="text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4 lg:mb-6">
+                    <Settings size={10} className="text-primary" />
+                    <span className="text-[10px] uppercase font-black tracking-widest text-primary">Store Configuration</span>
+                </div>
+                <h1 className="text-4xl lg:text-6xl font-black m-0 tracking-tighter text-foreground italic uppercase">
+                    Store <span className="text-primary">Settings</span>
                 </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500 }}>
-                    Manage your core business profile, system preferences and account security.
+                <p className="mt-4 text-base md:text-lg text-muted font-bold max-w-2xl opacity-80 leading-relaxed">
+                    Manage your business profile, operational details, and account security.
                 </p>
             </header>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '48px' }}>
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.6fr] gap-12">
                 {/* Left Column: Business Identity */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-                    <div className="glass-panel" style={{ padding: '48px 32px', textAlign: 'center', borderRadius: '40px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div style={{ position: 'relative', width: '160px', height: '160px', margin: '0 auto 24px' }}>
-                            <div style={{
-                                width: '100%',
-                                height: '100%',
-                                borderRadius: '50%',
-                                padding: '6px',
-                                background: 'linear-gradient(135deg, var(--color-primary), #5856D6)',
-                                position: 'relative'
-                            }}>
-                                <img
-                                    src={profile?.avatar || 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=400&h=400&fit=crop'}
-                                    alt="Store Logo"
-                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '6px solid var(--bg-card)' }}
-                                />
+                <div className="flex flex-col gap-10">
+                    <div className="relative group">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-blue-500/10 to-primary/20 rounded-[40px] blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+
+                        <div className="relative p-10 md:p-12 rounded-[40px] border border-border bg-card/20 backdrop-blur-3xl shadow-2xl overflow-hidden text-center">
+                            <div className="relative w-40 h-40 mx-auto mb-8">
+                                <div className="w-full h-full rounded-full p-1 bg-gradient-to-br from-primary via-orange-500 to-blue-600 relative overflow-hidden group/avatar shadow-2xl shadow-primary/20">
+                                    <img
+                                        src={profile?.avatar || 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=400&h=400&fit=crop'}
+                                        alt="Store Logo"
+                                        className="w-full h-full rounded-full object-cover border-4 border-card transition-transform duration-700 group-hover/avatar:scale-110"
+                                    />
+                                </div>
+                                <button className="absolute bottom-1 right-1 w-12 h-12 bg-primary text-white rounded-full border-4 border-card flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all">
+                                    <Camera size={20} />
+                                </button>
                             </div>
+
+                            <h2 className="text-3xl font-black text-foreground italic uppercase tracking-tighter mb-2">
+                                {profile?.storeName || 'Partner Shop'}
+                            </h2>
+                            <div className="flex items-center justify-center gap-2 text-primary font-black text-[10px] uppercase tracking-[0.2em] mb-10">
+                                <BadgeCheck size={16} className="fill-primary text-card" />
+                                Verified Enterprise
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3 mb-10">
+                                {stats.map((stat, i) => (
+                                    <div key={i} className="bg-card/40 border border-border/50 p-4 rounded-2xl flex flex-col items-center gap-2">
+                                        <div className="text-primary">{stat.icon}</div>
+                                        <div className="text-xl font-black text-foreground italic">{stat.value}</div>
+                                        <div className="text-[8px] font-black uppercase tracking-widest text-muted opacity-60">{stat.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+
                             <button
-                                style={{
-                                    position: 'absolute',
-                                    bottom: '8px',
-                                    right: '8px',
-                                    background: 'var(--color-primary)',
-                                    color: 'white',
-                                    border: '4px solid var(--bg-card)',
-                                    width: '44px',
-                                    height: '44px',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.2s',
-                                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)'}
-                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) rotate(0deg)'}
+                                onClick={() => router.push('/supplier/profile/edit')}
+                                className="w-full py-5 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic"
                             >
-                                <Camera size={18} strokeWidth={2.5} />
+                                Update Store Details
                             </button>
                         </div>
-
-                        <h2 style={{ fontSize: '1.85rem', fontWeight: 900, marginBottom: '4px', letterSpacing: '-0.5px' }}>
-                            {profile?.storeName || 'Partner Shop'}
-                        </h2>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            color: 'var(--color-primary)',
-                            fontSize: '0.85rem',
-                            fontWeight: 800,
-                            letterSpacing: '1px',
-                            marginBottom: '32px'
-                        }}>
-                            <BadgeCheck size={16} fill="var(--color-primary)" color="white" />
-                            VERIFIED ENTERPRISE
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
-                            {stats.map((stat, i) => (
-                                <StatItem key={i} {...stat} />
-                            ))}
-                        </div>
-
-                        <button
-                            className="btn btn-primary"
-                            style={{
-                                width: '100%',
-                                padding: '18px',
-                                fontWeight: 900,
-                                borderRadius: '18px',
-                                fontSize: '1rem',
-                                boxShadow: '0 15px 30px rgba(var(--color-primary-rgb), 0.2)'
-                            }}
-                            onClick={() => router.push('/supplier/profile/edit')}
-                        >
-                            Sync Account Details
-                        </button>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '24px', borderRadius: '24px', background: 'rgba(255, 59, 48, 0.05)', border: '1px solid rgba(255, 59, 48, 0.1)' }}>
-                        <div
-                            style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ff3b30', cursor: 'pointer', fontWeight: 800 }}
-                            onClick={() => { if (confirm('Are you sure you want to sign out?')) logout(); }}
-                        >
-                            <div style={{ background: 'rgba(255, 59, 48, 0.1)', padding: '10px', borderRadius: '12px' }}>
-                                <LogOut size={20} />
-                            </div>
-                            Sign Out of Portal
+                    <button
+                        onClick={() => { if (confirm('Are you sure you want to sign out?')) logout(); }}
+                        className="flex items-center gap-4 px-8 py-5 rounded-[28px] bg-red-500/5 border border-red-500/10 text-red-500 font-black text-[11px] uppercase tracking-widest transition-all hover:bg-red-500/10 hover:-translate-y-px active:scale-95 shadow-sm"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                            <LogOut size={20} />
                         </div>
-                    </div>
+                        Sign Out of Portal
+                    </button>
                 </div>
 
                 {/* Right Column: Detailed Sections */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-                    {/* Contact Info */}
-                    <section>
-                        <h3 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ background: 'rgba(var(--color-primary-rgb), 0.1)', padding: '8px', borderRadius: '10px' }}>
-                                <Shield size={20} color="var(--color-primary)" />
+                <div className="flex flex-col gap-10">
+                    {/* Business Info */}
+                    <section className="space-y-6">
+                        <div className="flex items-center gap-4 px-1">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-lg shadow-primary/5">
+                                <Shield size={20} />
                             </div>
-                            Business Certification
-                        </h3>
-                        <div className="glass-panel" style={{ padding: '0', borderRadius: '28px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            <ProfileRow icon={<User size={18} />} label="Registered Entity Name" value={profile?.fullName || 'Business Owner'} />
-                            <ProfileRow icon={<Phone size={18} />} label="Primary Operations Phone" value={profile?.phoneNumber || '+91 99000 00000'} />
-                            <ProfileRow icon={<MapPin size={18} />} label="Warehouse Physical Address" value={profile?.address || 'Indiranagar, Bangalore'} />
-                            <ProfileRow icon={<Navigation size={18} />} label="Primary Operating City" value={profile?.city || 'Bangalore'} isLast />
+                            <h3 className="text-2xl font-black text-foreground italic uppercase tracking-tight">Business Profile</h3>
+                        </div>
+
+                        <div className="rounded-[40px] border border-border bg-card/10 backdrop-blur-xl overflow-hidden divide-y divide-border/50">
+                            <ProfileRow icon={<User size={18} />} label="Registered Owner" value={profile?.fullName || 'Business Owner'} />
+                            <ProfileRow icon={<Phone size={18} />} label="Contact Phone" value={profile?.phoneNumber || '+91 99000 00000'} />
+                            <ProfileRow icon={<MapPin size={18} />} label="Store Address" value={profile?.address || 'Indiranagar, Bangalore'} />
+                            <ProfileRow icon={<Navigation size={18} />} label="Service City" value={profile?.city || 'Bangalore'} isLast />
                         </div>
                     </section>
 
-                    {/* Preferences */}
-                    <section>
-                        <h3 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ background: 'rgba(var(--color-primary-rgb), 0.1)', padding: '8px', borderRadius: '10px' }}>
-                                <Settings size={20} color="var(--color-primary)" />
+                    {/* Operational Settings */}
+                    <section className="space-y-6">
+                        <div className="flex items-center gap-4 px-1">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 border border-indigo-500/20 shadow-lg shadow-indigo-500/5">
+                                <Settings size={20} />
                             </div>
-                            Account Preferences
-                        </h3>
-                        <div className="glass-panel" style={{ padding: '0', borderRadius: '28px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            <SettingsItem icon={<Bell size={18} />} label="Communication & Order Alerts" />
+                            <h3 className="text-2xl font-black text-foreground italic uppercase tracking-tight">System Preferences</h3>
+                        </div>
+
+                        <div className="rounded-[40px] border border-border bg-card/10 backdrop-blur-xl overflow-hidden divide-y divide-border/50">
+                            <SettingsItem icon={<Bell size={18} />} label="Push Notifications" />
                             <SettingsItem
                                 icon={<Globe size={18} />}
-                                label="Regional Portal Language"
+                                label="Portal Language"
                                 detail={getLanguageLabel(currentLang)}
                                 onClick={handleLanguageCycle}
                             />
-                            <SettingsItem icon={<CreditCard size={18} />} label="Settlement & Bank Configurations" />
-                            <SettingsItem icon={<CircleDollarSign size={18} />} label="Base Trading Currency" detail="INR (₹)" />
-                            <SettingsItem icon={<Lock size={18} strokeWidth={2.5} />} label="Login & Security Protocol" isLast />
+                            <SettingsItem icon={<CreditCard size={18} />} label="Payments & Settlement" />
+                            <SettingsItem icon={<CircleDollarSign size={18} />} label="Trading Currency" detail="INR (₹)" />
+                            <SettingsItem icon={<Lock size={18} />} label="Security Settings" isLast />
                         </div>
                     </section>
                 </div>
             </div>
-
-            <style jsx>{`
-                .btn-primary:active { transform: scale(0.98); }
-            `}</style>
-        </div>
-    );
-}
-
-function Package({ size, ...props }: any) { return <svg {...props} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><line x1="12" y1="22" x2="12" y2="12"></line></svg>; }
-function Star({ size, ...props }: any) { return <svg {...props} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>; }
-
-function StatItem({ value, label, icon }: { value: string | number, label: string, icon: React.ReactNode }) {
-    return (
-        <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px 12px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-            <div style={{ color: 'var(--color-primary)', marginBottom: '6px', display: 'flex', justifyContent: 'center' }}>{icon}</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{value}</div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 900, marginTop: '2px', letterSpacing: '0.5px' }}>{label}</div>
         </div>
     );
 }
 
 function ProfileRow({ icon, label, value, isLast = false }: { icon: React.ReactNode, label: string, value: string, isLast?: boolean }) {
     return (
-        <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '24px 32px',
-            borderBottom: isLast ? 'none' : '1px solid var(--border-color)',
-            background: 'rgba(255, 255, 255, 0.01)'
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ color: 'var(--color-primary)', background: 'rgba(var(--color-primary-rgb), 0.08)', padding: '10px', borderRadius: '12px' }}>{icon}</div>
-                <span style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.95rem' }}>{label}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-8 gap-4 group hover:bg-card/20 transition-colors">
+            <div className="flex items-center gap-5">
+                <div className="w-12 h-12 rounded-xl bg-primary/5 text-primary flex items-center justify-center border border-primary/10 group-hover:scale-110 transition-transform">{icon}</div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted opacity-60 m-0">{label}</span>
             </div>
-            <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-body)' }}>{value}</span>
+            <span className="text-base font-black text-foreground italic tracking-tight sm:text-right">{value}</span>
         </div>
     );
 }
 
 function SettingsItem({ icon, label, detail, onClick, isLast = false }: { icon: React.ReactNode, label: string, detail?: string, onClick?: () => void, isLast?: boolean }) {
     return (
-        <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px 32px',
-            cursor: 'pointer',
-            borderBottom: isLast ? 'none' : '1px solid var(--border-color)',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            background: 'rgba(255, 255, 255, 0.01)'
-        }}
+        <div
+            className="flex items-center justify-between p-8 group cursor-pointer hover:bg-card/20 transition-all active:bg-card/30"
             onClick={onClick}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ color: 'var(--color-primary)' }}>{icon}</div>
-                <span style={{ fontWeight: 700, fontSize: '1rem' }}>{label}</span>
+            <div className="flex items-center gap-5">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/5 text-indigo-500 flex items-center justify-center border border-indigo-500/10 group-hover:scale-110 transition-transform">
+                    {icon}
+                </div>
+                <span className="text-base font-black text-foreground italic uppercase tracking-tight group-hover:text-primary transition-colors">{label}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                {detail && <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 800, background: 'rgba(255,255,255,0.03)', padding: '4px 12px', borderRadius: '8px' }}>{detail}</span>}
-                <ChevronRight size={18} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+            <div className="flex items-center gap-6">
+                {detail && (
+                    <span className="px-4 py-2 bg-card border border-border rounded-xl text-[9px] font-black uppercase tracking-widest text-muted group-hover:text-foreground transition-colors">
+                        {detail}
+                    </span>
+                )}
+                <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted group-hover:text-primary group-hover:border-primary/30 group-hover:shadow-lg transition-all">
+                    <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                </div>
             </div>
         </div>
     );

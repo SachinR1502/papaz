@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import AdminNavbar from '@/components/admin/Navbar';
 import AdminSidebar from '@/components/admin/Sidebar';
 
@@ -21,6 +21,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
         }
     }, [user, isLoading, router]);
 
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const userRole = user?.role?.toLowerCase();
 
     if (isLoading || !user || userRole !== 'admin') {
@@ -62,15 +63,10 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                 pointerEvents: 'none'
             }} />
 
-            <AdminNavbar />
+            <AdminNavbar onMenuClick={() => setIsSidebarOpen(true)} />
             <div style={{ display: 'flex', minHeight: 'calc(100vh - 80px)', position: 'relative', zIndex: 1 }}>
-                <AdminSidebar />
-                <main style={{
-                    flex: 1,
-                    overflowY: 'auto',
-                    padding: '48px',
-                    position: 'relative'
-                }}>
+                <AdminSidebar open={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
+                <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 relative">
                     {children}
                 </main>
             </div>

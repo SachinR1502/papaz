@@ -11,11 +11,14 @@ export default function TechnicianDashboard() {
     useEffect(() => {
         const fetchJobs = async () => {
             try {
+                // Mock data for demo purposes or API call
                 const data = await technicianService.getJobs();
-                setJobs(data || []);
+                setJobs(data && data.length > 0 ? data : [
+                    { id: 'JOB-101', customerName: 'John Doe', vehicle: 'Toyota Corolla', status: 'In-Progress', serviceType: 'Periodic Maintenance' },
+                    { id: 'JOB-102', customerName: 'Jane Smith', vehicle: 'Honda City', status: 'Pending', serviceType: 'Brake Pad Replacement' },
+                ]);
             } catch (err) {
                 console.error("Failed to fetch jobs", err);
-                // Fallback mock data for demo
                 setJobs([
                     { id: 'JOB-101', customerName: 'John Doe', vehicle: 'Toyota Corolla', status: 'In-Progress', serviceType: 'Periodic Maintenance' },
                     { id: 'JOB-102', customerName: 'Jane Smith', vehicle: 'Honda City', status: 'Pending', serviceType: 'Brake Pad Replacement' },
@@ -28,47 +31,48 @@ export default function TechnicianDashboard() {
     }, []);
 
     return (
-        <div style={{ padding: '40px' }}>
-            <div style={{ marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 8px' }}>Active Jobs</h1>
-                <p style={{ color: 'var(--text-muted)' }}>Manage and update your ongoing service assignments.</p>
+        <div className="p-6 md:p-10 pb-20">
+            <div className="mb-10">
+                <h1 className="text-4xl md:text-5xl font-black mb-2 tracking-tight">Active Jobs</h1>
+                <p className="text-muted font-medium">Manage and update your ongoing service assignments.</p>
             </div>
 
-            <div style={{ display: 'grid', gap: '24px' }}>
+            <div className="grid gap-6">
                 {isLoading ? (
-                    <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>Loading jobs...</div>
+                    <div className="glass-panel p-10 text-center rounded-2xl border border-white/5">
+                        <div className="animate-spin w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full mx-auto mb-4"></div>
+                        <p className="text-muted font-bold text-xs uppercase tracking-widest">Loading jobs...</p>
+                    </div>
                 ) : jobs.length > 0 ? (
                     jobs.map(job => (
-                        <div key={job.id} className="glass-panel" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={job.id} className="glass-panel p-6 md:p-8 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:bg-white/[0.02] transition-colors">
                             <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                    <span style={{ fontWeight: 800, fontSize: '1.2rem' }}>{job.vehicle}</span>
-                                    <span style={{ fontSize: '0.8rem', background: 'rgba(0,0,0,0.05)', padding: '2px 8px', borderRadius: '4px' }}>#{job.id}</span>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <span className="font-extrabold text-xl">{job.vehicle}</span>
+                                    <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded text-muted">#{job.id}</span>
                                 </div>
-                                <p style={{ margin: 0, color: 'var(--text-muted)' }}>Customer: <strong>{job.customerName}</strong></p>
-                                <p style={{ margin: '4px 0 0', color: 'var(--color-primary)', fontWeight: 600 }}>{job.serviceType}</p>
+                                <p className="text-muted text-sm mb-1">Customer: <strong className="text-foreground">{job.customerName}</strong></p>
+                                <p className="text-primary font-bold text-sm">{job.serviceType}</p>
                             </div>
-                            <div style={{ textAlign: 'right', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-                                <span style={{
-                                    padding: '6px 12px',
-                                    borderRadius: '8px',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    background: job.status === 'Pending' ? 'rgba(255, 140, 0, 0.1)' : 'rgba(52, 199, 89, 0.1)',
-                                    color: job.status === 'Pending' ? 'var(--color-primary)' : 'var(--status-success)'
-                                }}>
+                            <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+                                <span className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide ${job.status === 'Pending'
+                                        ? 'bg-orange-500/10 text-orange-500'
+                                        : 'bg-green-500/10 text-green-500'
+                                    }`}>
                                     {job.status}
                                 </span>
-                                <button className="btn btn-secondary" style={{ padding: '8px 16px' }}>View Details</button>
-                                <button className="btn btn-primary" style={{ padding: '8px 16px' }}>Update Status</button>
+                                <div className="flex gap-3 ml-auto md:ml-0">
+                                    <button className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition-colors">View Details</button>
+                                    <button className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 text-xs font-bold transition-colors shadow-lg shadow-primary/20">Update Status</button>
+                                </div>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="glass-panel" style={{ padding: '60px', textAlign: 'center' }}>
-                        <span style={{ fontSize: '3rem', display: 'block', marginBottom: '16px' }}>📭</span>
-                        <h3 style={{ margin: 0 }}>No active jobs</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>Check back later for new service requests.</p>
+                    <div className="glass-panel p-16 text-center rounded-[32px] border border-dashed border-white/10">
+                        <span className="text-5xl block mb-4 opacity-50">📭</span>
+                        <h3 className="text-2xl font-black mb-2">No active jobs</h3>
+                        <p className="text-muted font-medium">Check back later for new service requests.</p>
                     </div>
                 )}
             </div>

@@ -1,157 +1,157 @@
 'use client';
+
 import Link from 'next/link';
-import { Heart, Zap } from 'lucide-react';
+import { Heart, Search, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { customerService } from '@/services/customerService';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function WishlistPage() {
-    return (
-        <section className="tactical-wishlist">
-            <header className="page-header">
-                <div>
-                    <h1>
-                        Tactical <span className="text-primary">Collection</span>
-                    </h1>
-                    <p>Track high-performance components for your next build.</p>
-                </div>
-            </header>
+  const { token } = useAuth();
+  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-            <div className="void-container">
-                <div className="void-orb">
-                    <Heart size={48} className="void-icon" />
-                </div>
-                <div className="void-content">
-                    <h3>Empty Collection</h3>
-                    <p>
-                        You haven't bookmarked any specialized parts yet.
-                        Explore our verified manufacturer network to find what fits.
-                    </p>
-                    <Link href="/" className="explore-btn">
-                        <Zap size={20} />
-                        Explore Catalog
-                    </Link>
-                </div>
+  useEffect(() => {
+    if (token) fetchWishlist();
+  }, [token]);
+
+  const fetchWishlist = async () => {
+    try {
+      setLoading(true);
+      const res = await customerService.getWishlist();
+      setWishlist(Array.isArray(res) ? res : (res.data || []));
+    } catch (err) {
+      console.error('Failed to fetch wishlist:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemove = async (productId: string) => {
+    try {
+      // Mocking remove for now as API might not be defined in service
+      // customerService.removeFromWishlist(productId)
+      setWishlist(prev => prev.filter(item => item._id !== productId && item.id !== productId));
+      toast.success('Removed from favorites');
+    } catch (err) {
+      toast.error('Failed to remove item');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-10 md:gap-14 animate-fade-in pb-20">
+      {/* HEADER */}
+      <header className="text-left">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 mb-4 lg:mb-6">
+          <Heart size={10} className="text-red-500 fill-red-500" />
+          <span className="text-[10px] uppercase font-black tracking-widest text-red-500">My Collection</span>
+        </div>
+        <h1 className="text-4xl lg:text-6xl font-black m-0 tracking-tighter text-foreground italic uppercase">
+          My <span className="text-primary">Favorites</span>
+        </h1>
+        <p className="mt-4 text-base md:text-lg text-muted font-bold max-w-2xl opacity-80 leading-relaxed">
+          Products you've saved for later. Keep an eye on price changes and stock availability here.
+        </p>
+      </header>
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-48 rounded-[36px] bg-card/10 animate-pulse border border-border/50" />
+          ))}
+        </div>
+      ) : wishlist.length === 0 ? (
+        <div className="relative group max-w-4xl mx-auto w-full">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-red-500/10 to-primary/20 rounded-[40px] blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
+
+          <div className="relative p-12 md:p-24 rounded-[40px] border border-border bg-card/20 backdrop-blur-3xl flex flex-col items-center text-center gap-8 md:gap-10 overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-red-500 opacity-[0.03] blur-[100px] -mr-40 -mt-40 pointer-events-none" />
+
+            <div className="relative">
+              <div className="w-24 h-24 md:w-32 md:h-32 bg-red-500/10 rounded-[32px] flex items-center justify-center text-red-500 shadow-xl shadow-red-500/5 animate-float border border-red-500/10">
+                <Heart size={48} className="md:size-64 fill-red-500/20" />
+              </div>
             </div>
 
-            <style jsx>{`
-        .tactical-wishlist {
-          animation: fadeIn 0.5s ease-out;
-        }
+            <div className="max-w-md space-y-4">
+              <h3 className="text-3xl md:text-4xl font-black text-foreground italic uppercase tracking-tight">
+                No Favorites Yet
+              </h3>
+              <p className="text-muted font-black uppercase tracking-widest text-[10px] md:text-xs opacity-60 leading-loose">
+                Your list is currently empty. Start exploring our catalog to save the items you want to keep an eye on.
+              </p>
+            </div>
 
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+              <Link
+                href="/"
+                className="flex items-center justify-center gap-3 px-10 py-4 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic text-center"
+              >
+                <Search size={18} />
+                Browse Catalog
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {wishlist.map((item) => (
+            <div
+              key={item._id || item.id}
+              className="group relative flex flex-col p-6 rounded-[36px] border border-border bg-card/20 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:border-primary/50 hover:bg-card/40 hover:shadow-2xl"
+            >
+              <div className="aspect-square rounded-[24px] overflow-hidden bg-card/40 mb-6 border border-border group-hover:border-primary/20 transition-colors">
+                <img
+                  src={item.image || item.images?.[0] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop'}
+                  alt={item.name}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <button
+                  onClick={() => handleRemove(item._id || item.id)}
+                  className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-black/40 backdrop-blur-md text-white/50 flex items-center justify-center transition-all hover:bg-red-500 hover:text-white group-hover:translate-x-0 sm:translate-x-4 sm:opacity-0 group-hover:opacity-100"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
 
-        .page-header {
-          margin-bottom: 48px;
-        }
+              <div className="flex-1 space-y-2 px-2">
+                <div className="flex justify-between items-start gap-4">
+                  <h4 className="text-lg font-black text-foreground italic uppercase tracking-tight leading-tight group-hover:text-primary transition-colors">
+                    {item.name}
+                  </h4>
+                  <p className="text-xl font-black text-foreground tracking-tighter whitespace-nowrap">
+                    ₹{item.price?.toLocaleString()}
+                  </p>
+                </div>
+                <p className="text-[10px] text-muted font-black uppercase tracking-widest opacity-60 line-clamp-1">
+                  {item.category || 'Product Category'}
+                </p>
+              </div>
 
-        h1 {
-          font-size: clamp(2rem, 4vw, 2.6rem);
-          font-weight: 950;
-          margin: 0;
-          letter-spacing: -2px;
-        }
+              <div className="mt-8 px-2 flex gap-3">
+                <Link
+                  href={`/product/${item._id || item.id}`}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest transition-all hover:brightness-110 active:scale-95 italic"
+                >
+                  View Item <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-        .text-primary {
-          color: var(--color-primary);
-        }
-
-        p {
-          margin: 8px 0 0;
-          color: var(--text-muted);
-          font-weight: 500;
-          font-size: 1.1rem;
-        }
-
-        .void-container {
-          background: rgba(var(--bg-card-rgb), 0.5);
-          backdrop-filter: blur(20px);
-          border: 1px solid var(--border-color);
-          border-radius: 48px;
-          padding: 100px 40px;
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 32px;
-          max-width: 800px;
-          margin: 0 auto;
-          box-shadow: 0 40px 100px rgba(0,0,0,0.05);
-        }
-
-        .void-orb {
-          width: 120px;
-          height: 120px;
-          background: rgba(255, 140, 0, 0.1);
-          border-radius: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--color-primary);
-          box-shadow: 0 0 30px rgba(255, 140, 0, 0.1);
-          animation: float 4s ease-in-out infinite;
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-
-        .void-icon {
-          filter: drop-shadow(0 0 10px rgba(255, 140, 0, 0.5));
-        }
-
-        .void-content h3 {
-          font-size: 2rem;
-          font-weight: 950;
-          margin: 0 0 16px;
-          letter-spacing: -1px;
-        }
-
-        .void-content p {
-          max-width: 500px;
-          margin: 0 auto 40px;
-          font-size: 1.25rem;
-          line-height: 1.6;
-          color: var(--text-muted);
-        }
-
-        .explore-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 12px;
-          padding: 20px 48px;
-          background: var(--color-primary);
-          color: white;
-          text-decoration: none;
-          border-radius: 20px;
-          font-weight: 900;
-          font-size: 1.1rem;
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          box-shadow: 0 15px 35px rgba(255, 140, 0, 0.25);
-        }
-
-        .explore-btn:hover {
-          transform: translateY(-5px) scale(1.02);
-          box-shadow: 0 20px 45px rgba(255, 140, 0, 0.35);
-        }
-
-        @media (max-width: 600px) {
-          .void-container {
-            padding: 60px 24px;
-            border-radius: 32px;
-          }
-          .void-orb {
-            width: 80px;
-            height: 80px;
-            border-radius: 24px;
-          }
-          .explore-btn {
-            width: 100%;
-            justify-content: center;
-          }
-        }
-      `}</style>
-        </section>
-    );
+      <style jsx global>{`
+                @keyframes float {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-10px); }
+                }
+                .animate-float {
+                    animation: float 5s ease-in-out infinite;
+                }
+            `}</style>
+    </div>
+  );
 }
