@@ -4,30 +4,6 @@ const File = require('../models/File');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 
-// Ensure uploads folder exists (for temporary storage during upload)
-const ensureUploadsFolderExists = () => {
-    const uploadsDir = path.join(__dirname, '../uploads');
-
-    // Create main uploads directory if it doesn't exist
-    if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-        console.log('✅ Created uploads directory:', uploadsDir);
-    }
-
-    // Create subdirectories for different file types
-    const subdirs = ['images', 'videos', 'audio', 'documents'];
-    subdirs.forEach(subdir => {
-        const subdirPath = path.join(uploadsDir, subdir);
-        if (!fs.existsSync(subdirPath)) {
-            fs.mkdirSync(subdirPath, { recursive: true });
-            console.log(`✅ Created ${subdir} subdirectory:`, subdirPath);
-        }
-    });
-};
-
-// Initialize uploads folder on module load
-ensureUploadsFolderExists();
-
 // Determine category based on mimetype
 const getCategory = (mimetype) => {
     if (mimetype.startsWith('image/')) return 'images';
@@ -41,9 +17,6 @@ const getCategory = (mimetype) => {
 // @access  Public
 const uploadFile = async (req, res) => {
     try {
-        // Ensure uploads folder exists before processing
-        ensureUploadsFolderExists();
-
         if (!req.file) {
             return ApiResponse.error(res, 'No file uploaded', 400);
         }
@@ -51,27 +24,28 @@ const uploadFile = async (req, res) => {
         // Determine category
         const category = getCategory(req.file.mimetype);
 
-        // Create unique filename
-        const filename = req.file.filename;
+        // For Multer-S3:
+        // req.file.location -> S3 URL
+        // req.file.key -> S3 path (e.g. images/filename.jpg)
 
-        // Save to MongoDB (Store PATH instead of DATA)
+        const filename = req.file.key.split('/').pop(); // Extract filename from key
+
+        // Save to MongoDB
         const fileDoc = new File({
             filename,
             originalName: req.file.originalname,
             mimetype: req.file.mimetype,
             size: req.file.size,
-            path: req.file.path, // Store the disk path
+            path: req.file.location, // Store the S3 URL
             category,
             uploadedBy: req.user?.id || null
         });
 
         await fileDoc.save();
 
-        // Return URL that points to our file serving endpoint
-        // You can also use direct static path if exposed: `/uploads/${category}/${filename}`
-        const fileUrl = `/api/files/${filename}`;
+        const fileUrl = req.file.location;
 
-        console.log('✅ File uploaded to Disk & DB:', {
+        console.log('✅ File uploaded to S3 & DB:', {
             filename,
             mimetype: req.file.mimetype,
             size: req.file.size,
@@ -88,17 +62,11 @@ const uploadFile = async (req, res) => {
         }, 'File uploaded successfully');
     } catch (error) {
         console.error('Upload error:', error);
-
-        // Clean up file if DB save fails
-        if (req.file?.path && fs.existsSync(req.file.path)) {
-            try { fs.unlinkSync(req.file.path); } catch (e) { }
-        }
-
         return ApiResponse.error(res, error.message || 'Server error uploading file', 500);
     }
 };
 
-// @desc    Get file from Disk or MongoDB (Legacy)
+// @desc    Get file from Disk, S3 or MongoDB (Legacy)
 // @route   GET /api/files/:filename
 // @access  Public
 const getFile = async (req, res) => {
@@ -111,19 +79,21 @@ const getFile = async (req, res) => {
             return res.status(404).json({ message: 'File not found' });
         }
 
-        // Strategy 1: Serve from Disk (New Files)
+        // Strategy 1: Redirect to S3 (New Files)
+        if (file.path && file.path.startsWith('http')) {
+            return res.redirect(file.path);
+        }
+
+        // Strategy 2: Serve from Disk (Local Files)
         if (file.path && fs.existsSync(file.path)) {
-            // Set headers
             res.setHeader('Content-Type', file.mimetype);
             res.setHeader('Content-Disposition', `inline; filename="${file.originalName}"`);
-
-            // Stream file
             const fileStream = fs.createReadStream(file.path);
             fileStream.pipe(res);
             return;
         }
 
-        // Strategy 2: Serve from MongoDB Base64 (Legacy Files)
+        // Strategy 3: Serve from MongoDB Base64 (Legacy Files)
         if (file.data) {
             const fileBuffer = Buffer.from(file.data, 'base64');
             res.set({
@@ -147,4 +117,5 @@ module.exports = {
     uploadFile,
     getFile
 };
+
 
