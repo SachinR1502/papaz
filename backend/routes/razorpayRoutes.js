@@ -6,7 +6,8 @@ const {
     createBillPaymentOrder,
     verifyBillPayment,
     createWholesaleOrderPayment,
-    verifyWholesaleOrderPayment
+    verifyWholesaleOrderPayment,
+    checkRazorpayOrderStatus
 } = require('../controllers/razorpayController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -22,4 +23,11 @@ router.post('/jobs/:id/bill/verify-payment', protect, verifyBillPayment);
 router.post('/store/orders/:id/pay', protect, createWholesaleOrderPayment);
 router.post('/store/orders/:id/verify', protect, verifyWholesaleOrderPayment);
 
+// Helper / Support Routes
+router.get('/order/:orderId/status', protect, checkRazorpayOrderStatus);
+
+// Webhook (No protect - verified by signature)
+router.post('/webhook', require('../controllers/razorpayController').handleRazorpayWebhook);
+
 module.exports = router;
+

@@ -8,6 +8,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const axios = require('axios');
 
 const generateToken = (id) => {
+    console.log('[AUTH CONTROLLER] Generating token. Secret length:', process.env.JWT_SECRET?.length);
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 

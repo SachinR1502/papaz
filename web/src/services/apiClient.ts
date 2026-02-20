@@ -5,9 +5,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082/api';
 
 const apiClient = axios.create({
     baseURL: API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    // Removing global Content-Type to allow Axios to detect 
+    // the correct type based on request body (JSON vs FormData)
 });
 
 // Interceptor to add auth token

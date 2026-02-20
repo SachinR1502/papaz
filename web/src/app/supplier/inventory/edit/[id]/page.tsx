@@ -2,7 +2,7 @@
 
 import { useSupplier } from '@/context/SupplierContext';
 import { useRouter, useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     ArrowLeft,
     Package,
@@ -15,10 +15,14 @@ import {
     Warehouse,
     ChevronDown,
     Trash2,
-    AlertTriangle
+    AlertTriangle,
+    Upload,
+    Image as ImageIcon,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { uploadService } from '@/services/uploadService';
 
 const CATEGORIES = [
     'Batteries', 'Tires', 'Engine Oil', 'Brakes', 'Lights',
@@ -35,6 +39,8 @@ export default function EditProductPage() {
     const { inventory, updateProduct, isLoading } = useSupplier();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [form, setForm] = useState({
         name: '',
@@ -47,6 +53,29 @@ export default function EditProductPage() {
         image: '',
         compatibleModels: [] as string[]
     });
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            toast.error('Invalid File Type', { description: 'Please upload an image file.' });
+            return;
+        }
+
+        setIsUploading(true);
+        const toastId = toast.loading('Updating cloud assets...');
+
+        try {
+            const result = await uploadService.uploadFile(file);
+            setForm(prev => ({ ...prev, image: result.url }));
+            toast.success('Image Updated', { id: toastId });
+        } catch (error) {
+            toast.error('Update Failed', { id: toastId });
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     useEffect(() => {
         if (productId && inventory.length > 0) {
@@ -196,9 +225,64 @@ export default function EditProductPage() {
                                 />
                             </div>
 
+                            <div className="space-y-3 flex-1 group">
+                                <label className="px-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted opacity-60">
+                                    Product Image <span className="text-red-500">*</span>
+                                </label>
+                                <div
+                                    onClick={() => !isUploading && fileInputRef.current?.click()}
+                                    className={cn(
+                                        "relative h-48 w-full bg-card/40 border-2 border-dashed border-border rounded-[28px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden hover:border-primary/50",
+                                        form.image && "border-solid border-primary/20",
+                                        isUploading && "animate-pulse"
+                                    )}
+                                >
+                                    {form.image ? (
+                                        <>
+                                            <img src={form.image} className="w-full h-full object-cover" alt="Preview" />
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                                <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20">
+                                                    <Upload size={20} className="text-white" />
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setForm(prev => ({ ...prev, image: '' }));
+                                                }}
+                                                className="absolute top-4 right-4 bg-black/60 backdrop-blur-md p-2 rounded-xl border border-white/10 text-white hover:bg-red-500 transition-colors"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-4 text-center px-6">
+                                            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                                {isUploading ? <Loader2 size={24} className="animate-spin" /> : <ImageIcon size={28} />}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black uppercase tracking-tight italic">
+                                                    {isUploading ? 'Syncing to S3...' : 'Update Component Image'}
+                                                </p>
+                                                <p className="text-[10px] font-bold text-muted/60 uppercase tracking-widest mt-1">
+                                                    Click to replace existing asset
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={handleFileChange}
+                                    />
+                                </div>
+                            </div>
+
                             <FormInput
-                                label="Product Image URL"
-                                required
+                                label="Asset Cloud URL"
                                 placeholder="https://..."
                                 value={form.image}
                                 onChange={(v: any) => setForm({ ...form, image: v })}

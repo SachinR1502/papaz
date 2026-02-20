@@ -21,40 +21,23 @@ const uploadFile = async (req, res) => {
             return ApiResponse.error(res, 'No file uploaded', 400);
         }
 
-        // Determine category
         const category = getCategory(req.file.mimetype);
+        const filename = req.file.key.split('/').pop();
 
-        // For Multer-S3:
-        // req.file.location -> S3 URL
-        // req.file.key -> S3 path (e.g. images/filename.jpg)
-
-        const filename = req.file.key.split('/').pop(); // Extract filename from key
-
-        // Save to MongoDB
         const fileDoc = new File({
             filename,
             originalName: req.file.originalname,
             mimetype: req.file.mimetype,
             size: req.file.size,
-            path: req.file.location, // Store the S3 URL
+            path: req.file.location,
             category,
             uploadedBy: req.user?.id || null
         });
 
         await fileDoc.save();
 
-        const fileUrl = req.file.location;
-
-        console.log('✅ File uploaded to S3 & DB:', {
-            filename,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            category,
-            url: fileUrl
-        });
-
         return ApiResponse.success(res, {
-            url: fileUrl,
+            url: req.file.location,
             filename,
             mimetype: req.file.mimetype,
             size: req.file.size,
@@ -63,6 +46,46 @@ const uploadFile = async (req, res) => {
     } catch (error) {
         console.error('Upload error:', error);
         return ApiResponse.error(res, error.message || 'Server error uploading file', 500);
+    }
+};
+
+const uploadMultipleFiles = async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return ApiResponse.error(res, 'No files uploaded', 400);
+        }
+
+        const uploadResults = [];
+
+        for (const file of req.files) {
+            const category = getCategory(file.mimetype);
+            const filename = file.key.split('/').pop();
+
+            const fileDoc = new File({
+                filename,
+                originalName: file.originalname,
+                mimetype: file.mimetype,
+                size: file.size,
+                path: file.location,
+                category,
+                uploadedBy: req.user?.id || null
+            });
+
+            await fileDoc.save();
+
+            uploadResults.push({
+                url: file.location,
+                filename,
+                mimetype: file.mimetype,
+                size: file.size,
+                category
+            });
+        }
+
+        return ApiResponse.success(res, uploadResults, `${req.files.length} files uploaded successfully`);
+    } catch (error) {
+        console.error('Bulk upload error:', error);
+        return ApiResponse.error(res, error.message || 'Server error uploading files', 500);
     }
 };
 
@@ -115,6 +138,7 @@ const getFile = async (req, res) => {
 
 module.exports = {
     uploadFile,
+    uploadMultipleFiles,
     getFile
 };
 

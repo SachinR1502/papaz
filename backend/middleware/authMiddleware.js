@@ -8,6 +8,11 @@ const protect = async (req, res, next) => {
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
             token = req.headers.authorization.split(' ')[1];
+            if (!process.env.JWT_SECRET) {
+                console.error('[AUTH MIDDLEWARE] CRITICAL ERROR: JWT_SECRET is not defined in env');
+            } else {
+                console.log('[AUTH MIDDLEWARE] JWT_SECRET length:', process.env.JWT_SECRET.length);
+            }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             req.user = await User.findById(decoded.id).select('-otp');
 

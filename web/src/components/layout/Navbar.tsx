@@ -262,10 +262,10 @@ export default function Navbar() {
                                     <div className="absolute top-[calc(100%+14px)] right-0 w-64 p-2 bg-[var(--bg-card)]/95 backdrop-blur-3xl border border-[var(--border-color)] rounded-[24px] shadow-2xl shadow-black/20 animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-300 flex flex-col gap-1.5 origin-top-right z-50">
                                         <div className="p-4 mb-1 border-b border-[var(--border-color)] bg-zinc-500/5 rounded-[18px]">
                                             <p className="font-black text-sm text-[var(--text-body)] truncate mb-1">{user.profile?.fullName || 'User'}</p>
-                                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest opacity-60 flex items-center gap-2">
+                                            <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest opacity-60 flex items-center gap-2">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-sm shadow-orange-500/50" />
                                                 Online
-                                            </p>
+                                            </div>
                                         </div>
 
                                         <DropdownItem

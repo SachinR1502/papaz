@@ -2,7 +2,7 @@
 
 import { useSupplier } from '@/context/SupplierContext';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
     ArrowLeft,
     PlusCircle,
@@ -16,10 +16,14 @@ import {
     CheckCircle2,
     Zap,
     Warehouse,
-    ChevronDown
+    ChevronDown,
+    Upload,
+    Image as ImageIcon,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { uploadService, UploadResult } from '@/services/uploadService';
 
 const CATEGORIES = [
     'Batteries', 'Tires', 'Engine Oil', 'Brakes', 'Lights',
@@ -33,6 +37,8 @@ export default function AddProductPage() {
     const { addProduct, isLoading } = useSupplier();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [form, setForm] = useState({
         name: '',
@@ -42,15 +48,66 @@ export default function AddProductPage() {
         description: '',
         brand: '',
         partNumber: '',
-        image: '',
+        image: '', // Primary image
+        images: [] as UploadResult[],
+        videos: [] as UploadResult[],
+        audio: [] as UploadResult[],
         compatibleModels: [] as string[]
     });
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setIsUploading(true);
+        const toastId = toast.loading(`Uploading ${files.length} asset(s)...`);
+
+        try {
+            const results = await Promise.all(
+                files.map(file => uploadService.uploadFile(file))
+            );
+
+            setForm(prev => {
+                const newImages = [...prev.images, ...results.filter(r => r.category === 'images')];
+                const newVideos = [...prev.videos, ...results.filter(r => r.category === 'videos')];
+                const newAudio = [...prev.audio, ...results.filter(r => r.category === 'audio')];
+
+                return {
+                    ...prev,
+                    images: newImages,
+                    videos: newVideos,
+                    audio: newAudio,
+                    image: newImages.length > 0 ? newImages[0].url : prev.image
+                };
+            });
+
+            toast.success('Assets Synced', { id: toastId, description: 'Cloud storage updated successfully.' });
+        } catch (error: any) {
+            console.error('Upload Error:', error);
+            toast.error('Sync Failed', { id: toastId, description: error.message || 'Error occurred during upload.' });
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const removeAsset = (type: 'images' | 'videos' | 'audio', index: number) => {
+        setForm(prev => {
+            const list = [...prev[type]];
+            list.splice(index, 1);
+            return {
+                ...prev,
+                [type]: list,
+                image: type === 'images' && index === 0 ? (list[0]?.url || '') : prev.image
+            };
+        });
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.name || !form.price || !form.quantity) {
             toast.error('Missing Required Fields', {
-                description: 'Please provide at least a title, price, and stock quantity.'
+                description: 'Please provide title, price, and quantity.'
             });
             return;
         }
@@ -61,17 +118,18 @@ export default function AddProductPage() {
                 ...form,
                 price: parseFloat(form.price),
                 stock: parseInt(form.quantity),
-                // Ensure image is provided or send a default placeholdera
-                image: form.image || 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?q=80&w=2832&auto=format&fit=crop',
-                localDeliveryTime: '2-3 Hours' // Hardcoded for now as it was removed from UI but might be needed by API schema if strict
+                image: form.image || (form.images[0]?.url) || 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?q=80&w=2832&auto=format&fit=crop',
+                // Flattening multiple assets for the main API if it only supports one string (backward compatibility)
+                // However, if the API supports it, we could pass the full arrays.
+                localDeliveryTime: '2-3 Hours'
             });
             toast.success('Listing Created', {
-                description: 'Your product is now live on the Papaz network.'
+                description: 'Product published to global network.'
             });
             router.push('/supplier/inventory');
         } catch (e) {
             toast.error('Creation Failed', {
-                description: 'We encountered an error while publishing your listing.'
+                description: 'Error while publishing your listing.'
             });
         } finally {
             setIsSubmitting(false);
@@ -162,9 +220,98 @@ export default function AddProductPage() {
                                 />
                             </div>
 
+                            <div className="space-y-6">
+                                <label className="px-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted opacity-60 flex justify-between items-center">
+                                    <span>Product Assets (Images, Videos, Audio)</span>
+                                    <span className="text-primary italic">Cloud Synced</span>
+                                </label>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    {/* Existing Images */}
+                                    {form.images.map((img, idx) => (
+                                        <div key={`img-${idx}`} className="group relative aspect-square rounded-2xl overflow-hidden border border-border bg-card/40">
+                                            <img src={img.url} className="w-full h-full object-cover" alt="Asset" />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeAsset('images', idx)}
+                                                className="absolute top-2 right-2 bg-black/60 backdrop-blur-md p-1.5 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                            {idx === 0 && (
+                                                <div className="absolute bottom-0 left-0 right-0 bg-primary/80 text-[8px] font-black text-white text-center py-1 uppercase tracking-widest">
+                                                    Main
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* Existing Videos */}
+                                    {form.videos.map((vid, idx) => (
+                                        <div key={`vid-${idx}`} className="group relative aspect-square rounded-2xl overflow-hidden border border-border bg-blue-500/10 flex items-center justify-center">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <Upload size={20} className="text-blue-500" />
+                                                <span className="text-[8px] font-black uppercase text-blue-500">Video</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeAsset('videos', idx)}
+                                                className="absolute top-2 right-2 bg-black/60 backdrop-blur-md p-1.5 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    {/* Existing Audio */}
+                                    {form.audio.map((aud, idx) => (
+                                        <div key={`aud-${idx}`} className="group relative aspect-square rounded-2xl overflow-hidden border border-border bg-indigo-500/10 flex items-center justify-center">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <Layers size={20} className="text-indigo-500" />
+                                                <span className="text-[8px] font-black uppercase text-indigo-500">Audio</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeAsset('audio', idx)}
+                                                className="absolute top-2 right-2 bg-black/60 backdrop-blur-md p-1.5 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    {/* Upload Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                                        className={cn(
+                                            "aspect-square rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all",
+                                            isUploading && "animate-pulse"
+                                        )}
+                                    >
+                                        {isUploading ? (
+                                            <Loader2 size={24} className="animate-spin text-primary" />
+                                        ) : (
+                                            <>
+                                                <PlusCircle size={24} className="text-muted" />
+                                                <span className="text-[10px] font-black uppercase text-muted tracking-tighter">Add More</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    multiple
+                                    accept="image/*,video/*,audio/*"
+                                    onChange={handleUpload}
+                                />
+                            </div>
+
                             <FormInput
-                                label="Product Image URL"
-                                required
+                                label="Asset Cloud URL"
                                 placeholder="https://..."
                                 value={form.image}
                                 onChange={(v) => setForm({ ...form, image: v })}

@@ -307,11 +307,126 @@ const verifyWholesaleOrderPayment = asyncHandler(async (req, res) => {
     return ApiResponse.success(res, order, 'Payment verified successfully');
 });
 
+// @desc    Check Razorpay Order Status (Manual check)
+// @route   GET /api/payment/order/:orderId/status
+const checkRazorpayOrderStatus = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const { razorpay } = require('../utils/razorpayService');
+
+    try {
+        const order = await razorpay.orders.fetch(orderId);
+
+        // Fetch payments for this order
+        const payments = await razorpay.orders.fetchPayments(orderId);
+        const successfulPayment = payments.items.find(p => p.status === 'captured');
+
+        return ApiResponse.success(res, {
+            orderId: order.id,
+            status: order.status,
+            amount: order.amount / 100,
+            attemps: order.attempts,
+            isPaid: order.status === 'paid',
+            successfulPayment: successfulPayment ? {
+                id: successfulPayment.id,
+                method: successfulPayment.method,
+                email: successfulPayment.email,
+                contact: successfulPayment.contact,
+                createdAt: new Date(successfulPayment.created_at * 1000)
+            } : null
+        }, 'Order status fetched');
+    } catch (error) {
+        return ApiResponse.error(res, 'Failed to fetch order status: ' + error.message, 500);
+    }
+});
+
+// @desc    Handle Razorpay Webhooks
+// @route   POST /api/payment/webhook
+const handleRazorpayWebhook = async (req, res) => {
+    const { verifyWebhookSignature } = require('../utils/razorpayService');
+    const signature = req.headers['x-razorpay-signature'];
+
+    // Verify signature
+    const isValid = verifyWebhookSignature(JSON.stringify(req.body), signature);
+    if (!isValid) {
+        console.error('[WEBHOOK] Invalid Razorpay signature');
+        return res.status(400).send('Invalid signature');
+    }
+
+    const event = req.body.event;
+    const payload = req.body.payload;
+
+    console.log(`[WEBHOOK] Received Razorpay event: ${event}`);
+
+    try {
+        if (event === 'payment.captured' || event === 'order.paid') {
+            const payment = payload.payment?.entity || payload.order?.entity;
+            const orderId = payment.order_id;
+            const paymentId = payment.id || (payload.payment?.entity?.id);
+            const notes = payment.notes || {};
+
+            // Determine purpose from notes
+            const { purpose, customerId, jobId, technicianId, orderId: storeOrderId } = notes;
+
+            if (purpose === 'wallet_topup' && customerId) {
+                const customer = await Customer.findById(customerId);
+                if (customer) {
+                    // Check if transaction already exists to avoid double crediting
+                    const existingTx = await Transaction.findOne({ razorpayPaymentId: paymentId });
+                    if (!existingTx) {
+                        const amount = payment.amount / 100;
+                        customer.walletBalance += amount;
+                        await customer.save();
+
+                        await Transaction.create({
+                            customer: customer._id,
+                            type: 'topup',
+                            amount,
+                            description: 'Wallet Topup via Razorpay (Webhook)',
+                            referenceId: paymentId,
+                            paymentMethod: 'razorpay',
+                            razorpayOrderId: orderId,
+                            razorpayPaymentId: paymentId,
+                            status: 'completed'
+                        });
+                        console.log(`[WEBHOOK] Wallet topped up for customer ${customerId}`);
+                    }
+                }
+            } else if (purpose === 'bill_payment' && jobId) {
+                const job = await ServiceRequest.findById(jobId);
+                if (job && job.status !== 'completed') {
+                    // Similar logic to verifyBillPayment
+                    const amount = payment.amount / 100;
+                    if (job.bill) {
+                        job.bill.status = 'paid';
+                        job.bill.paymentMethod = 'razorpay';
+                        job.bill.razorpayOrderId = orderId;
+                        job.bill.razorpayPaymentId = paymentId;
+                    }
+                    job.billTotal = amount;
+                    job.status = 'completed';
+                    await job.save();
+
+                    // Note: In production, you'd also credit the technician here as in verifyBillPayment
+                    console.log(`[WEBHOOK] Job ${jobId} marked as completed via webhook`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('[WEBHOOK] Processing error:', error);
+    }
+
+    // Always return 200 to Razorpay
+    res.status(200).json({ status: 'ok' });
+};
+
 module.exports = {
     createWalletTopupOrder,
     verifyWalletTopup,
     createBillPaymentOrder,
     verifyBillPayment,
     createWholesaleOrderPayment,
-    verifyWholesaleOrderPayment
+    verifyWholesaleOrderPayment,
+    checkRazorpayOrderStatus,
+    handleRazorpayWebhook
 };
+
