@@ -8,6 +8,7 @@ const { createNotification } = require('../utils/notificationService');
 const { emitOrderUpdate } = require('../utils/socketHelper');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../utils/asyncHandler');
+const Counter = require('../models/Counter');
 
 // @desc    Get Notifications
 // @route   GET /api/supplier/notifications
@@ -71,33 +72,110 @@ const getDashboard = asyncHandler(async (req, res) => {
     }, 'Dashboard data fetched');
 });
 
+// Helper to calculate KYC Percentage
+const calculateKyc = (supplier) => {
+    const fields = [
+        'fullName', 'storeName', 'address', 'city', 'email', 'phoneNumber',
+        'gstin', 'panNumber', 'aadharNumber'
+    ];
+    const docFields = ['gstCertificate', 'aadharCard', 'panCard', 'electricityBill'];
+
+    let completed = 0;
+    fields.forEach(f => { if (supplier[f]) completed++; });
+    docFields.forEach(f => { if (supplier.documents?.[f]) completed++; });
+
+    // Bank check
+    if (supplier.bankAccounts && supplier.bankAccounts.length > 0) completed++;
+    if (supplier.documents?.cancelledCheque) completed++;
+
+    return Math.round((completed / (fields.length + docFields.length + 2)) * 100);
+};
+
 // @desc    Update Supplier Profile
 // @route   PUT /api/supplier/profile
 const updateProfile = asyncHandler(async (req, res) => {
-    const supplier = await Supplier.findOne({ user: req.user._id });
-    if (!supplier) return ApiResponse.error(res, 'Supplier profile not found', 404);
+    const {
+        fullName, storeName, address, addressLine1, addressLine2, city, state, zipCode,
+        email, phoneNumber, alternatePhoneNumber, businessCategories, otherCategory,
+        gstin, udyamNumber, panNumber, aadharNumber, documents,
+        notificationSettings, lat, lng, location, locationName,
+        bankDetails
+    } = req.body;
 
-    const { fullName, storeName, address, city, email, phoneNumber, notificationSettings, lat, lng, location, locationName } = req.body;
+    const updateData = {
+        fullName,
+        storeName,
+        address,
+        addressLine1,
+        addressLine2,
+        city,
+        state,
+        zipCode,
+        email,
+        phoneNumber,
+        alternatePhoneNumber,
+        businessCategories,
+        otherCategory,
+        gstin,
+        udyamNumber,
+        panNumber,
+        aadharNumber,
+        documents,
+        notificationSettings
+    };
 
-    supplier.fullName = fullName || supplier.fullName;
-    supplier.storeName = storeName || supplier.storeName;
-    supplier.address = address || supplier.address;
-    supplier.city = city || supplier.city;
-    supplier.email = email || supplier.email;
-    supplier.phoneNumber = phoneNumber || supplier.phoneNumber;
-    supplier.notificationSettings = notificationSettings || supplier.notificationSettings;
-    if (locationName) supplier.locationName = locationName;
+    if (locationName) updateData.locationName = locationName;
 
     if (location && location.coordinates) {
-        supplier.location = location;
+        updateData.location = location;
     } else if (lng !== undefined && lat !== undefined) {
-        supplier.location = {
+        updateData.location = {
             type: 'Point',
             coordinates: [parseFloat(lng), parseFloat(lat)]
         };
     }
 
+    // Handle Bank Details mapping if present
+    if (bankDetails) {
+        updateData.bankAccounts = [{
+            accountHolderName: bankDetails.accountHolderName,
+            accountNumber: bankDetails.accountNumber,
+            accountNumberFull: bankDetails.accountNumber,
+            ifscCode: bankDetails.ifscCode,
+            bankName: bankDetails.bankName,
+            isDefault: true
+        }];
+    }
+
+    // Check if supplier exists to decide on ID generation
+    let supplier = await Supplier.findOne({ user: req.user._id });
+
+    if (!supplier) {
+        // Generate Supplier ID: SUP0001
+        const sequence = await Counter.getNextSequence('supplier_id');
+        updateData.supplierId = `SUP${String(sequence).padStart(4, '0')}`;
+    }
+
+    // Use findOneAndUpdate with upsert
+    supplier = await Supplier.findOneAndUpdate(
+        { user: req.user._id },
+        { $set: updateData },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    // Update KYC Percentage
+    supplier.kycPercentage = calculateKyc(supplier);
     await supplier.save();
+
+    // Update the User record to reflect profile completion
+    if (req.user && !req.user.profileCompleted) {
+        const User = require('../models/User');
+        await User.findByIdAndUpdate(req.user._id, {
+            profileCompleted: true,
+            isRegistered: true
+        });
+    }
+
     return ApiResponse.success(res, supplier, 'Profile updated successfully');
 });
 
@@ -117,25 +195,63 @@ const addProduct = asyncHandler(async (req, res) => {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return ApiResponse.error(res, 'Supplier profile not found', 404);
 
-    const { name, category, price, image, description, stock, compatibleModels, brand, partNumber } = req.body;
+    const {
+        name, category, price, image, images, description, stock,
+        compatibleModels, brand, partNumber, sku, modelNumber, gtinHsn,
+        mfgDate, fuelType, vehicleType, compatibility, warranty, guarantee,
+        costPrice, mrp, gst, minStockLevel, warehouseLocation, video, brochure,
+        shortDescription, specifications, installationInstructions,
+        metaTitle, metaDescription, tags
+    } = req.body;
+
+    // Auto-generate Product ID
+    const nextSeq = await Counter.getNextSequence('product_id');
+    const productId = `PROD${String(nextSeq).padStart(4, '0')}`;
+
+    // Auto-generate Slug
+    const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') + '-' + productId.toLowerCase();
 
     const product = await Product.create({
         name,
-        category,
-        price,
-        image,
-        description,
-        stock,
-        compatibleModels,
+        productId,
+        supplier: supplier._id,
+        sku,
         brand: brand || 'Generic',
-        partNumber: partNumber || '',
-        supplier: supplier._id
+        category,
+        modelNumber,
+        gtinHsn,
+        mfgDate,
+        fuelType,
+        vehicleType,
+        compatibility,
+        warranty,
+        guarantee,
+        costPrice,
+        price, // Selling Price
+        mrp,
+        gst: gst || 18,
+        stock: stock || 0,
+        minStockLevel: minStockLevel || 5,
+        warehouseLocation,
+        image,
+        images: images || [],
+        video,
+        brochure,
+        shortDescription,
+        description,
+        specifications,
+        installationInstructions,
+        metaTitle,
+        metaDescription,
+        tags,
+        slug,
+        approvalStatus: 'pending' // Default from schema but explicitly set here for clarity
     });
 
     supplier.products.push(product._id);
     await supplier.save();
 
-    return ApiResponse.success(res, product, 'Product added successfully', 201);
+    return ApiResponse.success(res, product, 'Product added and queued for approval', 201);
 });
 
 // @desc    Update Product
@@ -146,19 +262,21 @@ const updateProduct = asyncHandler(async (req, res) => {
 
     if (!product) return ApiResponse.error(res, 'Product not found', 404);
 
-    const { name, category, price, image, description, stock, compatibleModels, brand, partNumber } = req.body;
+    const updateFields = req.body;
 
-    product.name = name || product.name;
-    product.category = category || product.category;
-    product.price = price || product.price;
-    product.image = image || product.image;
-    product.description = description || product.description;
-    product.stock = stock !== undefined ? stock : product.stock;
-    product.compatibleModels = compatibleModels || product.compatibleModels;
-    product.brand = brand || product.brand;
-    product.partNumber = partNumber || product.partNumber;
+    // If name is updated, update slug as well
+    if (updateFields.name && updateFields.name !== product.name) {
+        updateFields.slug = updateFields.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') + '-' + product.productId.toLowerCase();
+    }
 
+    // Protection for certain fields
+    delete updateFields.productId;
+    delete updateFields.supplier;
+    delete updateFields.approvalStatus; // Supplier cannot approve their own product
+
+    Object.assign(product, updateFields);
     await product.save();
+
     return ApiResponse.success(res, product, 'Product updated successfully');
 });
 

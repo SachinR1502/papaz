@@ -4,6 +4,7 @@ import { authService } from '@/services/authService';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
     const { login } = useAuth();
@@ -24,13 +25,14 @@ export default function LoginPage() {
             // We no longer send the role from the frontend; backend determines it from the phone number
             await authService.sendOtp(cleanPhone, undefined, false);
             setStep(2);
+            toast.success('OTP Sent', {
+                description: `A verification code has been sent to ${cleanPhone}`
+            });
         } catch (err: any) {
             console.error('Login Error:', err);
-            if (!err.response) {
-                setError('Network error: Cannot reach server. Please check your connection.');
-            } else {
-                setError(err.response?.data?.message || 'Failed to send OTP. Please check your phone number.');
-            }
+            const msg = err.response?.data?.message || 'Failed to send OTP';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setIsLoading(false);
         }
@@ -51,9 +53,12 @@ export default function LoginPage() {
                 profileCompleted: data.profileCompleted
             });
 
+            toast.success('Login Successful', {
+                description: `Welcome back to Papaz ecosystem.`
+            });
+
             // Handle redirection based on the role RETURNED by the backend
             const role = data.role?.toLowerCase();
-
             if (role === 'admin') {
                 router.push('/admin/dashboard');
             } else if (role === 'supplier') {
@@ -65,11 +70,12 @@ export default function LoginPage() {
             } else if (role === 'technician') {
                 router.push('/technician/dashboard');
             } else {
-                // Standard customer - goes to home page or their account
                 router.push('/');
             }
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+            const msg = err.response?.data?.message || 'Invalid OTP. Please try again.';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setIsLoading(false);
         }

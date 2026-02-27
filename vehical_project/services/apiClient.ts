@@ -2,27 +2,10 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const LOCAL_API_URL = process.env.EXPO_PUBLIC_API_URL;
-const PROD_API_URL = 'https://vehicles-app-c3pv.onrender.com/api/';
+const AWS_API_URL = 'http://16.170.108.222:8080/api';
 
-// Determine the base URL based on the environment
-const getBaseUrl = () => {
-    let url = process.env.EXPO_PUBLIC_API_URL;
-
-    if (!url) {
-        url = __DEV__ ? LOCAL_API_URL : PROD_API_URL;
-        console.log(`[API Source] Using fallback URL: ${url} (__DEV__: ${__DEV__})`);
-    } else {
-        console.log('[API Source] Using environment variable:', url);
-    }
-
-    // Ensure no trailing slash
-    return url?.endsWith('/') ? url.slice(0, -1) : url;
-};
-
-export const API_URL = getBaseUrl() || '';
-
-// ==================== CACHING LAYER ====================
+// Use AWS URL as primary, fallback to env if exists (but user wants AWS)
+const API_URL = process.env.EXPO_PUBLIC_API_URL || AWS_API_URL;
 
 // ==================== CACHING LAYER ====================
 interface CacheEntry {
@@ -78,8 +61,6 @@ const api = axios.create({
     baseURL: API_URL,
     timeout: 30000, // 30 seconds
     headers: {
-        // Content-Type is intentionally omitted here to allow Axios / FormData
-        // to set it automatically (especially important for multipart/form-data boundaries)
         'Accept': 'application/json',
     },
 });
@@ -183,7 +164,6 @@ api.interceptors.response.use(
             console.log('[API Error] Response:', error.response.status, error.response.data);
         } else if (error.request) {
             console.log('[API Error] No Response (Network Error). Message:', error.message);
-            // Log some high-level request info for debugging Network Error
             console.log('[API Error] Failed Request:', {
                 url: originalRequest.url,
                 method: originalRequest.method,
@@ -218,11 +198,8 @@ export const invalidateCache = (pattern: string) => {
 const invalidateCacheOnMutation = (config: AxiosRequestConfig) => {
     if (config.method !== 'get' && config.url) {
         const url = config.url.toLowerCase();
-
-        // Skip cache invalidation for file uploads
         if (url.includes('upload') || url.includes('/files/') || url.includes('image') || url.includes('audio')) return;
 
-        // Extract resource: e.g. /technician/jobs -> jobs
         const urlParts = config.url.split('/').filter(p => p && p !== 'api');
         let resource = urlParts[0];
 

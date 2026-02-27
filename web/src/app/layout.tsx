@@ -15,17 +15,20 @@ export const metadata: Metadata = {
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 
+import { Toaster } from 'sonner';
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className={inter.className}>
         <AuthProvider>
           <CartProvider>
             {children}
+            <Toaster position="top-right" richColors closeButton />
           </CartProvider>
         </AuthProvider>
       </body>

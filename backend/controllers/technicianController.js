@@ -123,9 +123,6 @@ const getProfile = asyncHandler(async (req, res) => {
 });
 
 const updateProfile = asyncHandler(async (req, res) => {
-    const technician = await Technician.findOne({ user: req.user._id });
-    if (!technician) return ApiResponse.error(res, 'Technician profile not found', 404);
-
     const {
         fullName,
         registrationType,
@@ -152,41 +149,59 @@ const updateProfile = asyncHandler(async (req, res) => {
         locationName
     } = req.body;
 
-    if (fullName !== undefined) technician.fullName = fullName;
-    if (registrationType !== undefined) technician.registrationType = registrationType;
-    if (garageName !== undefined) technician.garageName = garageName;
-    if (address !== undefined) technician.address = address;
-    if (addressLine1 !== undefined) technician.addressLine1 = addressLine1;
-    if (addressLine2 !== undefined) technician.addressLine2 = addressLine2;
-    if (city !== undefined) technician.city = city;
-    if (state !== undefined) technician.state = state;
-    if (zipCode !== undefined) technician.zipCode = zipCode;
-    if (dob !== undefined) technician.dob = dob;
-    if (aadharNo !== undefined) technician.aadharNo = aadharNo;
-    if (panNo !== undefined) technician.panNo = panNo;
-    if (udyamNo !== undefined) technician.udyamNo = udyamNo;
-    if (profession !== undefined) technician.profession = profession;
-    if (workType !== undefined) technician.workType = workType;
-    if (serviceRadius !== undefined) technician.serviceRadius = serviceRadius;
-    if (vehicleTypes !== undefined) technician.vehicleTypes = vehicleTypes;
-    if (technicalSkills !== undefined) technician.technicalSkills = technicalSkills;
-    if (softSkills !== undefined) technician.softSkills = softSkills;
-    if (avatar !== undefined) technician.avatar = avatar;
-    if (isOnline !== undefined) technician.isOnline = isOnline;
-    if (locationName !== undefined) technician.locationName = locationName;
+    const updateData = {};
+
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (registrationType !== undefined) updateData.registrationType = registrationType;
+    if (garageName !== undefined) updateData.garageName = garageName;
+    if (address !== undefined) updateData.address = address;
+    if (addressLine1 !== undefined) updateData.addressLine1 = addressLine1;
+    if (addressLine2 !== undefined) updateData.addressLine2 = addressLine2;
+    if (city !== undefined) updateData.city = city;
+    if (state !== undefined) updateData.state = state;
+    if (zipCode !== undefined) updateData.zipCode = zipCode;
+    if (dob !== undefined) updateData.dob = dob;
+    if (aadharNo !== undefined) updateData.aadharNo = aadharNo;
+    if (panNo !== undefined) updateData.panNo = panNo;
+    if (udyamNo !== undefined) updateData.udyamNo = udyamNo;
+    if (profession !== undefined) updateData.profession = profession;
+    if (workType !== undefined) updateData.workType = workType;
+    if (serviceRadius !== undefined) updateData.serviceRadius = serviceRadius;
+    if (vehicleTypes !== undefined) updateData.vehicleTypes = vehicleTypes;
+    if (technicalSkills !== undefined) updateData.technicalSkills = technicalSkills;
+    if (softSkills !== undefined) updateData.softSkills = softSkills;
+    if (avatar !== undefined) updateData.avatar = avatar;
+    if (isOnline !== undefined) updateData.isOnline = isOnline;
+    if (locationName !== undefined) updateData.locationName = locationName;
+    if (req.body.documents) updateData.documents = req.body.documents;
+    if (req.body.bankAccounts) updateData.bankAccounts = req.body.bankAccounts;
 
     if (location) {
         if (location.coordinates) {
-            technician.location = location;
+            updateData.location = location;
         } else if (location.longitude && location.latitude) {
-            technician.location = {
+            updateData.location = {
                 type: 'Point',
                 coordinates: [parseFloat(location.longitude), parseFloat(location.latitude)]
             };
         }
     }
 
-    await technician.save();
+    const technician = await Technician.findOneAndUpdate(
+        { user: req.user._id },
+        { $set: updateData },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    // Update the User record to reflect profile completion
+    if (req.user && !req.user.profileCompleted) {
+        const User = require('../models/User');
+        await User.findByIdAndUpdate(req.user._id, {
+            profileCompleted: true,
+            isRegistered: true
+        });
+    }
+
     return ApiResponse.success(res, technician, 'Profile updated successfully');
 });
 
@@ -875,10 +890,24 @@ const respondToPartRequest = asyncHandler(async (req, res) => {
 });
 
 const addPart = asyncHandler(async (req, res) => {
-    const part = req.body;
+    const partData = req.body;
     const technician = await Technician.findOne({ user: req.user._id });
-    // Simulate inventory update logic
-    return ApiResponse.success(res, part, 'Part added to inventory');
+
+    if (!technician) {
+        return ApiResponse.error(res, 'Technician profile not found', 404);
+    }
+
+    if (!technician.inventory) {
+        technician.inventory = [];
+    }
+
+    technician.inventory.push(partData);
+    await technician.save();
+
+    // Return the newly added part (it will have an _id assigned by mongoose)
+    const newPart = technician.inventory[technician.inventory.length - 1];
+
+    return ApiResponse.success(res, newPart, 'Part added to inventory');
 });
 
 const requestCustomOrder = asyncHandler(async (req, res) => {

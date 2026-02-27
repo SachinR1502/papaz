@@ -1,5 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface CartItem {
     id: string | number;
@@ -43,16 +44,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setCart(prev => {
             const existing = prev.find(item => item.id === product.id);
             if (existing) {
+                toast.success(`Updated ${product.name} quantity`);
                 return prev.map(item =>
                     item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
                 );
             }
+            toast.success(`Added ${product.name} to cart`);
             return [...prev, { ...product, quantity: 1 }];
         });
     };
 
     const removeFromCart = (productId: string | number) => {
+        const item = cart.find(i => i.id === productId);
         setCart(prev => prev.filter(item => item.id !== productId));
+        if (item) toast.success(`Removed ${item.name} from cart`);
     };
 
     const updateQuantity = (productId: string | number, quantity: number) => {
@@ -62,7 +67,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         ));
     };
 
-    const clearCart = () => setCart([]);
+    const clearCart = () => {
+        setCart([]);
+        toast.success('Cart cleared successfully');
+    };
 
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);

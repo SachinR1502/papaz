@@ -1,22 +1,21 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { useCart } from '@/context/CartContext';
 import Link from 'next/link';
 import {
   Package,
   Heart,
   MapPin,
-  Settings as SettingsIcon,
+  Settings,
   ChevronRight,
   ShoppingBag
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { cn } from '@/lib/utils';
 import { customerService } from '@/services/customerService';
 
 export default function AccountDashboard() {
   const { user, token } = useAuth();
+
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [wishlistCount, setWishlistCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -30,174 +29,174 @@ export default function AccountDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+
       const [ordersRes, wishlistRes] = await Promise.all([
         customerService.getOrders(),
         customerService.getWishlist()
       ]);
 
-      // Handle orders
-      const orders = Array.isArray(ordersRes) ? ordersRes : (ordersRes.data || []);
-      setRecentOrders(orders.slice(0, 2));
+      const orders = Array.isArray(ordersRes)
+        ? ordersRes
+        : ordersRes?.data || [];
 
-      // Handle wishlist count
+      setRecentOrders(orders.slice(0, 3));
+
       if (Array.isArray(wishlistRes)) {
         setWishlistCount(wishlistRes.length);
-      } else if (wishlistRes?.data && Array.isArray(wishlistRes.data)) {
+      } else if (Array.isArray(wishlistRes?.data)) {
         setWishlistCount(wishlistRes.data.length);
       }
-    } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
+    } catch (error) {
+      console.error('Dashboard fetch failed:', error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="animate-fade-in flex flex-col gap-10 md:gap-14">
+    <div className="flex flex-col gap-2">
 
       {/* HEADER */}
-      <header className="text-left">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4 lg:mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-          <span className="text-[10px] uppercase font-black tracking-widest text-primary">Secure Session</span>
-        </div>
-        <h1 className="text-4xl lg:text-6xl font-black m-0 tracking-tighter text-foreground italic uppercase">
-          My <span className="text-primary">Dashboard</span>
+      <header>
+        <h1 className="text-3xl md:text-4xl font-semibold text-gray-800">
+          Dashboard
         </h1>
-        <p className="mt-4 text-base md:text-lg text-muted font-bold max-w-2xl opacity-80 leading-relaxed">
-          Welcome back, <span className="text-foreground">{user?.profile?.fullName?.split(' ')[0] || user?.name || 'User'}</span>!
-          Track your orders and manage your saved items.
+
+        <p className="mt-2 text-gray-500">
+          Welcome back,{" "}
+          <span className="font-medium text-gray-800">
+            {user?.profile?.fullName?.split(' ')[0] || user?.name || 'User'}
+          </span>
+          . Here’s a quick overview of your account.
         </p>
       </header>
 
       {/* STATS */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <StatCard
-          icon={<ShoppingBag size={24} />}
+          icon={<ShoppingBag size={18} />}
           label="Orders"
-          value={loading ? "..." : (recentOrders.length > 0 ? recentOrders.length.toString() : "0")}
-          colorClass="bg-primary/10 text-primary"
-          hoverClass="hover:border-primary shadow-primary/5"
+          value={loading ? "..." : recentOrders.length.toString()}
         />
+
         <StatCard
-          icon={<Heart size={24} />}
-          label="Favorites"
+          icon={<Heart size={18} />}
+          label="Wishlist"
           value={loading ? "..." : wishlistCount.toString()}
-          colorClass="bg-red-500/10 text-red-500"
-          hoverClass="hover:border-red-500 shadow-red-500/5"
         />
       </div>
 
       {/* MAIN GRID */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-10">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
         {/* RECENT ORDERS */}
-        <section>
-          <div className="flex justify-between items-center mb-8 px-1">
-            <h2 className="text-2xl font-black text-foreground italic uppercase tracking-tight flex items-center gap-3">
+        <section className="xl:col-span-2">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">
               Recent Orders
             </h2>
-            <Link href="/account/orders" className="flex items-center gap-1.5 text-primary font-black text-xs uppercase tracking-widest group bg-primary/5 px-4 py-2 rounded-xl transition-all hover:bg-primary/10">
-              View All <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+
+            <Link
+              href="/account/orders"
+              className="text-sm text-orange-600 hover:underline flex items-center gap-1"
+            >
+              View All <ChevronRight size={16} />
             </Link>
           </div>
 
-          <div className="flex flex-col gap-6">
-            {loading ? (
-              [1, 2].map(i => (
-                <div key={i} className="h-[120px] bg-card/10 rounded-[28px] animate-pulse border border-border/50" />
-              ))
-            ) : recentOrders.length > 0 ? (
-              recentOrders.map(order => (
-                <div key={order._id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-8 rounded-[28px] border border-border bg-card/20 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:border-primary/50 hover:bg-card/40 group">
-
-                  <div className="flex items-center gap-6 w-full sm:w-auto">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-transparent rounded-2xl flex items-center justify-center font-black text-primary shrink-0 border border-primary/10 group-hover:rotate-3 transition-transform duration-500">
-                      #{order.orderId?.slice(-4).toUpperCase() || '??'}
-                    </div>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 rounded-xl bg-gray-100 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : recentOrders.length > 0 ? (
+            <div className="space-y-4">
+              {recentOrders.map((order) => (
+                <div
+                  key={order._id}
+                  className="p-6 border border-gray-200 rounded-xl bg-white hover:shadow-sm transition"
+                >
+                  <div className="flex justify-between items-center">
                     <div>
-                      <p className="m-0 font-black text-xl text-foreground italic uppercase leading-none mb-1.5">
-                        {order.items?.length || 0} {order.items?.length === 1 ? 'Item' : 'Items'}
+                      <p className="font-medium text-gray-800">
+                        Order #{order.orderId?.slice(-4)}
                       </p>
-                      <p className="m-0 text-[10px] text-muted font-black uppercase tracking-widest opacity-60">
-                        {new Date(order.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                      <p className="text-sm text-gray-500">
+                        {new Date(order.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                  </div>
 
-                  <div className="text-left sm:text-right w-full sm:w-auto flex flex-row sm:flex-col justify-between items-center sm:items-end mt-6 sm:mt-0 pt-6 sm:pt-0 border-t sm:border-0 border-border/50">
-                    <p className="m-0 font-black text-2xl text-foreground tracking-tighter">
-                      ₹{order.totalAmount?.toLocaleString()}
-                    </p>
-                    <span className={cn(
-                      "px-3 py-1 rounded-lg text-[10px] uppercase font-black tracking-widest mt-2 border",
-                      order.status === 'delivered' ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-primary/10 text-primary border-primary/20"
-                    )}>
-                      {order.status.replace('_', ' ')}
-                    </span>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-800">
+                        ₹{order.totalAmount?.toLocaleString()}
+                      </p>
+
+                      <span
+                        className={`text-xs px-2 py-1 rounded-md ${order.status === 'delivered'
+                          ? 'bg-green-50 text-green-600'
+                          : 'bg-orange-50 text-orange-600'
+                          }`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="p-16 md:p-20 text-center rounded-[40px] border border-border border-dashed bg-card/5 transition-all hover:bg-card/10">
-                <div className="w-20 h-20 mx-auto bg-card/20 rounded-3xl flex items-center justify-center mb-8 text-muted/30">
-                  <Package size={40} />
-                </div>
-                <h3 className="text-2xl font-black text-foreground italic uppercase mb-2">No orders found</h3>
-                <p className="text-muted font-black uppercase tracking-widest text-[10px] mb-8 max-w-xs mx-auto opacity-60">Start shopping to see your orders here.</p>
-                <Link href="/" className="inline-flex px-10 py-4 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all hover:-translate-y-1 hover:brightness-110 active:scale-95 italic text-center">
-                  Shop Now
-                </Link>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-10 text-center border border-dashed border-gray-300 rounded-xl bg-white">
+              <Package size={40} className="mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-600 font-medium">
+                No orders yet
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Start shopping to see your orders here.
+              </p>
+
+              <Link
+                href="/"
+                className="inline-block mt-6 px-6 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition"
+              >
+                Shop Now
+              </Link>
+            </div>
+          )}
         </section>
 
-        {/* QUICK NAVIGATION */}
-        <section className="p-10 rounded-[40px] border border-border bg-card/20 backdrop-blur-3xl relative overflow-hidden flex flex-col gap-10">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-primary opacity-[0.03] blur-[100px] -mr-40 -mt-40 pointer-events-none" />
+        {/* QUICK LINKS */}
+        <section>
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">
+            Account Menu
+          </h2>
 
-          <div className="relative z-10">
-            <h2 className="m-0 text-2xl font-black tracking-tight text-foreground italic uppercase flex items-center gap-3">
-              <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-              Account Menu
-            </h2>
-            <p className="mt-2 text-[10px] text-muted font-black uppercase tracking-[0.2em] opacity-60">Manage your profile and settings</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 relative z-10">
+          <div className="space-y-4">
 
             <QuickNavLink
               href="/account/addresses"
-              icon={<MapPin size={22} />}
+              icon={<MapPin size={18} />}
               title="My Addresses"
-              subtitle="Manage your saved locations"
-              color="primary"
+              subtitle="Manage your saved addresses"
             />
 
             <QuickNavLink
               href="/account/settings"
-              icon={<SettingsIcon size={22} />}
+              icon={<Settings size={18} />}
               title="Settings"
-              subtitle="Profile and security preferences"
-              color="indigo"
+              subtitle="Update profile and password"
             />
 
             <QuickNavLink
               href="/account/wishlist"
-              icon={<Heart size={22} />}
-              title="Favorites"
-              subtitle="Items you have saved for later"
-              color="red"
+              icon={<Heart size={18} />}
+              title="Wishlist"
+              subtitle="View your saved items"
             />
 
-          </div>
-
-          <div className="mt-auto pt-8 border-t border-border/50 relative z-10">
-            <div className="flex items-center justify-between text-[10px] uppercase font-black tracking-[0.3em] text-muted opacity-40">
-              <span>Member Status</span>
-              <span className="text-green-500 opacity-100 italic">Verified</span>
-            </div>
           </div>
         </section>
       </div>
@@ -205,43 +204,61 @@ export default function AccountDashboard() {
   );
 }
 
-/* STAT CARD */
-function StatCard({ icon, label, value, colorClass, hoverClass }: { icon: React.ReactNode, label: string, value: string, colorClass: string, hoverClass: string }) {
+/* ================= STAT CARD ================= */
+
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
-    <div className={`p-5 md:p-8 rounded-[28px] md:rounded-[36px] border border-border bg-card/10 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl group ${hoverClass}`}>
-      <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-8 shrink-0 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-lg ${colorClass}`}>
-        {icon}
+    <div className="p-6 rounded-xl border border-gray-200 bg-white hover:shadow-md transition">
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+          {icon}
+        </div>
       </div>
-      <p className="m-0 text-[8px] md:text-[10px] text-muted uppercase font-black tracking-[0.2em] md:tracking-[0.3em] opacity-60">{label}</p>
-      <p className="mt-1 md:mt-2 mb-0 text-3xl md:text-5xl font-black text-foreground tracking-tighter italic">{value}</p>
+
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className="text-2xl font-semibold text-gray-800 mt-1">
+        {value}
+      </p>
     </div>
   );
 }
 
-/* QUICK NAV LINK */
-function QuickNavLink({ href, icon, title, subtitle, color }: { href: string, icon: React.ReactNode, title: string, subtitle: string, color: 'primary' | 'indigo' | 'red' }) {
-  const colorStyles = {
-    primary: "bg-primary/10 text-primary hover:border-primary/50",
-    indigo: "bg-indigo-500/10 text-indigo-500 hover:border-indigo-500/50",
-    red: "bg-red-500/10 text-red-500 hover:border-red-500/50"
-  };
+/* ================= QUICK NAV LINK ================= */
 
+function QuickNavLink({
+  href,
+  icon,
+  title,
+  subtitle,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+}) {
   return (
-    <Link href={href} className={cn(
-      "group flex items-center gap-6 p-6 rounded-[24px] bg-card/30 border border-border transition-all duration-500 hover:scale-[1.02] hover:bg-card/50 shadow-sm",
-      colorStyles[color].split(' ').pop()
-    )}>
-      <div className={cn(
-        "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500 group-hover:-rotate-6 group-hover:scale-110",
-        colorStyles[color].split(' ').slice(0, 2).join(' ')
-      )}>
+    <Link
+      href={href}
+      className="flex items-center gap-4 p-5 border border-gray-200 rounded-xl bg-white hover:shadow-sm transition"
+    >
+      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
         {icon}
       </div>
+
       <div className="flex-1">
-        <p className="m-0 font-black text-lg text-foreground italic uppercase leading-tight mb-1">{title}</p>
-        <p className="text-[10px] text-muted font-black uppercase tracking-widest opacity-60">{subtitle}</p>
+        <p className="font-medium text-gray-800">{title}</p>
+        <p className="text-sm text-gray-500">{subtitle}</p>
       </div>
-      <ChevronRight size={20} className="text-muted opacity-20 transition-all duration-500 group-hover:translate-x-1 group-hover:opacity-100 group-hover:text-primary/70" />
+
+      <ChevronRight size={18} className="text-gray-400" />
     </Link>
   );
 }

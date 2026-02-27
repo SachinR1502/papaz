@@ -255,6 +255,7 @@ const getPendingUsers = async (req, res) => {
             })),
             ...pendingSuppliers.map(s => ({
                 id: s._id,
+                supplierId: s.supplierId,
                 name: s.fullName || s.user?.name,
                 type: 'supplier',
                 businessName: s.storeName,
@@ -262,16 +263,31 @@ const getPendingUsers = async (req, res) => {
                 appliedDate: s.createdAt,
                 status: 'pending',
                 phone: s.phoneNumber || s.user?.phoneNumber,
+                alternatePhoneNumber: s.alternatePhoneNumber,
                 email: s.email,
-                bankDetails: s.bankAccounts?.[0] ? {
+                gstin: s.gstin,
+                panNumber: s.panNumber,
+                aadharNumber: s.aadharNumber,
+                udyamNumber: s.udyamNumber,
+                businessCategories: s.businessCategories,
+                otherCategory: s.otherCategory,
+                kycPercentage: s.kycPercentage,
+                bankDetails: s.bankDetails || (s.bankAccounts?.[0] ? {
                     holderName: s.bankAccounts[0].accountHolderName,
                     accountNo: s.bankAccounts[0].accountNumber,
                     ifsc: s.bankAccounts[0].ifscCode,
-                    isVerified: s.bankAccounts[0].isDefault // Suppliers use isDefault logic sometimes? Or none.
-                } : null,
+                    bankName: s.bankAccounts[0].bankName
+                } : null),
                 locationName: s.locationName,
                 gpsLocation: s.location,
-                documents: []
+                documents: s.documents ? [
+                    { type: 'GST Certificate', url: s.documents.gstCertificate },
+                    { type: 'PAN Card', url: s.documents.panCard },
+                    { type: 'Aadhaar Card', url: s.documents.aadharCard },
+                    { type: 'Electricity Bill', url: s.documents.electricityBill },
+                    { type: 'Udyam Certificate', url: s.documents.udyamCertificate },
+                    { type: 'Cancelled Cheque', url: s.documents.cancelledCheque }
+                ].filter(d => d.url) : []
             }))
         ];
 

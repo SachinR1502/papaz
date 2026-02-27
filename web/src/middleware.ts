@@ -54,17 +54,6 @@ export function middleware(request: NextRequest) {
             if (userRole !== 'supplier') {
                 return NextResponse.redirect(new URL('/', request.url));
             }
-
-            const isCompleted = request.cookies.get('profile_completed')?.value === 'true';
-            const onOnboardingPage = pathname === '/supplier/onboarding';
-
-            if (!isCompleted && !onOnboardingPage) {
-                return NextResponse.redirect(new URL('/supplier/onboarding', request.url));
-            }
-
-            if (isCompleted && onOnboardingPage) {
-                return NextResponse.redirect(new URL('/supplier/dashboard', request.url));
-            }
         }
     }
 

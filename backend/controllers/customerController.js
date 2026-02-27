@@ -1329,29 +1329,43 @@ const removeFromWishlist = async (req, res) => {
 
 
 const updateProfile = asyncHandler(async (req, res) => {
-    const customer = await Customer.findOne({ user: req.user._id });
-    if (!customer) return ApiResponse.error(res, 'Customer not found', 404);
-
     const { fullName, address, city, email, notificationSettings, lat, lng, location, locationName, avatar } = req.body;
 
-    customer.notificationSettings = notificationSettings || customer.notificationSettings;
-    customer.fullName = fullName || customer.fullName;
-    customer.address = address || customer.address;
-    customer.city = city || customer.city;
-    customer.email = email || customer.email;
-    if (avatar) customer.avatar = avatar;
-    if (locationName) customer.locationName = locationName;
+    const updateData = {
+        fullName,
+        address,
+        city,
+        email,
+        notificationSettings
+    };
+
+    if (avatar) updateData.avatar = avatar;
+    if (locationName) updateData.locationName = locationName;
 
     if (location && location.coordinates) {
-        customer.location = location;
+        updateData.location = location;
     } else if (lng !== undefined && lat !== undefined) {
-        customer.location = {
+        updateData.location = {
             type: 'Point',
             coordinates: [parseFloat(lng), parseFloat(lat)]
         };
     }
 
-    await customer.save();
+    const customer = await Customer.findOneAndUpdate(
+        { user: req.user._id },
+        { $set: updateData },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    // Update the User record to reflect profile completion
+    if (req.user && !req.user.profileCompleted) {
+        const User = require('../models/User');
+        await User.findByIdAndUpdate(req.user._id, {
+            profileCompleted: true,
+            isRegistered: true
+        });
+    }
+
     return ApiResponse.success(res, customer, 'Profile updated successfully');
 });
 

@@ -64,5 +64,15 @@ export const customerService = {
     getWishlist: async () => {
         const response = await apiClient.get('/customer/wishlist');
         return response.data;
+    },
+
+    addToWishlist: async (productId: string | number) => {
+        const response = await apiClient.post(`/customer/wishlist/${productId}`);
+        return response.data;
+    },
+
+    removeFromWishlist: async (productId: string | number) => {
+        const response = await apiClient.delete(`/customer/wishlist/${productId}`);
+        return response.data;
     }
 };

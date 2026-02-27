@@ -40,9 +40,9 @@ const technicianSchema = new mongoose.Schema({
         addedAt: { type: Date, default: Date.now }
     }],
     documents: {
-        idProof: { type: Boolean, default: false },
-        garagePhoto: { type: Boolean, default: false },
-        license: { type: Boolean, default: false }
+        idProof: { type: String },
+        garagePhoto: { type: String },
+        license: { type: String }
     },
     locationName: { type: String },
     location: {
@@ -55,7 +55,19 @@ const technicianSchema = new mongoose.Schema({
         sms: { type: Boolean, default: false },
         newJobs: { type: Boolean, default: true },
         serviceUpdates: { type: Boolean, default: true }
-    }
+    },
+    inventory: [{
+        name: { type: String, required: true },
+        sku: { type: String },
+        category: { type: String },
+        quantity: { type: Number, default: 0 },
+        price: { type: Number, default: 0 },
+        description: { type: String },
+        images: [{ type: String }],
+        status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now }
+    }]
 }, { timestamps: true });
 
 technicianSchema.index({ "location": "2dsphere" });
