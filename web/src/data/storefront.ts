@@ -22,6 +22,13 @@ export const BRANDS = [
     { id: 6, name: 'Honda', logo: 'Ho' },
 ];
 
+export const VEHICLE_TYPES = [
+    { id: 1, name: 'Car', icon: '🚗' },
+    { id: 2, name: 'Two Wheeler', icon: '🏍️' },
+    { id: 3, name: 'Three Wheeler', icon: '🛺' },
+    { id: 4, name: 'Commercial Vehicle', icon: '🚛' },
+];
+
 export const FEATURED_PRODUCTS = [
     { id: 1, name: 'Brembo Brake Pads', price: 2400, rating: 4.8, image: 'https://placehold.co/400x300/1e1e1e/FFF?text=Brakes', category: 'Brakes' },
     { id: 2, name: 'Castrol Edge 5W-40', price: 3200, rating: 4.9, image: 'https://placehold.co/400x300/1e1e1e/FFF?text=Oil', category: 'Engine' },

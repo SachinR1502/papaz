@@ -59,5 +59,20 @@ export const supplierService = {
     requestWithdrawal: async (amount: number, bankAccountId?: string) => {
         const response = await apiClient.post('/supplier/wallet/withdraw', { amount, bankAccountId });
         return response.data;
+    },
+
+    getNotifications: async () => {
+        const response = await apiClient.get('/supplier/notifications');
+        return response.data;
+    },
+
+    markNotificationRead: async (id: string) => {
+        const response = await apiClient.put(`/supplier/notifications/${id}/read`);
+        return response.data;
+    },
+
+    clearNotifications: async () => {
+        const response = await apiClient.delete('/supplier/notifications');
+        return response.data;
     }
 };

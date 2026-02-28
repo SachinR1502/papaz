@@ -6,6 +6,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { CheckCircle2, Package, ArrowRight, Copy } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { cn } from '@/lib/utils';
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
@@ -31,13 +32,13 @@ function OrderSuccessContent() {
                 ...defaults,
                 particleCount,
                 origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-                colors: ['#FF8C00', '#FFBD33', '#ffffff']
+                colors: ['#f97316', '#fbbf24', '#ffffff']
             });
             confetti({
                 ...defaults,
                 particleCount,
                 origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-                colors: ['#FF8C00', '#FFBD33', '#ffffff']
+                colors: ['#f97316', '#fbbf24', '#ffffff']
             });
         }, 300);
 
@@ -51,169 +52,88 @@ function OrderSuccessContent() {
     };
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-body)' }}>
+        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
             <Navbar />
 
-            <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 80px' }}>
-                <div className="container" style={{ display: 'flex', justifyContent: 'center' }}>
-                    <div className="glass-panel success-card" style={{
-                        maxWidth: '680px',
-                        width: '100%',
-                        padding: '80px 48px',
-                        textAlign: 'center',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        borderRadius: '48px',
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border-color)',
-                        boxShadow: '0 40px 120px rgba(0,0,0,0.1)',
-                        position: 'relative',
-                        overflow: 'hidden'
-                    }}>
-                        {/* Background glow effects */}
-                        <div style={{
-                            position: 'absolute', top: '-10%', right: '-10%',
-                            width: '300px', height: '300px', background: 'var(--color-primary)', filter: 'blur(140px)', opacity: 0.1
-                        }}></div>
-
-                        <div className="success-icon-container" style={{
-                            width: '120px',
-                            height: '120px',
-                            borderRadius: '40px',
-                            background: 'var(--status-success)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            marginBottom: '40px',
-                            position: 'relative',
-                            boxShadow: '0 20px 50px rgba(52, 199, 89, 0.3)'
-                        }}>
-                            <CheckCircle2 size={60} strokeWidth={3} />
-                        </div>
-
-                        <div style={{ marginBottom: '32px' }}>
-                            <h1 style={{
-                                fontSize: 'clamp(2rem, 5vw, 3.2rem)',
-                                fontWeight: 900,
-                                lineHeight: 1,
-                                margin: 0,
-                                letterSpacing: '-2px'
-                            }}>
-                                Transmission <span style={{ color: 'var(--status-success)' }}>Successful</span>
-                            </h1>
-                            <p style={{
-                                fontSize: '1.25rem',
-                                color: 'var(--text-muted)',
-                                marginTop: '16px',
-                                fontWeight: 500,
-                                maxWidth: '500px'
-                            }}>
-                                Your procurement sequence has been finalized. Our logistics network is now synchronizing for dispatch.
-                            </p>
-                        </div>
-
-                        <div className="order-id-panel" style={{
-                            background: 'var(--bg-body)',
-                            padding: '24px 32px',
-                            borderRadius: '24px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '24px',
-                            border: '1px solid var(--border-color)',
-                            marginBottom: '48px'
-                        }}>
-                            <div style={{ textAlign: 'left' }}>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px' }}>Sequence ID</span>
-                                <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '1px' }}>#{orderId}</span>
+            <main className="flex-1 flex items-center justify-center pt-32 pb-20 px-4">
+                <div className="max-w-xl w-full">
+                    <div className="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
+                        <div className="p-8 md:p-12 text-center">
+                            {/* Icon */}
+                            <div className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mb-8 animate-in zoom-in duration-500 delay-200 shadow-lg shadow-green-100">
+                                <CheckCircle2 size={40} strokeWidth={2.5} />
                             </div>
-                            <div style={{ width: '1px', height: '40px', background: 'var(--border-color)' }}></div>
-                            <button
-                                onClick={copyOrderId}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: copied ? 'var(--status-success)' : 'var(--text-body)',
-                                    cursor: 'pointer',
-                                    padding: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '10px',
-                                    fontWeight: 800,
-                                    fontSize: '0.9rem',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                {copied ? 'Synchronized' : <><Copy size={18} /> Copy ID</>}
-                            </button>
+
+                            {/* Text */}
+                            <div className="mb-10">
+                                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
+                                    Order Placed Successfully
+                                </h1>
+                                <p className="text-gray-500 font-medium">
+                                    Thank you for your purchase. We've received your order and we're getting it ready for shipment.
+                                </p>
+                            </div>
+
+                            {/* Order ID Panel */}
+                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 flex items-center justify-between mb-10 group hover:border-orange-200 transition-colors">
+                                <div className="text-left">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Order Identifier</span>
+                                    <span className="text-xl font-bold text-gray-900">#{orderId}</span>
+                                </div>
+                                <button
+                                    onClick={copyOrderId}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                                        copied
+                                            ? "bg-green-100 text-green-600"
+                                            : "bg-white text-gray-600 border border-gray-200 hover:border-orange-500 hover:text-orange-600 shadow-sm"
+                                    )}
+                                >
+                                    {copied ? (
+                                        <>Copied!</>
+                                    ) : (
+                                        <><Copy size={14} /> Copy ID</>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Link href="/account/orders" className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-200 transition-all text-sm">
+                                    <Package size={18} />
+                                    View My Orders
+                                </Link>
+                                <Link href="/" className="flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-all text-sm shadow-lg shadow-slate-200">
+                                    Continue Shopping
+                                    <ArrowRight size={18} />
+                                </Link>
+                            </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '20px', width: '100%', flexWrap: 'wrap' }}>
-                            <Link href="/account/orders" style={{ flex: 1, minWidth: '200px' }}>
-                                <div className="btn btn-secondary" style={{
-                                    width: '100%',
-                                    padding: '20px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '12px',
-                                    borderRadius: '18px',
-                                    fontWeight: 900,
-                                    fontSize: '1.1rem'
-                                }}>
-                                    <Package size={22} /> Operations Hub
-                                </div>
-                            </Link>
-                            <Link href="/" style={{ flex: 1, minWidth: '200px' }}>
-                                <div className="btn btn-primary" style={{
-                                    width: '100%',
-                                    padding: '20px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '12px',
-                                    borderRadius: '18px',
-                                    fontWeight: 900,
-                                    fontSize: '1.1rem',
-                                    boxShadow: '0 10px 30px rgba(255,140,0,0.2)'
-                                }}>
-                                    Continue Sourcing <ArrowRight size={22} />
-                                </div>
-                            </Link>
+                        <div className="bg-orange-50 border-t border-orange-100 p-4 flex items-center justify-center gap-2">
+                            <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">A confirmation email has been sent to your inbox.</span>
                         </div>
                     </div>
+
+                    <p className="text-center mt-8 text-xs text-gray-400 font-medium">
+                        Need help with your order? <Link href="/support" className="text-orange-600 font-bold hover:underline">Contact Support</Link>
+                    </p>
                 </div>
             </main>
 
             <Footer />
-
-            <style jsx>{`
-                .success-icon-container {
-                    animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-                }
-                @keyframes popIn {
-                    from { transform: scale(0.5); opacity: 0; }
-                    to { transform: scale(1); opacity: 1; }
-                }
-                .success-card {
-                    animation: slideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-                }
-                @keyframes slideUp {
-                    from { transform: translateY(40px); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
-                }
-                .order-id-panel:hover {
-                    border-color: var(--color-primary);
-                }
-            `}</style>
         </div>
     );
 }
 
 export default function OrderSuccessPage() {
     return (
-        <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-body)', color: 'var(--text-muted)', fontWeight: 600 }}>Deciphering Sequence...</div>}>
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-gray-400">
+                <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin mb-4"></div>
+                <span className="text-sm font-bold uppercase tracking-widest">Confirming Order...</span>
+            </div>
+        }>
             <OrderSuccessContent />
         </Suspense>
     );
