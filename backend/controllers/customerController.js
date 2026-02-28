@@ -1335,9 +1335,13 @@ const getOrder = async (req, res) => {
 const getWishlist = async (req, res) => {
     try {
         const customer = await Customer.findOne({ user: req.user._id }).populate('wishlist');
-        if (!customer) return res.status(404).json({ message: 'Customer not found' });
+        if (!customer) {
+            // Return empty list if customer doesn't exist yet (not registered fully)
+            return res.json([]);
+        }
         res.json(customer.wishlist || []);
     } catch (error) {
+        console.error('[WISHLIST] Get Error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -1350,15 +1354,24 @@ const addToWishlist = async (req, res) => {
         if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
         const productId = req.params.id;
-        if (!customer.wishlist.includes(productId)) {
+        console.log(`[WISHLIST] Adding product ${productId} to customer ${customer._id}'s wishlist`);
+
+        // Use string comparison to avoid ObjectId vs String issues
+        const exists = customer.wishlist.some(id => id.toString() === productId);
+
+        if (!exists) {
             customer.wishlist.push(productId);
             await customer.save();
+            console.log(`[WISHLIST] Product added successfully`);
+        } else {
+            console.log(`[WISHLIST] Product already in wishlist`);
         }
 
         // Return full updated wishlist
         await customer.populate('wishlist');
         res.json(customer.wishlist);
     } catch (error) {
+        console.error('[WISHLIST] Add Error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
@@ -1368,7 +1381,9 @@ const addToWishlist = async (req, res) => {
 const removeFromWishlist = async (req, res) => {
     try {
         const customer = await Customer.findOne({ user: req.user._id });
-        if (!customer) return res.status(404).json({ message: 'Customer not found' });
+        if (!customer) {
+            return res.json([]);
+        }
 
         customer.wishlist = customer.wishlist.filter(id => id.toString() !== req.params.id);
         await customer.save();
@@ -1376,6 +1391,7 @@ const removeFromWishlist = async (req, res) => {
         await customer.populate('wishlist');
         res.json(customer.wishlist);
     } catch (error) {
+        console.error('[WISHLIST] Remove Error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

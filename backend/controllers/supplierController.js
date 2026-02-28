@@ -196,60 +196,86 @@ const addProduct = asyncHandler(async (req, res) => {
     if (!supplier) return ApiResponse.error(res, 'Supplier profile not found', 404);
 
     const {
-        name, category, price, image, images, description, stock,
-        compatibleModels, brand, partNumber, sku, modelNumber, gtinHsn,
+        name, category, price, image, images, stock,
+        brand, sku, modelNumber, gtinHsn,
         mfgDate, fuelType, vehicleType, compatibility, warranty, guarantee,
-        costPrice, mrp, gst, minStockLevel, warehouseLocation, video, brochure,
+        costPrice, mrp, gst, minStockLevel,
         shortDescription, specifications, installationInstructions,
         metaTitle, metaDescription, tags
     } = req.body;
 
-    // Auto-generate Product ID
+    // Auto-generate Product ID & SKU
     const nextSeq = await Counter.getNextSequence('product_id');
     const productId = `PROD${String(nextSeq).padStart(4, '0')}`;
+    const generatedSku = sku || `SKU-${String(nextSeq).padStart(6, '0')}`;
+
+    // Clean numeric values for safe DB insertion
+    const cleanNum = (val) => {
+        const n = parseFloat(val);
+        return isNaN(n) ? 0 : n;
+    };
+
+    const costPriceVal = costPrice ? cleanNum(costPrice) : undefined;
+    const priceVal = cleanNum(price);
+    const mrpVal = cleanNum(mrp);
+    const stockVal = Math.max(0, parseInt(stock) || 0);
+    const minStockVal = Math.max(0, parseInt(minStockLevel) || 5);
+    const gstVal = parseInt(gst) || 18;
 
     // Auto-generate Slug
     const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') + '-' + productId.toLowerCase();
 
-    const product = await Product.create({
+    // Transform compatibility for schema mapping
+    const formattedCompatibility = (compatibility || []).map(c => ({
+        model: c.model,
+        yearRange: { from: c.fromYear || '', to: c.toYear || '' },
+        engineType: c.engineType
+    }));
+
+    // Handle optional date field
+    const mfgDateValue = mfgDate && mfgDate !== '' ? new Date(mfgDate) : undefined;
+
+    const productData = {
         name,
         productId,
         supplier: supplier._id,
-        sku,
+        sku: generatedSku,
         brand: brand || 'Generic',
         category,
         modelNumber,
         gtinHsn,
-        mfgDate,
+        mfgDate: mfgDateValue,
         fuelType,
         vehicleType,
-        compatibility,
+        compatibility: formattedCompatibility,
         warranty,
         guarantee,
-        costPrice,
-        price, // Selling Price
-        mrp,
-        gst: gst || 18,
-        stock: stock || 0,
-        minStockLevel: minStockLevel || 5,
-        warehouseLocation,
+        costPrice: costPriceVal,
+        price: priceVal, // Selling Price
+        mrp: mrpVal,
+        gst: gstVal,
+        stock: stockVal,
+        minStockLevel: minStockVal,
         image,
         images: images || [],
-        video,
-        brochure,
         shortDescription,
-        description,
         specifications,
         installationInstructions,
         metaTitle,
         metaDescription,
         tags,
         slug,
-        approvalStatus: 'pending' // Default from schema but explicitly set here for clarity
-    });
+        approvalStatus: 'pending'
+    };
 
-    supplier.products.push(product._id);
-    await supplier.save();
+    console.log('[DEBUG] Creating product with data:', JSON.stringify(productData, null, 2));
+
+    const product = await Product.create(productData);
+
+    await Supplier.updateOne(
+        { _id: supplier._id },
+        { $push: { products: product._id } }
+    );
 
     return ApiResponse.success(res, product, 'Product added and queued for approval', 201);
 });
@@ -288,8 +314,10 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
     if (!product) return ApiResponse.error(res, 'Product not found', 404);
 
-    supplier.products = supplier.products.filter(id => id.toString() !== req.params.id);
-    await supplier.save();
+    await Supplier.updateOne(
+        { _id: supplier._id },
+        { $pull: { products: req.params.id } }
+    );
 
     return ApiResponse.success(res, null, 'Product removed successfully');
 });
@@ -427,7 +455,10 @@ const sendQuotation = asyncHandler(async (req, res) => {
         return ApiResponse.error(res, 'Order is not in a quotable state', 400);
     }
 
-    if (order.status === 'inquiry' && !order.supplier) {
+    // If it's a public inquiry or pending order and no one has claimed it, the first to send a quote claims it
+    const isClaimable = ['inquiry', 'pending'].includes(order.status) && !order.supplier;
+
+    if (isClaimable) {
         order.supplier = supplier._id;
     } else if (order.supplier && order.supplier.toString() === supplier._id.toString()) {
         // Authorized: Direct request to this supplier

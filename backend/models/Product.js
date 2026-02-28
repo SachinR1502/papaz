@@ -67,8 +67,7 @@ const ProductSchema = new mongoose.Schema({
         unit: { type: String, enum: ['Months', 'Years'] }
     },
     costPrice: {
-        type: Number,
-        required: true
+        type: Number
     },
     price: { // This is the Selling Price
         type: Number,
@@ -91,9 +90,6 @@ const ProductSchema = new mongoose.Schema({
         type: Number,
         default: 5
     },
-    warehouseLocation: {
-        type: String
-    },
     image: { // Primary Image
         type: String,
         required: true
@@ -101,18 +97,9 @@ const ProductSchema = new mongoose.Schema({
     images: [{ // Additional Images
         type: String
     }],
-    video: {
-        type: String // URL
-    },
-    brochure: {
-        type: String // URL
-    },
     shortDescription: {
         type: String,
         maxlength: 150
-    },
-    description: {
-        type: String
     },
     specifications: {
         type: mongoose.Schema.Types.Mixed // Rich JSON or String

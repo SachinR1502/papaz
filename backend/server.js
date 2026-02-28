@@ -123,9 +123,12 @@ app.use(errorHandler);
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*",
+        origin: "*", // Allows mobile & web to connect
         methods: ["GET", "POST"]
-    }
+    },
+    transports: ['polling', 'websocket'], // Important for AWS stability
+    pingTimeout: 60000, // Helps keep connection alive over long distances
+    pingInterval: 25000
 });
 
 // Set io to app
