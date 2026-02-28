@@ -9,6 +9,14 @@
   --color-secondary-rgb: 74, 20, 140;
   --color-secondary-light: #7c43bd;
 
+  --color-brand-softer: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  --color-brand-subtle: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  --color-fg-brand-strong: var(--color-primary);
+
+  --color-success-softer: color-mix(in srgb, #34C759 10%, transparent);
+  --color-success-subtle: color-mix(in srgb, #34C759 20%, transparent);
+  --color-fg-success-strong: #34C759;
+
   --color-background: var(--bg-body);
   --color-foreground: var(--text-body);
   --color-card: var(--bg-card);

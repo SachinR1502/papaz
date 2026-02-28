@@ -766,6 +766,30 @@ const getProducts = async (req, res) => {
     }
 };
 
+const getProduct = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id)
+            .populate('supplier', 'storeName fullName city rating address location');
+
+        if (!product) {
+            return ApiResponse.error(res, 'Product not found', 404);
+        }
+
+        const formattedProduct = product.toObject();
+        formattedProduct.id = formattedProduct._id;
+
+        if (formattedProduct.supplier) {
+            formattedProduct.lat = formattedProduct.supplier.location?.coordinates?.[1] || null;
+            formattedProduct.lng = formattedProduct.supplier.location?.coordinates?.[0] || null;
+        }
+
+        return ApiResponse.success(res, formattedProduct, 'Product details fetched successfully');
+    } catch (error) {
+        console.error('getProduct error:', error);
+        return ApiResponse.error(res, 'Failed to fetch product details', 500, error.message);
+    }
+};
+
 // @desc    Get Saved Addresses
 // @route   GET /api/customer/addresses
 const getAddresses = async (req, res) => {
@@ -782,12 +806,32 @@ const getAddresses = async (req, res) => {
 // @route   POST /api/customer/addresses
 const addAddress = async (req, res) => {
     try {
-        const { label, address, addressLine1, addressLine2, city, state, country, district, taluka, zipCode, phone, icon, lat, lng } = req.body;
-        const customer = await Customer.findOne({ user: req.user._id });
-        if (!customer) return res.status(404).json({ message: 'Customer not found' });
+        const { label, address, addressLine1, addressLine2, city, state, country, district, taluka, zipCode, phone, icon, lat, lng, fullName, isDefault } = req.body;
+        let customer = await Customer.findOne({ user: req.user._id });
+
+        if (!customer) {
+            console.log(`[ADD_ADDRESS] Customer not found for user ${req.user._id}. Creating new profile.`);
+            customer = new Customer({
+                user: req.user._id,
+                fullName: fullName || 'Valued Customer',
+                address: address || addressLine1 || 'Pata Likhein',
+                city: city || 'Shehar',
+                phoneNumber: phone || req.user.phoneNumber,
+                savedAddresses: []
+            });
+        } else {
+            // Self-heal: If root required fields are missing in existing profile, populate them now
+            if (!customer.address) customer.address = address || addressLine1 || 'Pata Likhein';
+            if (!customer.city) customer.city = city || 'Shehar';
+            if (!customer.fullName && fullName) customer.fullName = fullName;
+        }
 
         if (!customer.savedAddresses) {
             customer.savedAddresses = [];
+        }
+
+        if (isDefault) {
+            customer.savedAddresses.forEach(a => a.isDefault = false);
         }
 
         let fullAddress = address;
@@ -795,9 +839,9 @@ const addAddress = async (req, res) => {
             fullAddress = `${addressLine1 || ''}${addressLine2 ? ', ' + addressLine2 : ''}, ${city || ''}, ${taluka ? taluka + ', ' : ''}${district ? district + ', ' : ''}${state || ''}, ${country || ''} - ${zipCode || ''}`;
         }
 
-        const newAddress = {
+        const newAddressData = {
             label,
-            address: fullAddress, // Use provided string or constructed one
+            address: fullAddress,
             addressLine1,
             addressLine2,
             city,
@@ -813,25 +857,31 @@ const addAddress = async (req, res) => {
             location: {
                 type: 'Point',
                 coordinates: [lng ? parseFloat(lng) : 0, lat ? parseFloat(lat) : 0]
-            }
+            },
+            isDefault: isDefault || false
         };
-        customer.savedAddresses.push(newAddress);
+
+        customer.savedAddresses.push(newAddressData);
         await customer.save();
 
         return ApiResponse.success(res, customer.savedAddresses, 'Address added successfully', 201);
     } catch (error) {
+        console.error('[ADD_ADDRESS] Error:', error);
         return ApiResponse.error(res, 'Failed to add address', 500, error.message);
     }
 };
-
 const updateAddress = async (req, res) => {
     try {
-        const { label, address, addressLine1, addressLine2, city, state, country, district, taluka, division, region, zipCode, phone, icon, lat, lng } = req.body;
+        const { label, address, addressLine1, addressLine2, city, state, country, district, taluka, division, region, zipCode, phone, icon, lat, lng, isDefault } = req.body;
         const customer = await Customer.findOne({ user: req.user._id });
-        if (!customer) return res.status(404).json({ message: 'Customer not found' });
+        if (!customer) return ApiResponse.error(res, 'Customer not found', 404);
 
         const addr = customer.savedAddresses.id(req.params.id);
-        if (!addr) return res.status(404).json({ message: 'Address not found' });
+        if (!addr) return ApiResponse.error(res, 'Address not found', 404);
+
+        if (isDefault) {
+            customer.savedAddresses.forEach(a => a.isDefault = false);
+        }
 
         addr.label = label || addr.label;
 
@@ -853,6 +903,7 @@ const updateAddress = async (req, res) => {
         addr.zipCode = zipCode || addr.zipCode;
         addr.phone = phone || addr.phone;
         addr.icon = icon || addr.icon;
+        addr.isDefault = isDefault !== undefined ? isDefault : addr.isDefault;
 
         if (lng !== undefined && lat !== undefined) {
             addr.location = {
@@ -862,23 +913,25 @@ const updateAddress = async (req, res) => {
         }
 
         await customer.save();
-        res.json(customer.savedAddresses);
+        return ApiResponse.success(res, customer.savedAddresses, 'Address updated successfully');
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('[UPDATE_ADDRESS] Error:', error);
+        return ApiResponse.error(res, 'Failed to update address', 500, error.message);
     }
 };
 
 const removeAddress = async (req, res) => {
     try {
         const customer = await Customer.findOne({ user: req.user._id });
-        if (!customer) return res.status(404).json({ message: 'Customer not found' });
+        if (!customer) return ApiResponse.error(res, 'Customer not found', 404);
 
         customer.savedAddresses = customer.savedAddresses.filter(a => a._id.toString() !== req.params.id);
         await customer.save();
 
-        res.json(customer.savedAddresses);
+        return ApiResponse.success(res, customer.savedAddresses, 'Address removed successfully');
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('[REMOVE_ADDRESS] Error:', error);
+        return ApiResponse.error(res, 'Failed to remove address', 500, error.message);
     }
 };
 
@@ -1657,6 +1710,7 @@ module.exports = {
     updateAddress,
     removeAddress,
     getProducts,
+    getProduct,
     createOrder: createProductOrder,
     getOrders,
     getOrder,

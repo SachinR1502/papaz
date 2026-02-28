@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import apiClient from '@/services/apiClient';
 import { useRouter } from 'next/navigation';
+import { authService } from '@/services/authService';
 
 interface User {
     id: string;
@@ -20,6 +21,7 @@ interface AuthContextType {
     isLoading: boolean;
     login: (token: string, userData: any) => void;
     logout: () => void;
+    refreshUser: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
     isLoading: true,
     login: () => { },
     logout: () => { },
+    refreshUser: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -44,23 +47,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const checkAuth = async () => {
-        try {
-            console.log('[AUTH] Checking session...');
-            const token = localStorage.getItem('auth_token');
-            const storedUser = localStorage.getItem('user_data');
+        const storedToken = localStorage.getItem('auth_token');
+        const storedUser = localStorage.getItem('user_data');
 
-            if (token && storedUser) {
-                const parsedUser = JSON.parse(storedUser);
-                console.log('[AUTH] Session found:', parsedUser.role);
-                setUser(parsedUser);
-                setToken(token);
-            } else {
-                console.log('[AUTH] No session found');
+        if (storedToken) {
+            setToken(storedToken);
+            if (storedUser) {
+                setUser(JSON.parse(storedUser));
             }
-        } catch (e) {
-            console.error('[AUTH] Check error:', e);
-        } finally {
-            setIsLoading(false);
+            // Fetch latest data from backend
+            try {
+                const response = await authService.getMe();
+                if (response?.data) {
+                    const userData = response.data;
+                    const role = userData.role?.toLowerCase() || 'customer';
+                    const standardizedUser = { ...userData, role };
+                    setUser(standardizedUser);
+                    localStorage.setItem('user_data', JSON.stringify(standardizedUser));
+                }
+            } catch (err) {
+                console.error('[AUTH] Failed to refresh user data:', err);
+                // If 401, token might be expired
+                if ((err as any).response?.status === 401) {
+                    logout();
+                }
+            }
+        }
+        setIsLoading(false);
+    };
+
+    const refreshUser = async () => {
+        try {
+            const response = await authService.getMe();
+            if (response?.data) {
+                const userData = response.data;
+                const role = userData.role?.toLowerCase() || 'customer';
+                const standardizedUser = { ...userData, role };
+                setUser(standardizedUser);
+                localStorage.setItem('user_data', JSON.stringify(standardizedUser));
+                return standardizedUser;
+            }
+        } catch (err) {
+            console.error('[AUTH] Refresh failed:', err);
         }
     };
 
@@ -127,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [isLoading, user]);
 
     return (
-        <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, isLoading, login, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

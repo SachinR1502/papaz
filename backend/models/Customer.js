@@ -30,7 +30,8 @@ const customerSchema = new mongoose.Schema({
         location: {
             type: { type: String, enum: ['Point'], default: 'Point' },
             coordinates: { type: [Number], default: [0, 0] } // [lng, lat]
-        }
+        },
+        isDefault: { type: Boolean, default: false }
     }],
     locationName: { type: String },
     location: {

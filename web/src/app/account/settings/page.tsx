@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   User,
@@ -16,27 +16,36 @@ import {
 import { authService } from '@/services/authService';
 
 export default function SettingsPage() {
-  const { user, login } = useAuth();
+  const { user, login, refreshUser, isLoading: isAuthLoading } = useAuth();
 
-  const [name, setName] = useState(
-    user?.profile?.fullName || user?.name || ''
-  );
-  const [email, setEmail] = useState(
-    user?.profile?.email || user?.email || ''
-  );
-  const [phone, setPhone] = useState(
-    user?.profile?.phone || user?.phoneNumber || ''
-  );
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Password
+  // Sync state with user data when it's available or changes
+  useEffect(() => {
+    if (user?.profile) {
+      setName(user.profile.fullName || '');
+      setEmail(user.profile.email || '');
+      setPhone(user.profile.phone || '');
+    }
+  }, [user]);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] =
-    useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,16 +60,8 @@ export default function SettingsPage() {
 
       toast.success('Profile updated successfully');
 
-      if (login && user) {
-        login(localStorage.getItem('auth_token') || '', {
-          ...user,
-          profile: {
-            ...user.profile,
-            fullName: name,
-            email,
-            phone
-          }
-        });
+      if (refreshUser) {
+        await refreshUser();
       }
     } catch (err: any) {
       toast.error(
@@ -75,6 +76,10 @@ export default function SettingsPage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!newPassword || !confirmPassword) {
+      return toast.error('Please enter new password');
+    }
+
     if (newPassword !== confirmPassword) {
       return toast.error('Passwords do not match');
     }
@@ -82,34 +87,41 @@ export default function SettingsPage() {
     setIsChangingPassword(true);
 
     try {
-      await new Promise(r => setTimeout(r, 800)); // mock
+      await authService.changePassword({
+        oldPassword: currentPassword,
+        newPassword: newPassword
+      });
+
       toast.success('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch {
-      toast.error('Failed to update password');
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message ||
+        'Failed to update password'
+      );
     } finally {
       setIsChangingPassword(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-10 max-w-4xl">
+    <div className="max-w-5xl mx-auto space-y-10">
 
-      {/* HEADER */}
-      <header>
-        <h1 className="text-3xl font-semibold text-gray-800">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
           Account Settings
         </h1>
-        <p className="mt-2 text-gray-500">
-          Update your personal details and password.
+        <p className="text-gray-500 mt-2">
+          Manage your profile information and security.
         </p>
-      </header>
+      </div>
 
-      {/* PROFILE SECTION */}
-      <section className="p-8 border border-gray-200 rounded-xl bg-white space-y-8">
-        <h2 className="text-lg font-semibold text-gray-800">
+      {/* Profile Card */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900 mb-6">
           Personal Information
         </h2>
 
@@ -126,7 +138,7 @@ export default function SettingsPage() {
           />
 
           <InputField
-            label="Email"
+            label="Email Address"
             icon={<Mail size={16} />}
             value={email}
             onChange={setEmail}
@@ -135,38 +147,36 @@ export default function SettingsPage() {
           />
 
           <InputField
-            label="Phone"
+            label="Phone Number"
             icon={<Phone size={16} />}
             value={phone}
             onChange={setPhone}
             type="tel"
           />
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
               disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition disabled:opacity-50"
             >
               <Save size={16} />
               {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>
-      </section>
+      </div>
 
-      {/* PASSWORD SECTION */}
-      <section className="p-8 border border-gray-200 rounded-xl bg-white space-y-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800">
+      {/* Password Card */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-gray-900">
             Change Password
           </h2>
 
           <button
             type="button"
-            onClick={() =>
-              setShowPasswords(prev => !prev)
-            }
+            onClick={() => setShowPasswords(prev => !prev)}
             className="text-gray-500 hover:text-gray-700"
           >
             {showPasswords ? (
@@ -207,11 +217,11 @@ export default function SettingsPage() {
             type={showPasswords ? 'text' : 'password'}
           />
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
               disabled={isChangingPassword}
-              className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50"
             >
               <ShieldCheck size={16} />
               {isChangingPassword
@@ -220,12 +230,13 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
-      </section>
+      </div>
     </div>
   );
 }
 
-/* INPUT FIELD */
+/* Input Field Component */
+
 function InputField({
   label,
   icon,
@@ -250,7 +261,7 @@ function InputField({
           value={value}
           onChange={e => onChange(e.target.value)}
           required={required}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
         />
       </div>
     </div>

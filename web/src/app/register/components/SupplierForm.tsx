@@ -1,24 +1,30 @@
 'use client';
 
-import React from 'react';
-import { Store, User, MapPin, Hash, ShieldCheck, CreditCard, FileText, Building2 } from 'lucide-react';
+import {
+    Store,
+    User,
+    MapPin,
+    Hash,
+    ShieldCheck,
+    CreditCard,
+    FileText,
+    Building2,
+    ChevronRight,
+    Check
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AuthInput, OnboardingUploader } from './Shared';
+import { toast } from 'sonner';
 
-const SUPPLIER_CATEGORIES = ['Two Wheeler Parts', 'Three Wheeler Parts', 'Four Wheeler Parts', 'Commercial Vehicles', 'Electric Vehicle Parts', 'EV Accessories', 'Other'];
-
-interface SupplierFormProps {
-    onboardingStep: number;
-    setOnboardingStep: (step: number) => void;
-    details: any;
-    setDetails: (details: any) => void;
-    isUploading: string | null;
-    handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>, field: string) => void;
-    finishRegistration: () => void;
-    isLoading: boolean;
-    form: any;
-    setForm: (form: any) => void;
-}
+const SUPPLIER_CATEGORIES = [
+    'Two Wheeler Parts',
+    'Three Wheeler Parts',
+    'Four Wheeler Parts',
+    'Commercial Vehicles',
+    'Electric Vehicle Parts',
+    'EV Accessories',
+    'Other'
+];
 
 export function SupplierForm({
     onboardingStep,
@@ -31,66 +37,369 @@ export function SupplierForm({
     isLoading,
     form,
     setForm
-}: SupplierFormProps) {
-    return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            {onboardingStep === 1 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <AuthInput label="Store Name" value={details.storeName} onChange={v => setDetails({ ...details, storeName: v })} icon={<Store size={18} />} />
-                    <AuthInput label="Proprietor Name" value={form.fullName} onChange={v => setForm({ ...form, fullName: v })} icon={<User size={18} />} />
-                    <AuthInput label="Operating City" value={details.city} onChange={v => setDetails({ ...details, city: v })} icon={<MapPin size={18} />} />
-                    <AuthInput label="Operating State" value={details.state} onChange={v => setDetails({ ...details, state: v })} icon={<MapPin size={18} />} />
-                    <AuthInput label="Pincode" value={details.zipCode} onChange={v => setDetails({ ...details, zipCode: v })} icon={<Hash size={18} />} />
-                    <div className="col-span-1 md:col-span-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1 mb-2 block">Complete Business Address</label>
-                        <textarea value={details.address} onChange={e => setDetails({ ...details, address: e.target.value })} className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 text-sm font-bold min-h-[100px] outline-none focus:border-orange-500 transition-all" />
-                    </div>
-                </div>
-            )}
-            {onboardingStep === 2 && (
-                <div className="space-y-6">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted block ml-1">Supplied Categories</label>
-                    <div className="grid grid-cols-2 gap-2">
-                        {SUPPLIER_CATEGORIES.map(cat => (
-                            <button key={cat} type="button" onClick={() => setDetails({ ...details, businessCategories: details.businessCategories.includes(cat) ? details.businessCategories.filter((c: any) => c !== cat) : [...details.businessCategories, cat] })} className={cn("py-3 px-2 rounded-xl text-[10px] font-black uppercase border transition-all text-left truncate", details.businessCategories.includes(cat) ? "bg-orange-500 border-orange-500 text-white" : "border-white/10 text-muted")}>{cat}</button>
-                        ))}
-                    </div>
-                </div>
-            )}
-            {onboardingStep === 3 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <AuthInput label="GSTIN" value={details.gstin} onChange={v => setDetails({ ...details, gstin: v })} icon={<ShieldCheck size={18} />} />
-                    <AuthInput label="PAN" value={details.panNo} onChange={v => setDetails({ ...details, panNo: v })} icon={<CreditCard size={18} />} />
-                    <AuthInput label="Aadhaar" value={details.aadharNo} onChange={v => setDetails({ ...details, aadharNo: v })} icon={<User size={18} />} />
-                    <AuthInput label="UDYAM Number" value={details.udyamNumber} onChange={v => setDetails({ ...details, udyamNumber: v })} icon={<FileText size={18} />} />
-                </div>
-            )}
-            {onboardingStep === 4 && (
-                <div className="grid grid-cols-2 gap-4">
-                    <OnboardingUploader label="GST Cert" value={details.documents.gstCertificate} isUploading={isUploading === 'gstCertificate'} onUpload={e => handleFileUpload(e, 'gstCertificate')} />
-                    <OnboardingUploader label="PAN Card" value={details.documents.panCard} isUploading={isUploading === 'panCard'} onUpload={e => handleFileUpload(e, 'panCard')} />
-                    <OnboardingUploader label="Aadhaar" value={details.documents.aadharCard} isUploading={isUploading === 'aadharCard'} onUpload={e => handleFileUpload(e, 'aadharCard')} />
-                    <OnboardingUploader label="Cheque" value={details.documents.cancelledCheque} isUploading={isUploading === 'cancelledCheque'} onUpload={e => handleFileUpload(e, 'cancelledCheque')} />
-                </div>
-            )}
-            {onboardingStep === 5 && (
-                <div className="space-y-4">
-                    <AuthInput label="Bank Name" value={details.bankDetails.bankName} onChange={v => setDetails({ ...details, bankDetails: { ...details.bankDetails, bankName: v } })} icon={<Building2 size={18} />} />
-                    <AuthInput label="Account No" value={details.bankDetails.accountNo} onChange={v => setDetails({ ...details, bankDetails: { ...details.bankDetails, accountNo: v } })} icon={<Hash size={18} />} />
-                    <label className="flex items-start gap-3 p-4 bg-white/5 rounded-2xl cursor-pointer">
-                        <input type="checkbox" className="mt-1 accent-orange-500" checked={details.agreedToPlatformTerms} onChange={e => setDetails({ ...details, agreedToPlatformTerms: e.target.checked })} />
-                        <span className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">I agree to platform terms and verify all business identities.</span>
-                    </label>
-                </div>
-            )}
+}: any) {
+    const totalSteps = 5;
 
-            <div className="flex justify-between pt-8">
-                {onboardingStep > 1 && <button type="button" onClick={() => setOnboardingStep(onboardingStep - 1)} className="px-6 py-3 rounded-xl border border-white/10 text-[10px] font-black uppercase text-muted hover:text-white transition-all">Back</button>}
-                <div className="flex-1" />
-                {onboardingStep < 5 ? (
-                    <button type="button" onClick={() => setOnboardingStep(onboardingStep + 1)} className="px-8 py-4 bg-orange-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-orange-500/20 active:scale-95 transition-all">Next Stage</button>
+    const validateAndContinue = () => {
+        if (onboardingStep === 1) {
+            if (!details.storeName) return toast.error("Store Name is required");
+            if (!form.fullName) return toast.error("Owner Name is required");
+            if (!details.city) return toast.error("City is required");
+            if (!details.address) return toast.error("Address is required");
+        }
+        if (onboardingStep === 2) {
+            if (details.businessCategories.length === 0) return toast.error("Select at least one category");
+        }
+        if (onboardingStep === 3) {
+            if (!details.gstin) return toast.error("GSTIN is required");
+            if (!details.panNo) return toast.error("PAN is required");
+            if (!details.aadharNo) return toast.error("Aadhaar is required");
+        }
+        if (onboardingStep === 5) {
+            if (!details.bankDetails.holderName || !details.bankDetails.accountNo) return toast.error("Bank details are required");
+        }
+
+        setOnboardingStep(onboardingStep + 1);
+    };
+
+    return (
+        <div className="space-y-8">
+
+            {/* Step Header */}
+            <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-gray-900">
+                    Step {onboardingStep} of {totalSteps}
+                </h3>
+                <div className="flex gap-2">
+                    {[...Array(totalSteps)].map((_, i) => (
+                        <div
+                            key={i}
+                            className={`h-2 flex-1 rounded-full ${onboardingStep > i
+                                ? 'bg-orange-500'
+                                : 'bg-gray-200'
+                                }`}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* Step Card */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-sm">
+
+                {/* STEP 1 */}
+                {onboardingStep === 1 && (
+                    <div className="space-y-6">
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Business Information
+                        </h4>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <AuthInput
+                                label="Store Name"
+                                required
+                                value={details.storeName}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, storeName: v })
+                                }
+                                icon={<Store size={16} />}
+                            />
+
+                            <AuthInput
+                                label="Owner Name"
+                                required
+                                value={form.fullName}
+                                onChange={(v: string) =>
+                                    setForm({ ...form, fullName: v })
+                                }
+                                icon={<User size={16} />}
+                            />
+
+                            <AuthInput
+                                label="City"
+                                required
+                                value={details.city}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, city: v })
+                                }
+                                icon={<MapPin size={16} />}
+                            />
+
+                            <AuthInput
+                                label="State"
+                                value={details.state}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, state: v })
+                                }
+                                icon={<MapPin size={16} />}
+                            />
+
+                            <AuthInput
+                                label="Pincode"
+                                value={details.zipCode}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, zipCode: v })
+                                }
+                                icon={<Hash size={16} />}
+                            />
+
+                            <div className="md:col-span-2 space-y-2">
+                                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 ml-1">
+                                    Business Address <span className="text-orange-500">*</span>
+                                </label>
+                                <textarea
+                                    value={details.address}
+                                    required
+                                    onChange={(e) =>
+                                        setDetails({
+                                            ...details,
+                                            address: e.target.value
+                                        })
+                                    }
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 outline-none transition font-medium"
+                                    rows={3}
+                                    placeholder="Enter full business address"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 2 */}
+                {onboardingStep === 2 && (
+                    <div className="space-y-6">
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Product Categories <span className="text-orange-500 text-xs">*</span>
+                        </h4>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {SUPPLIER_CATEGORIES.map((cat) => {
+                                const selected =
+                                    details.businessCategories.includes(cat);
+
+                                return (
+                                    <button
+                                        key={cat}
+                                        type="button"
+                                        onClick={() =>
+                                            setDetails({
+                                                ...details,
+                                                businessCategories: selected
+                                                    ? details.businessCategories.filter(
+                                                        (c: any) => c !== cat
+                                                    )
+                                                    : [...details.businessCategories, cat]
+                                            })
+                                        }
+                                        className={cn(
+                                            "py-3 text-[11px] font-bold uppercase tracking-wider rounded-lg border transition",
+                                            selected
+                                                ? "bg-orange-500 text-white border-orange-500"
+                                                : "bg-white border-gray-200 text-gray-600 hover:border-orange-200 hover:bg-orange-50/30"
+                                        )}
+                                    >
+                                        {cat}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 3 */}
+                {onboardingStep === 3 && (
+                    <div className="space-y-6">
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Legal & Tax Details
+                        </h4>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <AuthInput
+                                label="GSTIN"
+                                required
+                                value={details.gstin}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, gstin: v })
+                                }
+                                icon={<ShieldCheck size={16} />}
+                            />
+
+                            <AuthInput
+                                label="PAN Number"
+                                required
+                                value={details.panNo}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, panNo: v })
+                                }
+                                icon={<CreditCard size={16} />}
+                            />
+
+                            <AuthInput
+                                label="Aadhaar"
+                                required
+                                value={details.aadharNo}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, aadharNo: v })
+                                }
+                                icon={<User size={16} />}
+                            />
+
+                            <AuthInput
+                                label="UDYAM Number"
+                                value={details.udyamNumber}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, udyamNumber: v })
+                                }
+                                icon={<FileText size={16} />}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 4 */}
+                {onboardingStep === 4 && (
+                    <div className="space-y-6">
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Upload Documents
+                        </h4>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <OnboardingUploader
+                                label="GST Certificate"
+                                value={details.documents.gstCertificate}
+                                isUploading={isUploading === 'gstCertificate'}
+                                onUpload={(e: any) =>
+                                    handleFileUpload(e, 'gstCertificate')
+                                }
+                            />
+                            <OnboardingUploader
+                                label="PAN Card"
+                                value={details.documents.panCard}
+                                isUploading={isUploading === 'panCard'}
+                                onUpload={(e: any) =>
+                                    handleFileUpload(e, 'panCard')
+                                }
+                            />
+                            <OnboardingUploader
+                                label="Aadhaar"
+                                value={details.documents.aadharCard}
+                                isUploading={isUploading === 'aadharCard'}
+                                onUpload={(e: any) =>
+                                    handleFileUpload(e, 'aadharCard')
+                                }
+                            />
+                            <OnboardingUploader
+                                label="Cancelled Cheque"
+                                value={details.documents.cancelledCheque}
+                                isUploading={isUploading === 'cancelledCheque'}
+                                onUpload={(e: any) =>
+                                    handleFileUpload(e, 'cancelledCheque')
+                                }
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 5 */}
+                {onboardingStep === 5 && (
+                    <div className="space-y-6">
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Bank Details
+                        </h4>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <AuthInput
+                                label="Bank Name"
+                                required
+                                value={details.bankDetails.bankName}
+                                onChange={(v: string) =>
+                                    setDetails({
+                                        ...details,
+                                        bankDetails: {
+                                            ...details.bankDetails,
+                                            bankName: v
+                                        }
+                                    })
+                                }
+                                icon={<Building2 size={16} />}
+                            />
+
+                            <AuthInput
+                                label="Account Number"
+                                required
+                                value={details.bankDetails.accountNo}
+                                onChange={(v: string) =>
+                                    setDetails({
+                                        ...details,
+                                        bankDetails: {
+                                            ...details.bankDetails,
+                                            accountNo: v
+                                        }
+                                    })
+                                }
+                                icon={<Hash size={16} />}
+                            />
+                        </div>
+
+                        <label className="flex items-center gap-3 text-sm text-gray-600 cursor-pointer group">
+                            <input
+                                type="checkbox"
+                                checked={details.agreedToPlatformTerms}
+                                onChange={(e) =>
+                                    setDetails({
+                                        ...details,
+                                        agreedToPlatformTerms:
+                                            e.target.checked
+                                    })
+                                }
+                                className="w-5 h-5 rounded-md border-gray-300 text-orange-500 focus:ring-orange-500 accent-orange-500"
+                            />
+                            <span className="font-medium group-hover:text-gray-900 transition-colors">
+                                I agree to platform terms and confirm all
+                                details are correct.
+                            </span>
+                        </label>
+                    </div>
+                )}
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between items-center px-2">
+                {onboardingStep > 1 ? (
+                    <button
+                        type="button"
+                        onClick={() =>
+                            setOnboardingStep(onboardingStep - 1)
+                        }
+                        className="text-sm font-bold text-gray-500 hover:text-gray-900 transition flex items-center gap-2"
+                    >
+                        Back
+                    </button>
                 ) : (
-                    <button type="button" onClick={finishRegistration} disabled={!details.agreedToPlatformTerms || isLoading} className="px-8 py-4 bg-orange-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-orange-500/20 active:scale-95 transition-all">Activate Partner</button>
+                    <div />
+                )}
+
+                {onboardingStep < totalSteps ? (
+                    <button
+                        type="button"
+                        onClick={validateAndContinue}
+                        className="px-8 py-3 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition shadow-lg shadow-orange-100 flex items-center gap-2 active:scale-95"
+                    >
+                        Continue <ChevronRight size={18} />
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={finishRegistration}
+                        disabled={
+                            !details.agreedToPlatformTerms ||
+                            isLoading
+                        }
+                        className="px-8 py-3 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-black transition disabled:opacity-50 shadow-lg shadow-gray-200 active:scale-95"
+                    >
+                        {isLoading
+                            ? 'Processing...'
+                            : 'Activate Account'}
+                    </button>
                 )}
             </div>
         </div>

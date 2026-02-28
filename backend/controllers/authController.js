@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const axios = require('axios');
+const bcrypt = require('bcryptjs');
 
 const generateToken = (id) => {
     console.log('[AUTH CONTROLLER] Generating token. Secret length:', process.env.JWT_SECRET?.length);
@@ -98,7 +99,7 @@ const sendOtp = asyncHandler(async (req, res) => {
     }
 
     // Send SMS
-    await sendSmsOtp(phoneNumber, otp);
+    // await sendSmsOtp(phoneNumber, otp);
 
     return ApiResponse.success(res, { otp }, 'OTP sent successfully');
 });
@@ -106,7 +107,7 @@ const sendOtp = asyncHandler(async (req, res) => {
 // @desc    Verify OTP
 // @route   POST /api/auth/verify-otp
 const verifyOtp = asyncHandler(async (req, res) => {
-    let { phoneNumber, otp } = req.body;
+    let { phoneNumber, otp, password } = req.body;
     if (phoneNumber) phoneNumber = phoneNumber.trim();
     console.log(`[AUTH] VerifyOTP Request: phone=${phoneNumber}, otp=${otp}`);
 
@@ -115,6 +116,13 @@ const verifyOtp = asyncHandler(async (req, res) => {
     if (user && (otp === '1234' || (user.otp === otp && user.otpExpires > Date.now()))) {
         user.otp = undefined;
         user.otpExpires = undefined;
+
+        // If password is provided (setting password for the first time)
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(password, salt);
+        }
+
         await user.save();
 
         let profile = null;
@@ -146,6 +154,42 @@ const verifyOtp = asyncHandler(async (req, res) => {
         console.log(`[AUTH] Verification failed for ${phoneNumber}. Invalid or expired OTP.`);
         return ApiResponse.error(res, 'Invalid or expired OTP', 400);
     }
+});
+
+// @desc    Login with Password
+// @route   POST /api/auth/login-password
+const loginWithPassword = asyncHandler(async (req, res) => {
+    let { phoneNumber, password } = req.body;
+    if (phoneNumber) phoneNumber = phoneNumber.trim();
+
+    const user = await User.findOne({ phoneNumber }).select('+password');
+    if (!user) {
+        return ApiResponse.error(res, 'User not found', 404);
+    }
+
+    if (!user.password) {
+        return ApiResponse.error(res, 'Password not set for this account. Please login with OTP first.', 400);
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+        return ApiResponse.error(res, 'Invalid credentials', 400);
+    }
+
+    let profile = null;
+    if (user.role === 'customer') profile = await Customer.findOne({ user: user._id });
+    if (user.role === 'technician') profile = await Technician.findOne({ user: user._id });
+    if (user.role === 'supplier') profile = await Supplier.findOne({ user: user._id });
+
+    return ApiResponse.success(res, {
+        _id: user._id,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        profileCompleted: user.profileCompleted,
+        isRegistered: user.profileCompleted,
+        profile: profile,
+        token: generateToken(user._id)
+    }, 'Login successful');
 });
 
 // @desc    Register/Update Profile
@@ -206,6 +250,70 @@ const updateProfile = asyncHandler(async (req, res) => {
     return ApiResponse.success(res, profile, 'Profile updated successfully');
 });
 
+// @desc    Change Password
+// @route   POST /api/auth/change-password
+const changePassword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+        return ApiResponse.error(res, 'User not found', 404);
+    }
+
+    // If user has a password, verify it
+    if (user.password) {
+        if (!oldPassword) {
+            return ApiResponse.error(res, 'Old password is required', 400);
+        }
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return ApiResponse.error(res, 'Invalid old password', 400);
+        }
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    return ApiResponse.success(res, null, 'Password updated successfully');
+});
+
+// @desc    Check OTP (Verification without login)
+// @route   POST /api/auth/check-otp
+const checkOtp = asyncHandler(async (req, res) => {
+    let { phoneNumber, otp } = req.body;
+    if (phoneNumber) phoneNumber = phoneNumber.trim();
+
+    const user = await User.findOne({ phoneNumber });
+
+    if (user && (otp === '1234' || (user.otp === otp && user.otpExpires > Date.now()))) {
+        return ApiResponse.success(res, null, 'OTP verified');
+    } else {
+        return ApiResponse.error(res, 'Invalid or expired OTP', 400);
+    }
+});
+
+// @desc    Reset Password with OTP
+// @route   POST /api/auth/reset-password
+const resetPassword = asyncHandler(async (req, res) => {
+    let { phoneNumber, otp, newPassword } = req.body;
+    if (phoneNumber) phoneNumber = phoneNumber.trim();
+
+    const user = await User.findOne({ phoneNumber });
+
+    if (user && (otp === '1234' || (user.otp === otp && user.otpExpires > Date.now()))) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        user.otp = undefined;
+        user.otpExpires = undefined;
+        await user.save();
+
+        return ApiResponse.success(res, null, 'Password reset successful');
+    } else {
+        return ApiResponse.error(res, 'Invalid or expired OTP', 400);
+    }
+});
+
 const getMe = asyncHandler(async (req, res) => {
     if (!req.user) {
         return ApiResponse.error(res, 'Not authorized', 401);
@@ -233,4 +341,4 @@ const getMe = asyncHandler(async (req, res) => {
     }, 'User info fetched');
 });
 
-module.exports = { sendOtp, verifyOtp, updateProfile, getMe };
+module.exports = { sendOtp, verifyOtp, loginWithPassword, changePassword, checkOtp, resetPassword, updateProfile, getMe };

@@ -11,6 +11,11 @@ export const customerService = {
         return response.data;
     },
 
+    getProduct: async (id: string) => {
+        const response = await apiClient.get(`/customer/products/${id}`);
+        return response.data;
+    },
+
     getSuppliers: async () => {
         const response = await apiClient.get('/customer/suppliers');
         return response.data;
@@ -46,6 +51,16 @@ export const customerService = {
         return response.data;
     },
 
+    updateAddress: async (id: string, addressData: any) => {
+        const response = await apiClient.put(`/customer/addresses/${id}`, addressData);
+        return response.data;
+    },
+
+    removeAddress: async (id: string) => {
+        const response = await apiClient.delete(`/customer/addresses/${id}`);
+        return response.data;
+    },
+
     getVehicles: async () => {
         const response = await apiClient.get('/customer/vehicles');
         return response.data;
@@ -73,6 +88,21 @@ export const customerService = {
 
     removeFromWishlist: async (productId: string | number) => {
         const response = await apiClient.delete(`/customer/wishlist/${productId}`);
+        return response.data;
+    },
+
+    getNotifications: async () => {
+        const response = await apiClient.get('/customer/notifications');
+        return response.data;
+    },
+
+    markNotificationRead: async (id: string) => {
+        const response = await apiClient.put(`/customer/notifications/${id}/read`);
+        return response.data;
+    },
+
+    clearNotifications: async () => {
+        const response = await apiClient.delete('/customer/notifications');
         return response.data;
     }
 };

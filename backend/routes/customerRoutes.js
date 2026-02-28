@@ -19,6 +19,7 @@ const {
     updateAddress,
     removeAddress,
     getProducts,
+    getProduct,
     createOrder,
     getOrders,
     getOrder,
@@ -60,6 +61,7 @@ router.get('/vehicles/:id/history', protect, getVehicleHistory);
 router.get('/garages', protect, getGarages);
 router.get('/suppliers', protect, getSuppliers);
 router.get('/products', getProducts);
+router.get('/products/:id', getProduct);
 router.post('/orders', protect, createOrder);
 router.get('/orders', protect, getOrders);
 router.get('/orders/:id', protect, getOrder);

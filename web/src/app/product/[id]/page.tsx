@@ -1,125 +1,243 @@
 'use client';
+
 import { useParams } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import { useCart } from '@/context/CartContext';
-import { useState } from 'react';
-
-// Mock data fetch helper
-const getProduct = (id: string) => {
-    return {
-        id,
-        name: 'Brembo High Performance Brake Pads',
-        price: 3500,
-        rating: 4.9,
-        reviews: 128,
-        category: 'Brakes',
-        brand: 'Brembo',
-        description: 'Brembo High Performance brake pads provide incredible stopping power and consistent performance under extreme conditions. Designed for luxury vehicles and performance-oriented driving.',
-        specs: [
-            { key: 'Material', value: 'Semi-Metallic' },
-            { key: 'Vehicle Compatibility', value: 'BMW 3 Series, Audi A4, Mercedes C-Class' },
-            { key: 'Wear Indicator', value: 'Electronic' },
-            { key: 'Position', value: 'Front Axle' }
-        ],
-        images: [
-            'https://placehold.co/800x600/1e1e1e/FFF?text=Main+Image',
-            'https://placehold.co/800x600/1e1e1e/FFF?text=Close+Up',
-            'https://placehold.co/800x600/1e1e1e/FFF?text=Label'
-        ]
-    };
-};
+import { useEffect, useState } from 'react';
+import { customerService } from '@/services/customerService';
+import { toast } from 'sonner';
+import {
+    Heart,
+    ShoppingCart,
+    Star,
+    ShieldCheck,
+    Truck,
+    Package,
+    ChevronRight
+} from 'lucide-react';
+import Link from 'next/link';
 
 export default function ProductDetail() {
     const { id } = useParams();
-    const product = getProduct(id as string);
     const { addToCart } = useCart();
+
+    const [product, setProduct] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
+    const [isWishlisted, setIsWishlisted] = useState(false);
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+    useEffect(() => {
+        if (id) fetchProduct();
+    }, [id]);
+
+    const fetchProduct = async () => {
+        try {
+            setLoading(true);
+            const res = await customerService.getProduct(id as string);
+            setProduct(res.data || res);
+        } catch {
+            toast.error('Failed to load product');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddToCart = () => {
+        setIsAddingToCart(true);
+        addToCart({
+            ...product,
+            image: product.image || product.images?.[0]
+        });
+        toast.success('Added to cart');
+        setIsAddingToCart(false);
+    };
+
+    const handleWishlist = async () => {
+        try {
+            await customerService.addToWishlist(id as string);
+            setIsWishlisted(true);
+            toast.success('Added to wishlist');
+        } catch {
+            toast.error('Failed to add to wishlist');
+        }
+    };
+
+    if (loading || !product) return null;
+
+    const images =
+        product.images?.length > 0
+            ? product.images
+            : [product.image || 'https://via.placeholder.com/800'];
+
+    const discount = product.originalPrice
+        ? Math.round(
+            ((product.originalPrice - product.price) /
+                product.originalPrice) *
+            100
+        )
+        : 0;
 
     return (
-        <main style={{ minHeight: '100vh', background: 'var(--bg-body)' }}>
+        <main className="min-h-screen bg-gray-50">
             <Navbar />
 
-            <div className="container" style={{ padding: '60px 24px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '60px' }}>
+            {/* Breadcrumb */}
+            <div className="max-w-7xl mx-auto px-4 py-6 text-sm text-gray-500 flex items-center gap-2">
+                <Link href="/" className="hover:text-orange-500">Home</Link>
+                <ChevronRight size={14} />
+                <span className="truncate max-w-[200px] text-gray-800">
+                    {product.name}
+                </span>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 pb-16">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
 
                     {/* Gallery */}
                     <div>
-                        <div className="glass-panel" style={{
-                            height: '500px',
-                            borderRadius: '32px',
-                            backgroundImage: `url(${product.images[activeImage]})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            marginBottom: '20px',
-                            border: 'none'
-                        }} />
-                        <div style={{ display: 'flex', gap: '16px' }}>
-                            {product.images.map((img, idx) => (
-                                <div
+                        <div className="relative aspect-square bg-white rounded-2xl overflow-hidden border border-gray-200">
+                            <img
+                                src={images[activeImage]}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                            />
+
+                            {discount > 0 && (
+                                <div className="absolute top-4 left-4 bg-orange-500 text-white text-xs px-3 py-1 rounded-md">
+                                    {discount}% OFF
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleWishlist}
+                                className="absolute top-4 right-4 w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center"
+                            >
+                                <Heart
+                                    size={18}
+                                    className={
+                                        isWishlisted
+                                            ? 'fill-orange-500 text-orange-500'
+                                            : 'text-gray-400'
+                                    }
+                                />
+                            </button>
+                        </div>
+
+                        {/* Thumbnails */}
+                        <div className="flex gap-3 mt-4 overflow-x-auto">
+                            {images.map((img: string, idx: number) => (
+                                <button
                                     key={idx}
                                     onClick={() => setActiveImage(idx)}
-                                    className="glass-panel"
-                                    style={{
-                                        width: '100px',
-                                        height: '100px',
-                                        backgroundImage: `url(${img})`,
-                                        backgroundSize: 'cover',
-                                        cursor: 'pointer',
-                                        border: activeImage === idx ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
-                                        opacity: activeImage === idx ? 1 : 0.6
-                                    }}
-                                />
+                                    className={`w-20 h-20 rounded-lg overflow-hidden border ${activeImage === idx
+                                            ? 'border-orange-500'
+                                            : 'border-gray-200'
+                                        }`}
+                                >
+                                    <img
+                                        src={img}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </button>
                             ))}
                         </div>
                     </div>
 
-                    {/* Info */}
-                    <div>
-                        <span style={{ color: 'var(--color-primary)', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                            {product.brand} • {product.category}
-                        </span>
-                        <h1 style={{ fontSize: '3rem', fontWeight: 800, margin: '12px 0 20px', lineHeight: 1.1 }}>{product.name}</h1>
+                    {/* Content */}
+                    <div className="bg-white p-6 rounded-2xl border border-gray-200">
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px' }}>
-                            <div style={{ fontSize: '2rem', fontWeight: 800 }}>₹{product.price.toLocaleString()}</div>
-                            <div style={{ height: '24px', width: '1px', background: 'var(--border-color)' }} />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ color: '#F1C40F', fontSize: '1.2rem' }}>★★★★★</span>
-                                <span style={{ fontWeight: 600 }}>{product.rating}</span>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>({product.reviews} reviews)</span>
+                        {/* Brand + Rating */}
+                        <div className="flex items-center gap-4 mb-4">
+                            <span className="text-sm text-orange-600 font-medium">
+                                {product.brand || 'Brand'}
+                            </span>
+
+                            <div className="flex items-center gap-1 text-sm text-gray-600">
+                                <Star size={14} className="fill-yellow-400 text-yellow-400" />
+                                {product.rating || 4.5}
                             </div>
                         </div>
 
-                        <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '40px' }}>
+                        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-4">
+                            {product.name}
+                        </h1>
+
+                        {/* Price */}
+                        <div className="flex items-center gap-3 mb-6">
+                            <span className="text-2xl font-semibold text-gray-900">
+                                ₹{product.price?.toLocaleString()}
+                            </span>
+                            {product.originalPrice && (
+                                <span className="text-lg text-gray-400 line-through">
+                                    ₹{product.originalPrice.toLocaleString()}
+                                </span>
+                            )}
+                        </div>
+
+                        <p className="text-gray-600 mb-8">
                             {product.description}
                         </p>
 
-                        <div style={{ display: 'flex', gap: '16px', marginBottom: '60px' }}>
-                            <button
-                                className="btn btn-primary"
-                                style={{ flex: 2, padding: '18px', fontSize: '1.1rem' }}
-                                onClick={() => addToCart({ ...product, image: product.images[0] })}
-                            >
-                                Add to Bag
-                            </button>
-                            <button className="btn btn-secondary" style={{ flex: 1, padding: '18px' }}>
-                                Wishlist
-                            </button>
-                        </div>
-
-                        <div className="glass-panel" style={{ padding: '32px' }}>
-                            <h3 style={{ fontWeight: 700, marginBottom: '20px' }}>Technical Specifications</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {product.specs.map((spec, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                                        <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{spec.key}</span>
-                                        <span style={{ fontWeight: 600 }}>{spec.value}</span>
-                                    </div>
-                                ))}
+                        {/* Trust Info */}
+                        <div className="grid grid-cols-2 gap-4 mb-8">
+                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                                <Truck size={18} className="text-orange-500" />
+                                Fast delivery
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                                <ShieldCheck size={18} className="text-orange-500" />
+                                Quality guarantee
                             </div>
                         </div>
-                    </div>
 
+                        {/* Actions */}
+                        <div className="flex gap-4">
+                            <button
+                                onClick={handleAddToCart}
+                                disabled={isAddingToCart}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition disabled:opacity-50"
+                            >
+                                <ShoppingCart size={18} />
+                                Add to Cart
+                            </button>
+
+                            <button
+                                onClick={handleWishlist}
+                                className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-100 transition"
+                            >
+                                <Heart
+                                    size={18}
+                                    className={
+                                        isWishlisted
+                                            ? 'fill-orange-500 text-orange-500'
+                                            : 'text-gray-600'
+                                    }
+                                />
+                            </button>
+                        </div>
+
+                        {/* Specifications */}
+                        <div className="mt-10">
+                            <h3 className="text-lg font-semibold mb-4">
+                                Specifications
+                            </h3>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
+                                {(product.specs || []).map(
+                                    (spec: any, i: number) => (
+                                        <div key={i}>
+                                            <span className="text-gray-500">
+                                                {spec.key}:
+                                            </span>{' '}
+                                            {spec.value}
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </main>

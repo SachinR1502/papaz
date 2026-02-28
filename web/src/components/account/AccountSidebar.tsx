@@ -23,8 +23,10 @@ const LINKS = [
 
 export default function AccountSidebar({
     collapsed = false,
+    onItemClick,
 }: {
     collapsed?: boolean;
+    onItemClick?: () => void;
 }) {
     const { user, logout } = useAuth();
     const pathname = usePathname();
@@ -70,6 +72,7 @@ export default function AccountSidebar({
                         <Link
                             key={name}
                             href={href}
+                            onClick={onItemClick}
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition",
                                 collapsed && "justify-center",
@@ -88,12 +91,20 @@ export default function AccountSidebar({
             {/* USER INFO */}
             {!collapsed && (
                 <div className="p-4 border-t border-gray-200">
-                    <p className="text-sm font-medium text-gray-800">
-                        {user?.profile?.fullName || 'User'}
-                    </p>
-                    <p className="text-xs text-gray-500 mb-4">
-                        {user?.email}
-                    </p>
+                    <div className="mb-1">
+                        <span className="inline-flex items-center w-fit bg-brand-softer border border-brand-subtle text-fg-brand-strong text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full">
+                            <span className="h-1.5 w-1.5 bg-fg-brand-strong rounded-full me-1.5 animate-pulse"></span>
+                            {user?.profile?.fullName || 'User'}
+                        </span>
+                    </div>
+
+                    <div className="mb-4">
+                        <span className="inline-flex items-center w-fit bg-success-softer border border-success-subtle text-fg-success-strong text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full">
+                            <span className="h-1.5 w-1.5 bg-fg-success-strong rounded-full me-1.5 animate-pulse"></span>
+                            {user?.email || user?.profile?.email || 'Active'}
+                        </span>
+                    </div>
+
 
                     <button
                         onClick={logout}

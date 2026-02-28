@@ -1,9 +1,7 @@
 'use client';
 
-import React from 'react';
 import {
     Briefcase,
-    FileText,
     MapPin,
     ShieldCheck,
     CreditCard,
@@ -14,36 +12,26 @@ import {
     Calendar,
     Clock,
     Wallet,
-    Award,
-    Activity
+    ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AuthInput, OnboardingUploader } from './Shared';
+import { toast } from 'sonner';
 
-const SKILLS = [
-    'Two Wheeler Mechanic',
-    'Three Wheeler Mechanic',
-    'Four Wheeler Mechanic',
-    'Electric Vehicle Technician',
-    'Battery Specialist',
-    'Engine Specialist',
-    'AC Specialist',
-    'General Service'
+const VEHICLE_TYPES = [
+    { id: 'Car', label: 'Car' },
+    { id: 'Bike', label: 'Bike' },
+    { id: 'Scooter', label: 'Scooter' },
+    { id: 'Truck', label: 'Truck' },
+    { id: 'Bus', label: 'Bus' },
+    { id: 'Tractor', label: 'Tractor' },
+    { id: 'Van', label: 'Van' },
+    { id: 'Rickshaw', label: 'Rickshaw' },
+    { id: 'EV Vehicle', label: 'EV Tech' },
+    { id: 'Other', label: 'Other' }
 ];
 
-const WORKING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const GENDERS = ['Male', 'Female', 'Other'];
-
-interface TechnicianFormProps {
-    onboardingStep: number;
-    setOnboardingStep: (step: number) => void;
-    details: any;
-    setDetails: (details: any) => void;
-    isUploading: string | null;
-    handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>, field: string) => void;
-    finishRegistration: () => void;
-    isLoading: boolean;
-}
+const WORKING_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export function TechnicianForm({
     onboardingStep,
@@ -54,233 +42,459 @@ export function TechnicianForm({
     handleFileUpload,
     finishRegistration,
     isLoading
-}: TechnicianFormProps) {
+}: any) {
+
     const totalSteps = 8;
 
+    const validateAndContinue = () => {
+        if (onboardingStep === 1) {
+            if (!details.dob) return toast.error("Date of Birth is required");
+        }
+        if (onboardingStep === 2) {
+            if (!details.address) return toast.error("Address is required");
+            if (!details.city) return toast.error("City is required");
+            if (!details.state) return toast.error("State is required");
+            if (!details.zipCode) return toast.error("Pincode is required");
+        }
+        if (onboardingStep === 3) {
+            if (details.vehicleTypes.length === 0) return toast.error("Select at least one skill");
+            if (!details.experienceYears) return toast.error("Experience is required");
+        }
+        if (onboardingStep === 5) {
+            if (!details.aadharNo) return toast.error("Aadhaar is required");
+            if (!details.panNo) return toast.error("PAN is required");
+        }
+        if (onboardingStep === 6) {
+            if (!details.baseVisitCharge) return toast.error("Base visit charge is required");
+        }
+        if (onboardingStep === 7) {
+            if (details.workingDays.length === 0) return toast.error("Select working days");
+        }
+        if (onboardingStep === 8) {
+            if (!details.bankDetails.holderName || !details.bankDetails.accountNo) return toast.error("Bank details are required");
+        }
+
+        setOnboardingStep(onboardingStep + 1);
+    };
+
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Step 1: Basic Personal Information */}
-            {onboardingStep === 1 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="col-span-1 md:col-span-2 flex flex-col items-center mb-4">
-                        <OnboardingUploader
-                            label="Profile Photo"
-                            value={details.profilePhoto}
-                            isUploading={isUploading === 'profilePhoto'}
-                            onUpload={e => handleFileUpload(e, 'profilePhoto')}
-                        />
-                    </div>
-                    <AuthInput label="Date of Birth" type="date" value={details.dob} onChange={v => setDetails({ ...details, dob: v })} icon={<Calendar size={18} />} />
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Gender</label>
-                        <select
-                            value={details.gender}
-                            onChange={e => setDetails({ ...details, gender: e.target.value })}
-                            className="w-full h-14 bg-[var(--bg-body)]/50 border border-[var(--border-color)] rounded-2xl px-5 focus:border-orange-500 transition-all font-bold text-sm outline-none appearance-none"
-                        >
-                            <option value="">Select Gender</option>
-                            {GENDERS.map(g => <option key={g} value={g.toLowerCase()}>{g}</option>)}
-                        </select>
-                    </div>
-                    <AuthInput label="Alternate Number" value={details.alternateNumber} onChange={v => setDetails({ ...details, alternateNumber: v })} icon={<Phone size={18} />} />
-                    <div className="col-span-1 md:col-span-2 flex gap-3 p-1 bg-white/5 rounded-2xl">
-                        <button type="button" onClick={() => setDetails({ ...details, registrationType: 'individual' })} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all", details.registrationType === 'individual' ? "bg-orange-500 text-white" : "text-muted")}>Individual</button>
-                        <button type="button" onClick={() => setDetails({ ...details, registrationType: 'garage' })} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all", details.registrationType === 'garage' ? "bg-orange-500 text-white" : "text-muted")}>Service Center</button>
-                    </div>
-                </div>
-            )}
+        <div className="space-y-8">
 
-            {/* Step 2: Address Details */}
-            {onboardingStep === 2 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="col-span-1 md:col-span-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1 mb-2 block">Current Address</label>
-                        <textarea
-                            value={details.address}
-                            onChange={e => setDetails({ ...details, address: e.target.value })}
-                            className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 text-sm font-bold min-h-[100px] outline-none focus:border-orange-500 transition-all"
-                            placeholder="Enter full address"
-                        />
-                    </div>
-                    <AuthInput label="City" value={details.city} onChange={v => setDetails({ ...details, city: v })} icon={<MapPin size={18} />} />
-                    <AuthInput label="State" value={details.state} onChange={v => setDetails({ ...details, state: v })} icon={<MapPin size={18} />} />
-                    <AuthInput label="Pincode" value={details.zipCode} onChange={v => setDetails({ ...details, zipCode: v })} icon={<Hash size={18} />} />
-                </div>
-            )}
+            {/* STEP HEADER */}
+            <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-gray-900">
+                    Step {onboardingStep} of {totalSteps}
+                </h3>
 
-            {/* Step 3: Skill & Category Selection */}
-            {onboardingStep === 3 && (
-                <div className="space-y-6">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted block ml-1">Specialized Skills (Multi-select)</label>
-                    <div className="grid grid-cols-2 gap-2">
-                        {SKILLS.map(skill => (
-                            <button
-                                key={skill}
-                                type="button"
-                                onClick={() => setDetails({ ...details, vehicleTypes: details.vehicleTypes.includes(skill) ? details.vehicleTypes.filter((s: string) => s !== skill) : [...details.vehicleTypes, skill] })}
-                                className={cn("py-3 px-2 text-left rounded-xl text-[10px] font-black uppercase border transition-all truncate", details.vehicleTypes.includes(skill) ? "bg-orange-500 border-orange-500 text-white" : "border-white/10 text-muted")}
-                            >
-                                {skill}
-                            </button>
-                        ))}
-                    </div>
-                    <AuthInput label="Experience Years" value={details.experienceYears} onChange={v => setDetails({ ...details, experienceYears: v })} icon={<Briefcase size={18} />} />
-                </div>
-            )}
-
-            {/* Step 4: Working Radius */}
-            {onboardingStep === 4 && (
-                <div className="space-y-8 text-center py-6">
-                    <div className="w-20 h-20 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <MapPin size={40} className="text-orange-500" />
-                    </div>
-                    <div>
-                        <h3 className="text-2xl font-black italic uppercase tracking-tighter">Operating Range</h3>
-                        <p className="text-sm font-bold text-muted mb-8 italic uppercase opacity-60 tracking-widest">Set your technician deployment radius</p>
-                    </div>
-                    <div className="relative pt-6">
-                        <div className="text-4xl font-black text-orange-500 mb-4">{details.serviceRadius} KM</div>
-                        <input
-                            type="range"
-                            min="5"
-                            max="100"
-                            step="5"
-                            value={details.serviceRadius}
-                            onChange={e => setDetails({ ...details, serviceRadius: e.target.value })}
-                            className="w-full h-2 bg-white/5 rounded-full appearance-none outline-none accent-orange-500 cursor-pointer"
+                <div className="flex gap-2">
+                    {[...Array(totalSteps)].map((_, i) => (
+                        <div
+                            key={i}
+                            className={`h-2 flex-1 rounded-full ${onboardingStep > i
+                                ? 'bg-orange-500'
+                                : 'bg-gray-200'
+                                }`}
                         />
-                        <div className="flex justify-between mt-4 text-[10px] font-black text-muted uppercase">
-                            <span>5 KM</span>
-                            <span>50 KM</span>
-                            <span>100 KM</span>
+                    ))}
+                </div>
+            </div>
+
+            {/* STEP CARD */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-sm">
+
+                {/* STEP 1 — PROFILE */}
+                {onboardingStep === 1 && (
+                    <div className="space-y-6">
+
+                        <div className="flex flex-col items-center space-y-3">
+                            <OnboardingUploader
+                                label="Profile Photo"
+                                value={details.profilePhoto}
+                                isUploading={isUploading === 'profilePhoto'}
+                                onUpload={(e: any) =>
+                                    handleFileUpload(e, 'profilePhoto')
+                                }
+                            />
+                            <p className="text-xs text-gray-400">
+                                Upload a clear professional photo
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <AuthInput
+                                label="Date of Birth"
+                                type="date"
+                                required
+                                value={details.dob}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, dob: v })
+                                }
+                                icon={<Calendar size={16} />}
+                            />
+
+                            <AuthInput
+                                label="Alternate Phone"
+                                value={details.alternateNumber}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, alternateNumber: v })
+                                }
+                                icon={<Phone size={16} />}
+                            />
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Step 5: Certification & Qualification */}
-            {onboardingStep === 5 && (
-                <div className="space-y-6">
-                    {details.registrationType === 'garage' && (
-                        <AuthInput label="Workshop Name" value={details.garageName} onChange={v => setDetails({ ...details, garageName: v })} icon={<Briefcase size={18} />} />
-                    )}
-                    <div className="grid grid-cols-2 gap-4">
-                        <OnboardingUploader label="ITI Certificate" value={details.documents.itiCert} isUploading={isUploading === 'itiCert'} onUpload={e => handleFileUpload(e, 'itiCert')} />
-                        <OnboardingUploader label="Technical Diploma" value={details.documents.diploma} isUploading={isUploading === 'diploma'} onUpload={e => handleFileUpload(e, 'diploma')} />
-                        <div className="col-span-2 h-[1px] bg-white/5 my-2" />
-                        <OnboardingUploader label="EV Certification" value={details.documents.evCert} isUploading={isUploading === 'evCert'} onUpload={e => handleFileUpload(e, 'evCert')} />
-                        <OnboardingUploader label="Police Clearance" value={details.documents.policeClearance} isUploading={isUploading === 'policeClearance'} onUpload={e => handleFileUpload(e, 'policeClearance')} />
-                    </div>
-                </div>
-            )}
+                {/* STEP 2 — LOCATION */}
+                {onboardingStep === 2 && (
+                    <div className="space-y-6">
 
-            {/* Step 6: Legal Verification (KYC) */}
-            {onboardingStep === 6 && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4">
-                        <AuthInput label="Aadhaar Number" value={details.aadharNo} onChange={v => setDetails({ ...details, aadharNo: v })} icon={<ShieldCheck size={18} />} placeholder="XXXX XXXX XXXX" />
-                        <AuthInput label="PAN Number" value={details.panNo} onChange={v => setDetails({ ...details, panNo: v })} icon={<CreditCard size={18} />} placeholder="ABCDE1234F" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-6">
-                        <OnboardingUploader label="Aadhaar Upload" value={details.documents.idProof} isUploading={isUploading === 'idProof'} onUpload={e => handleFileUpload(e, 'idProof')} />
-                        <OnboardingUploader label="PAN Upload" value={details.documents.panCard} isUploading={isUploading === 'panCard'} onUpload={e => handleFileUpload(e, 'panCard')} />
-                    </div>
-                </div>
-            )}
+                        <div>
+                            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 ml-1">
+                                Base Address <span className="text-orange-500">*</span>
+                            </label>
+                            <textarea
+                                value={details.address}
+                                required
+                                onChange={(e) =>
+                                    setDetails({
+                                        ...details,
+                                        address: e.target.value
+                                    })
+                                }
+                                className="w-full mt-2 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 outline-none transition font-medium"
+                                rows={3}
+                                placeholder="House no, Street, Area"
+                            />
+                        </div>
 
-            {/* Step 7: Service Charges & Availability */}
-            {onboardingStep === 7 && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-3 gap-3">
-                        <AuthInput label="Base Visit" value={details.baseVisitCharge} onChange={v => setDetails({ ...details, baseVisitCharge: v })} icon={<Wallet size={14} />} />
-                        <AuthInput label="Per Hour" value={details.perHourCharge} onChange={v => setDetails({ ...details, perHourCharge: v })} icon={<Clock size={14} />} />
-                        <AuthInput label="Emergency" value={details.emergencyServiceCharge} onChange={v => setDetails({ ...details, emergencyServiceCharge: v })} icon={<Award size={14} />} />
-                    </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <AuthInput
+                                label="City"
+                                required
+                                value={details.city}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, city: v })
+                                }
+                                icon={<MapPin size={16} />}
+                            />
 
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-muted block ml-1">Working Days</label>
+                            <AuthInput
+                                label="State"
+                                required
+                                value={details.state}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, state: v })
+                                }
+                                icon={<MapPin size={16} />}
+                            />
+
+                            <AuthInput
+                                label="Pincode"
+                                required
+                                value={details.zipCode}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, zipCode: v })
+                                }
+                                icon={<Hash size={16} />}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 3 — SKILLS */}
+                {onboardingStep === 3 && (
+                    <div className="space-y-6">
+
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Select Your Expertise <span className="text-orange-500 text-xs">*</span>
+                        </h4>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {VEHICLE_TYPES.map((type) => {
+                                const selected =
+                                    details.vehicleTypes.includes(type.id);
+
+                                return (
+                                    <button
+                                        key={type.id}
+                                        type="button"
+                                        onClick={() =>
+                                            setDetails({
+                                                ...details,
+                                                vehicleTypes: selected
+                                                    ? details.vehicleTypes.filter(
+                                                        (s: string) => s !== type.id
+                                                    )
+                                                    : [...details.vehicleTypes, type.id]
+                                            })
+                                        }
+                                        className={cn(
+                                            "py-3 text-[11px] rounded-lg border transition font-bold uppercase tracking-wider",
+                                            selected
+                                                ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                                                : "bg-white border-gray-200 text-gray-600 hover:border-orange-200 hover:bg-orange-50/30"
+                                        )}
+                                    >
+                                        {type.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <AuthInput
+                            label="Experience (Years)"
+                            required
+                            type="number"
+                            value={details.experienceYears}
+                            onChange={(v: string) =>
+                                setDetails({ ...details, experienceYears: v })
+                            }
+                            icon={<Briefcase size={16} />}
+                        />
+                    </div>
+                )}
+
+                {/* STEP 4 — SERVICE RADIUS */}
+                {onboardingStep === 4 && (
+                    <div className="space-y-8 text-center py-4">
+
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Maximum Service Radius
+                        </h4>
+
+                        <div className="relative inline-flex items-center justify-center">
+                            <div className="text-5xl font-black text-gray-900 tracking-tighter">
+                                {details.serviceRadius}<span className="text-orange-500 text-2xl ml-1">KM</span>
+                            </div>
+                        </div>
+
+                        <div className="px-4">
+                            <input
+                                type="range"
+                                min="5"
+                                max="100"
+                                step="5"
+                                value={details.serviceRadius}
+                                onChange={(e) =>
+                                    setDetails({
+                                        ...details,
+                                        serviceRadius: e.target.value
+                                    })
+                                }
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                            />
+                            <div className="flex justify-between mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                <span>5 KM</span>
+                                <span>100 KM</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 5 — KYC */}
+                {onboardingStep === 5 && (
+                    <div className="space-y-6">
+
+                        <AuthInput
+                            label="Aadhaar Number"
+                            required
+                            value={details.aadharNo}
+                            onChange={(v: string) =>
+                                setDetails({ ...details, aadharNo: v })
+                            }
+                            icon={<ShieldCheck size={16} />}
+                        />
+
+                        <AuthInput
+                            label="PAN Number"
+                            required
+                            value={details.panNo}
+                            onChange={(v: string) =>
+                                setDetails({ ...details, panNo: v })
+                            }
+                            icon={<CreditCard size={16} />}
+                        />
+
+                    </div>
+                )}
+
+                {/* STEP 6 — PRICING */}
+                {onboardingStep === 6 && (
+                    <div className="space-y-6">
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Service Charges
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <AuthInput
+                                label="Base Visit (₹)"
+                                required
+                                value={details.baseVisitCharge}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, baseVisitCharge: v })
+                                }
+                                icon={<Wallet size={16} />}
+                            />
+
+                            <AuthInput
+                                label="Hourly Charge (₹)"
+                                value={details.perHourCharge}
+                                onChange={(v: string) =>
+                                    setDetails({ ...details, perHourCharge: v })
+                                }
+                                icon={<Clock size={16} />}
+                            />
+
+                            <AuthInput
+                                label="Emergency (₹)"
+                                value={details.emergencyServiceCharge}
+                                onChange={(v: string) =>
+                                    setDetails({
+                                        ...details,
+                                        emergencyServiceCharge: v
+                                    })
+                                }
+                                icon={<Briefcase size={16} />}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 7 — WORKING DAYS */}
+                {onboardingStep === 7 && (
+                    <div className="space-y-6">
+
+                        <h4 className="text-base font-semibold text-gray-900">
+                            Working Availability <span className="text-orange-500 text-xs">*</span>
+                        </h4>
+
                         <div className="flex flex-wrap gap-2">
-                            {WORKING_DAYS.map(day => (
-                                <button
-                                    key={day}
-                                    type="button"
-                                    onClick={() => setDetails({ ...details, workingDays: details.workingDays.includes(day) ? details.workingDays.filter((d: string) => d !== day) : [...details.workingDays, day] })}
-                                    className={cn("py-2 px-3 rounded-lg text-[9px] font-black uppercase border transition-all", details.workingDays.includes(day) ? "bg-orange-500 border-orange-500 text-white" : "border-white/10 text-muted")}
-                                >
-                                    {day.slice(0, 3)}
-                                </button>
-                            ))}
+                            {WORKING_DAYS.map((day) => {
+                                const selected =
+                                    details.workingDays.includes(day);
+
+                                return (
+                                    <button
+                                        key={day}
+                                        type="button"
+                                        onClick={() =>
+                                            setDetails({
+                                                ...details,
+                                                workingDays: selected
+                                                    ? details.workingDays.filter(
+                                                        (d: string) => d !== day
+                                                    )
+                                                    : [...details.workingDays, day]
+                                            })
+                                        }
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold rounded-xl border transition uppercase tracking-wider",
+                                            selected
+                                                ? "bg-gray-900 text-white border-gray-900 shadow-sm"
+                                                : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                                        )}
+                                    >
+                                        {day}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
+                )}
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-muted block ml-1">From Time</label>
-                            <input type="time" value={details.workingHours.from} onChange={e => setDetails({ ...details, workingHours: { ...details.workingHours, from: e.target.value } })} className="w-full h-12 bg-[var(--bg-body)]/50 border border-[var(--border-color)] rounded-xl px-4 text-sm font-bold outline-none" />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-muted block ml-1">To Time</label>
-                            <input type="time" value={details.workingHours.to} onChange={e => setDetails({ ...details, workingHours: { ...details.workingHours, to: e.target.value } })} className="w-full h-12 bg-[var(--bg-body)]/50 border border-[var(--border-color)] rounded-xl px-4 text-sm font-bold outline-none" />
-                        </div>
-                    </div>
+                {/* STEP 8 — BANK DETAILS */}
+                {onboardingStep === 8 && (
+                    <div className="space-y-6">
 
-                    <label className="flex items-center justify-between p-4 bg-white/5 rounded-2xl cursor-pointer">
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Available for Emergency</span>
-                        <input
-                            type="checkbox"
-                            className="w-10 h-6 accent-orange-500"
-                            checked={details.availableForEmergency}
-                            onChange={e => setDetails({ ...details, availableForEmergency: e.target.checked })}
+                        <AuthInput
+                            label="Account Holder Name"
+                            required
+                            value={details.bankDetails.holderName}
+                            onChange={(v: string) =>
+                                setDetails({
+                                    ...details,
+                                    bankDetails: {
+                                        ...details.bankDetails,
+                                        holderName: v
+                                    }
+                                })
+                            }
+                            icon={<User size={16} />}
                         />
-                    </label>
-                </div>
-            )}
 
-            {/* Step 8: Bank Details */}
-            {onboardingStep === 8 && (
-                <div className="space-y-4">
-                    <AuthInput label="Account Holder" value={details.bankDetails.holderName} onChange={v => setDetails({ ...details, bankDetails: { ...details.bankDetails, holderName: v } })} icon={<User size={18} />} />
-                    <AuthInput label="Bank Name" value={details.bankDetails.bankName} onChange={v => setDetails({ ...details, bankDetails: { ...details.bankDetails, bankName: v } })} icon={<Building2 size={18} />} />
-                    <AuthInput label="Account Number" value={details.bankDetails.accountNo} onChange={v => setDetails({ ...details, bankDetails: { ...details.bankDetails, accountNo: v } })} icon={<Hash size={18} />} />
-                    <AuthInput label="IFSC Code" value={details.bankDetails.ifsc} onChange={v => setDetails({ ...details, bankDetails: { ...details.bankDetails, ifsc: v } })} icon={<Activity size={18} />} />
-                    <AuthInput label="UPI ID" value={details.bankDetails.upiId} onChange={v => setDetails({ ...details, bankDetails: { ...details.bankDetails, upiId: v } })} icon={<Wallet size={18} />} />
+                        <AuthInput
+                            label="Bank Name"
+                            required
+                            value={details.bankDetails.bankName}
+                            onChange={(v: string) =>
+                                setDetails({
+                                    ...details,
+                                    bankDetails: {
+                                        ...details.bankDetails,
+                                        bankName: v
+                                    }
+                                })
+                            }
+                            icon={<Building2 size={16} />}
+                        />
 
-                    <label className="flex items-start gap-3 p-4 bg-white/5 rounded-2xl cursor-pointer mt-6">
-                        <input type="checkbox" className="mt-1 accent-orange-500" checked={details.agreedToPlatformTerms} onChange={e => setDetails({ ...details, agreedToPlatformTerms: e.target.checked })} />
-                        <span className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">I verify that all expertise and legal documents are authentic.</span>
-                    </label>
-                </div>
-            )}
+                        <AuthInput
+                            label="Account Number"
+                            required
+                            value={details.bankDetails.accountNo}
+                            onChange={(v: string) =>
+                                setDetails({
+                                    ...details,
+                                    bankDetails: {
+                                        ...details.bankDetails,
+                                        accountNo: v
+                                    }
+                                })
+                            }
+                            icon={<Hash size={16} />}
+                        />
+                    </div>
+                )}
 
-            <div className="flex justify-between pt-8">
-                {onboardingStep > 1 && (
+            </div>
+
+            {/* FOOTER NAVIGATION */}
+            <div className="flex justify-between items-center px-2">
+
+                {onboardingStep > 1 ? (
                     <button
                         type="button"
-                        onClick={() => setOnboardingStep(onboardingStep - 1)}
-                        className="px-6 py-3 rounded-xl border border-white/10 text-[10px] font-black uppercase text-muted hover:text-white transition-all"
+                        onClick={() =>
+                            setOnboardingStep(onboardingStep - 1)
+                        }
+                        className="text-sm font-bold text-gray-500 hover:text-gray-900 transition flex items-center gap-2"
                     >
                         Back
                     </button>
+                ) : (
+                    <div />
                 )}
-                <div className="flex-1" />
+
                 {onboardingStep < totalSteps ? (
                     <button
                         type="button"
-                        onClick={() => setOnboardingStep(onboardingStep + 1)}
-                        className="px-8 py-4 bg-orange-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
+                        onClick={validateAndContinue}
+                        className="px-8 py-3 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition shadow-lg shadow-orange-100 flex items-center gap-2 active:scale-95"
                     >
-                        Next Stage
+                        Continue <ChevronRight size={18} />
                     </button>
                 ) : (
                     <button
                         type="button"
                         onClick={finishRegistration}
-                        disabled={!details.agreedToPlatformTerms || isLoading}
-                        className="px-8 py-4 bg-orange-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
+                        disabled={isLoading}
+                        className="px-8 py-3 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-black transition disabled:opacity-50 shadow-lg shadow-gray-200 active:scale-95"
                     >
-                        Activate Protocol
+                        {isLoading
+                            ? 'Processing...'
+                            : 'Activate Account'}
                     </button>
                 )}
+
             </div>
         </div>
     );
